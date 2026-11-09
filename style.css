@@ -197,9 +197,6 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
 .nav-inner button[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); }
 .btn, .pill { font-weight: 650; }
 .tile-icon { background: var(--accent-soft); color: var(--accent-ink); }
-.reader-options { margin-block: 10px; }
-.compare-toggle svg { width: 17px; }
-.compare-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
 .verse-content, .comparison-edition { display: block; min-width: 0; }
 .verse-pair { display: grid; gap: 5px; padding-block: 5px 9px; border-bottom: 1px solid var(--line); }
 .verse-pair:last-child { border-bottom: 0; }
@@ -387,8 +384,7 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
 }
 
 /* Keep the touch targets while making select and toggle text more compact. */
-select, .filters .pill, .reader-options .btn { font-size: 0.875rem; }
-.reader-options .btn { letter-spacing: -.025em; }
+select, .filters .pill { font-size: 0.875rem; }
 .record-shortcuts { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .chapter-check { margin-top: 15px; }
 .chapter-check h3 { font-size: 0.9375rem; }
@@ -444,9 +440,6 @@ select, .filters .pill, .reader-options .btn { font-size: 0.875rem; }
 #main.journal-view { width: min(calc(100% - 24px), 660px); }
 .post-content { padding-inline: clamp(8px, 2.6vw, 17px); }
 .post-writing { padding-inline: clamp(8px, 2.3vw, 14px); }
-.reader-options { flex-wrap: wrap; gap: 5px; }
-.reader-options > .btn { padding-inline: 8px; font-size: 0.75rem; }
-.reader-options svg { width: 15px; }
 .compare-choice { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 11px; overflow-wrap: anywhere; }
 .compare-choice input { flex: 0 0 auto; accent-color: var(--accent-ink); }
 .compare-order {
@@ -569,7 +562,7 @@ body {
   background: var(--card); border: 0;
   box-shadow: 0 1px var(--line);
 }
-.top-inner { height: 60px; position: relative; gap: 10px; }
+.top-inner { height: var(--top-bar-height); position: relative; gap: 10px; }
 .brand { min-width: 0; }
 .brand-name { min-width: 0; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-icon { background: var(--accent-soft); border-radius: 13px; }
@@ -656,7 +649,17 @@ dialog::backdrop { background: #1c263867; }
 .palette-swatch[data-swatch="oat"] { background: linear-gradient(145deg,#f8f4ed,#b7a48a); }
 .palette-swatch[data-swatch="gray"] { background: linear-gradient(145deg,#fcfcfc,#bfc1c5); }
 
-.reader-view > .reader-controls:first-child { margin-top: 0; }
+.reader-view > .reader-controls {
+  position: sticky; top: calc(var(--top-bar-height) + env(safe-area-inset-top)); z-index: 3;
+  margin-top: 0;
+  padding-block: 8px;
+  background: var(--paper);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr) minmax(3.75rem, .62fr);
+}
+.reader-controls .compare-toggle {
+  width: var(--control-height); height: var(--control-height); padding: 0; border-radius: 9px;
+}
+.compare-toggle svg { width: 19px; }
 .commentary-controls { margin-top: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .commentary-page { padding: clamp(12px, 4vw, 20px); }
 .commentary-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -712,10 +715,12 @@ body { min-height: 100vh; min-height: 100dvh; }
 .installed-editions button { display: inline-flex; align-items: center; gap: 3px; padding: 4px 0; }
 .installed-editions button svg { width: 14px; height: 14px; }
 
-:root { --page-gutter: 20px; }
+:root { --page-gutter: 20px; --top-bar-height: 60px; }
 #main.frame { width: min(calc(100% - 2 * var(--page-gutter)), 660px); }
-:is(.reader-controls, .record-filters) > .field {
+:is(.reader-controls, .record-filters) {
   --control-height: max(46px, 2.875rem);
+}
+:is(.reader-controls, .record-filters) > .field {
   position: relative;
   align-content: start;
 }
@@ -734,6 +739,10 @@ body { min-height: 100vh; min-height: 100dvh; }
   transform: rotate(45deg); pointer-events: none;
 }
 .reader-picker-trigger span { display: block; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) {
+  .reader-view .reader-picker-trigger { padding-inline: 7px 20px; }
+  .reader-view .reader-controls > .field::after { right: 8px; width: 6px; height: 6px; }
+}
 .book-picker, .reader-picker-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .book-picker { gap: 12px; }
 .book-picker-section h3 { color: var(--accent-ink); margin-bottom: 7px; }

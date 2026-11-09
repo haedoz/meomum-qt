@@ -553,9 +553,9 @@ function readerScreen() {
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
   return '<div class="reader-controls">'+readerPickerField('',editionLabel(edition),'pick-edition','번역본 선택')+
+      '<button type="button" class="btn compare-toggle" data-action="compare" aria-label="역본 대조" title="역본 대조" aria-haspopup="dialog" aria-pressed="'+
+        Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'</button>'+
       bookPickerField(book,'')+readerPickerField('',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
-    '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
-      '</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
     '<button class="btn chapter-arrow" data-step="-1" aria-label="위쪽 이전 장" '+(atStart?'disabled':'')+'>'+icon('left')+'</button>'+
     '<div class="passage-title"><strong>'+titles[book]+' '+chapter+'장</strong><span>'+[edition,...comparison].map(editionLabel).map(esc).join(' · ')+'</span></div>'+
@@ -1273,7 +1273,8 @@ function showVerseArrival(id) {
   main.querySelector('.verse-scroll-space')?.remove();
   const page = document.scrollingElement;
   const headerHeight = document.querySelector('.top').offsetHeight;
-  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-headerHeight-12);
+  const controlsHeight = view==='bible' ? (main.querySelector('.reader-controls')?.offsetHeight ?? 0) : 0;
+  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-headerHeight-controlsHeight-12);
   // Leave enough room for the last verses of a chapter to reach the header.
   const pageEnd = page.scrollHeight>page.clientHeight
     ? page.scrollHeight
