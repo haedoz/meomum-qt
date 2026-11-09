@@ -686,7 +686,7 @@ function jumpToChapter(form) {
   if (selection) {
     selection.location = {book,chapter,verse};
     render();
-    showVerseArrival('study-v-'+verse,'start');
+    showVerseArrival('study-v-'+verse);
     return;
   }
   visit([edition,book,chapter,verse].join('/'));
@@ -1260,11 +1260,11 @@ function render() {
     jumpTo = undefined;
   }
   if (studyJump && studySource(view)) {
-    if (studySelection[view].location.verse===studyJump) showVerseArrival('study-v-'+studyJump,'start');
+    if (studySelection[view].location.verse===studyJump) showVerseArrival('study-v-'+studyJump);
     else notify('선택한 절의 자료가 없어요.');
   }
 }
-function showVerseArrival(id,block = 'center') {
+function showVerseArrival(id) {
   const verse = document.getElementById(id);
   if (!verse) return;
   clearTimeout(verseArrivalTimer);
@@ -1275,7 +1275,23 @@ function showVerseArrival(id,block = 'center') {
     verse.addEventListener('blur',()=>verse.classList.remove('verse-arrival-focus'),{once:true});
   }
   verse.focus({preventScroll:true});
-  verse.scrollIntoView({block});
+  main.querySelector('.verse-scroll-space')?.remove();
+  const page = document.scrollingElement;
+  const headerHeight = document.querySelector('.top').offsetHeight;
+  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-headerHeight-12);
+  // Leave enough room for the last verses of a chapter to reach the header.
+  const pageEnd = page.scrollHeight>page.clientHeight
+    ? page.scrollHeight
+    : main.getBoundingClientRect().bottom+page.scrollTop;
+  const extraSpace = Math.ceil(top+page.clientHeight-pageEnd);
+  if (top>0 && extraSpace>0) {
+    const spacer = document.createElement('div');
+    spacer.className = 'verse-scroll-space';
+    spacer.style.height = extraSpace+'px';
+    spacer.setAttribute('aria-hidden','true');
+    main.append(spacer);
+  }
+  window.scrollTo(0,top);
   arrivedVerse = verse;
   verse.classList.add('verse-arrival');
   verseArrivalTimer = setTimeout(()=>{
