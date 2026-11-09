@@ -662,8 +662,8 @@ function readerSearchResults(page = 0) {
   if (!bibleSearchResults) return '';
   const {keys,bookStart,reference:isReference} = bibleSearchResults;
   const fontSize = displayValue('fontSize',state.display.fontSize);
-  const panelHeight = Math.min(window.innerHeight*.68,620);
-  const pageSize = Math.max(1,Math.floor((panelHeight-155-(bookStart?50:0))/(fontSize*3.95+13)));
+  const panelHeight = Math.min(window.innerHeight*.76,660);
+  const pageSize = Math.max(5,Math.min(6,Math.floor((panelHeight-155-(bookStart?50:0))/(fontSize*3.95+13))));
   const pages = Math.ceil(keys.length/pageSize);
   page = Math.min(page,Math.max(0,pages-1));
   const visible = keys.slice(page*pageSize,(page+1)*pageSize);
