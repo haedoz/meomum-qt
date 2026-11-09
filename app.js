@@ -41,8 +41,10 @@ const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
-let bibleSearchTimer, bibleSearchScope = 'all';
+let bibleSearchScope = 'all';
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
+const selectedSearchVerses = new Set();
+let readerSwipe, ignoreReaderSwipeClickUntil = 0;
 const localLanguages = {};
 let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
@@ -634,19 +636,28 @@ function showReaderSearch() {
   readerSearchInput.focus();
 }
 function closeReaderSearch(restoreFocus = false) {
-  clearTimeout(bibleSearchTimer);
-  bibleSearchTimer = undefined;
   bibleSearchScope = 'all';
-  if (modal.open && modal.firstElementChild?.name==='search-scope') modal.close();
+  if (modal.open && ['search-scope','search-selected'].includes(modal.firstElementChild?.name)) modal.close();
   topBar.classList.remove('search-open');
   readerSearchInput.value = '';
   readerSearchInput.hidden = true;
   readerSearchClose.hidden = true;
-  readerSearchPanel.hidden = true;
-  readerSearchPanel.innerHTML = '';
+  clearReaderSearchResults();
   readerSearchButton.setAttribute('aria-expanded','false');
   readerSearchButton.setAttribute('aria-label','성경 검색 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
+}
+function clearReaderSearchResults() {
+  selectedSearchVerses.clear();
+  readerSearchPanel.hidden = true;
+  readerSearchPanel.innerHTML = '';
+}
+function searchResultRow(key,canSelect) {
+  const title = esc(reference(key));
+  const checkbox = canSelect?'<label class="search-result-check"><input type="checkbox" data-search-select="'+key+'" aria-label="'+
+    title+' 선택" '+(selectedSearchVerses.has(key)?'checked':'')+'></label>':'';
+  return '<div class="search-result-row"><button type="button" class="record-open search-result" data-search-visit="'+key+'">'+
+    '<strong>'+title+'</strong><span>'+esc(verseText(key))+'</span></button>'+checkbox+'</div>';
 }
 function readerSearchResults(edition,page = 0) {
   const query = readerSearchInput.value.trim();
@@ -659,14 +670,15 @@ function readerSearchResults(edition,page = 0) {
     '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(!limited?'disabled':'')+'>다음</button></div>' : '';
   const scope = isReference?'':'<button type="button" class="btn" data-action="pick-search-scope" aria-haspopup="dialog">범위 · '+
     esc(searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope])+'</button>';
+  const selectedCount = selectedSearchVerses.size;
+  const collect = !isReference && (keys.length || selectedCount)?'<button type="button" class="btn" data-action="view-search-selection" '+
+    'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
   return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
-    count+'</span></h3>'+scope+'</div>'+pager+
-    (keys.map(key=>'<button type="button" class="record-open search-result" data-search-visit="'+key+'"><strong>'+esc(reference(key))+'</strong><span>'+esc(verseText(key))+'</span></button>').join('') ||
+    count+'</span></h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+pager+
+    (keys.map(key=>searchResultRow(key,!isReference)).join('') ||
       '<p class="muted">검색 결과가 없어요.</p>')+'</section>';
 }
 function updateReaderSearch(page = 0) {
-  clearTimeout(bibleSearchTimer);
-  bibleSearchTimer = undefined;
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
   const results = readerSearchResults(state.reader.edition,page);
   readerSearchPanel.innerHTML = results;
@@ -674,7 +686,6 @@ function updateReaderSearch(page = 0) {
   readerSearchPanel.scrollTop = 0;
 }
 function changeSearchPage(button) {
-  if (bibleSearchTimer!==undefined) return updateReaderSearch();
   const page = Number(button.dataset.searchPage);
   if (!Number.isInteger(page) || page<0) return;
   updateReaderSearch(page);
@@ -694,6 +705,14 @@ function chooseSearchScope(scope) {
   modal.close();
   updateReaderSearch();
   readerSearchPanel.querySelector('[data-action="pick-search-scope"]')?.focus({preventScroll:true});
+}
+function showSelectedSearchVerses() {
+  if (!selectedSearchVerses.size) return;
+  const passages = [...selectedSearchVerses].map(key=>
+    '<section class="search-selected-verse"><div class="row"><h3>'+esc(reference(key))+'</h3>'+
+    '<button type="button" class="text-action" data-search-visit="'+key+'">본문 보기</button></div>'+
+    '<p>'+esc(verseText(key))+'</p></section>').join('');
+  dialog('선택한 구절 '+selectedSearchVerses.size+'개',passages,'search-selected');
 }
 function visitSearchResult(key) {
   closeReaderSearch();
@@ -1275,7 +1294,7 @@ function chooseMenuOrderItem(route) {
 }
 function render() {
   const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
-  const hash = location.hash==='#search'?'bible':location.hash.slice(1);
+  const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
   const editorId = hash.startsWith('prayer-edit/') && validId(hash.slice(12)) ? hash.slice(12) : '';
@@ -1304,7 +1323,7 @@ function render() {
   main.classList.toggle('study-view',view==='commentary' || view==='original');
   main.classList.toggle('journal-view',view==='journal');
   main.classList.toggle('today-view',view==='today');
-  document.querySelector('.back-button').hidden = view==='today' || (view==='bible' && !history.state?.qtPrevious);
+  document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
   readerSearchForm.hidden = view!=='bible' || !state.reader.edition;
   if (readerSearchForm.hidden && !readerSearchInput.hidden) closeReaderSearch();
   document.querySelector('.bottom').hidden = view==='journal' || view==='prayer-edit';
@@ -1580,6 +1599,7 @@ let pendingImport, pendingComparison = [], pendingMenuOrder = [];
 const actions = {
   'close-bible-search'() { closeReaderSearch(true); },
   'pick-search-scope':showSearchScopePicker,
+  'view-search-selection':showSelectedSearchVerses,
   'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
@@ -1778,6 +1798,10 @@ function chooseBook(book) {
 document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
+  if (event.detail && Date.now()<ignoreReaderSwipeClickUntil && button.closest('.bible-passage')) {
+    ignoreReaderSwipeClickUntil = 0;
+    return;
+  }
   const target = button.dataset;
   if (target.menuChoice) return chooseMenuOrderItem(target.menuChoice);
   if ('recordOption' in target) return chooseRecordOption(button);
@@ -1876,6 +1900,14 @@ function cancelMarkerHold() {
   markerPointer = undefined;
 }
 main.addEventListener('pointerdown',event => {
+  if (event.isPrimary) ignoreReaderSwipeClickUntil = 0;
+  if (event.pointerType==='touch') {
+    readerSwipe = undefined;
+    if (view==='bible' && event.isPrimary && event.clientX>22 && event.clientX<window.innerWidth-22 &&
+        event.target.closest('.bible-passage') && !event.target.closest('.passage-heading, .verse-note-icon')) {
+      readerSwipe = {id:event.pointerId,x:event.clientX,y:event.clientY};
+    }
+  }
   if (event.button!==0 || !event.target.closest('[data-action="quick-marker"]')) return;
   markerPointer = {id:event.pointerId,x:event.clientX,y:event.clientY};
   markerHold = setTimeout(() => {
@@ -1888,8 +1920,20 @@ main.addEventListener('pointermove',event => {
   if (markerPointer?.id===event.pointerId &&
       Math.hypot(event.clientX-markerPointer.x,event.clientY-markerPointer.y)>10) cancelMarkerHold();
 });
-document.addEventListener('pointerup',cancelMarkerHold);
-document.addEventListener('pointercancel',cancelMarkerHold);
+document.addEventListener('pointerup',event=>{
+  cancelMarkerHold();
+  if (!readerSwipe || readerSwipe.id!==event.pointerId) return;
+  const {x,y} = readerSwipe;
+  readerSwipe = undefined;
+  const horizontal = event.clientX-x, vertical = event.clientY-y;
+  if (view!=='bible' || Math.abs(horizontal)<65 || Math.abs(horizontal)<Math.abs(vertical)*1.4) return;
+  ignoreReaderSwipeClickUntil = Date.now()+350;
+  stepChapter(horizontal<0?1:-1);
+});
+document.addEventListener('pointercancel',event=>{
+  cancelMarkerHold();
+  if (readerSwipe?.id===event.pointerId) readerSwipe = undefined;
+});
 main.addEventListener('contextmenu',event => {
   if (event.target.closest('[data-action="quick-marker"]')) event.preventDefault();
 });
@@ -1915,11 +1959,17 @@ main.addEventListener('input',event => {
     document.querySelector('#record-list').innerHTML = recordList();
   }
 });
-readerSearchInput.addEventListener('input',event=>{
-  clearTimeout(bibleSearchTimer);
-  bibleSearchTimer = event.isComposing ? undefined : setTimeout(updateReaderSearch,180);
+readerSearchInput.addEventListener('input',clearReaderSearchResults);
+readerSearchPanel.addEventListener('change',event=>{
+  const field = event.target;
+  const key = field.dataset.searchSelect;
+  if (!key) return;
+  if (field.checked) selectedSearchVerses.add(key);
+  else selectedSearchVerses.delete(key);
+  const button = readerSearchPanel.querySelector('[data-action="view-search-selection"]');
+  button.disabled = !selectedSearchVerses.size;
+  button.textContent = '모아 보기 ('+selectedSearchVerses.size+')';
 });
-readerSearchInput.addEventListener('compositionend',()=>updateReaderSearch());
 readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
   if (readerSearchInput.hidden) return showReaderSearch();
