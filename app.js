@@ -52,7 +52,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',markerColor:markerColors.gold,markerStyle:'fill',comparison:'',chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '', recordEdition = '', recordBook = '';
 let renderedDailyDate;
@@ -142,7 +142,16 @@ function forgetLocalEdition(id) {
 }
 function reconcileReaderEdition() {
   if (!Object.hasOwn(editions,state.reader.edition)) state.reader = initialReader(Object.keys(editions)[0] ?? '');
-  if (!Object.hasOwn(editions,state.comparison)) state.comparison = '';
+  state.comparison = comparisonEditions(state.comparison,state.reader.edition);
+}
+function comparisonEditions(value,primary) {
+  const ids = Array.isArray(value) ? value : [value];
+  return [...new Set(ids)].filter(id=>typeof id==='string' && id!==primary && Object.hasOwn(editions,id));
+}
+function swapComparison(edition) {
+  if (state.comparison.includes(edition)) {
+    state.comparison = state.comparison.map(id=>id===edition?state.reader.edition:id);
+  }
 }
 function registerLocalEdition(edition) {
   const {id} = edition;
@@ -214,9 +223,9 @@ async function importBibleFiles(files) {
     }
   } finally {
     importingEditions = false;
-    const previous = state.reader.edition, comparison = state.comparison;
+    const previous = state.reader.edition, comparisonCount = state.comparison.length;
     reconcileReaderEdition();
-    if (previous!==state.reader.edition || comparison!==state.comparison) save();
+    if (previous!==state.reader.edition || comparisonCount!==state.comparison.length) save();
     importMessage = results.join('\n');
     if (view==='today' || view==='calendar') render();
     if (view==='settings') render();
@@ -311,7 +320,7 @@ function verseText(key) {
 }
 function setReader(key) {
   const {edition,book,chapter} = readRef(key);
-  if (edition===state.comparison) state.comparison = state.reader.edition;
+  swapComparison(edition);
   state.reader = {edition,book,chapter};
   chosen.clear();
   save();
@@ -332,7 +341,7 @@ function visit(key) {
 function returnToBible(location, verse = location?.verse) {
   if (!location || !state.reader.edition) return navigate('bible');
   const {book,chapter} = location;
-  const editionsToCheck = new Set([state.reader.edition,state.comparison,...Object.keys(editions)]);
+  const editionsToCheck = new Set([state.reader.edition,...state.comparison,...Object.keys(editions)]);
   for (const edition of editionsToCheck) {
     const passage = data[edition]?.[book]?.[chapter];
     if (!passage) continue;
@@ -500,7 +509,7 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
   const key = [edition,book,chapter,num].join('/');
   const mark = state.marks[key];
-  const verse = '<button id="'+(secondary?'compare-v-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'" lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
+  const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'" lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
     '<span class="number">'+(secondary?'':num)+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span>':'')+markedText(content,marker)+'</span></button>';
   return mark?.note?'<div class="verse-with-note">'+verse+
     '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
@@ -516,16 +525,16 @@ function readerScreen() {
     '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings">성경 번역본 추가</button></section>';
   const chapters = data[edition]?.[book] ?? {};
   const verses = chapters[chapter] ?? {};
-  const compare = state.comparison && state.comparison!==edition ? state.comparison : '';
-  const otherVerses = compare ? data[compare]?.[book]?.[chapter] ?? {} : {};
-  const numbers = [...new Set([...Object.keys(verses),...Object.keys(otherVerses)])].sort((a,b)=>a-b);
+  const comparison = state.comparison;
+  const otherVerses = comparison.map(id=>data[id]?.[book]?.[chapter] ?? {});
+  const numbers = [...new Set([...Object.keys(verses),...otherVerses.flatMap(Object.keys)])].sort((a,b)=>a-b);
   const markers = indexVerseMarkers();
   const rows = numbers.map(num => {
     const marker = markers.get([book,chapter,num].join('/'))?.mark;
     const first = verseButton(edition,book,chapter,num,verses[num],marker);
-    return compare
-      ? '<div class="verse-pair">'+first+verseButton(compare,book,chapter,num,otherVerses[num],undefined,true)+'</div>'
-      : first;
+    if (!comparison.length) return first;
+    const alternatives = comparison.map((id,index)=>verseButton(id,book,chapter,num,otherVerses[index][num],undefined,true));
+    return '<div class="verse-pair">'+first+alternatives.join('')+'</div>';
   }).join('');
   const chapterOptions = Object.keys(chapters).map(number => [number,number+'장']);
   const availableBooks = books.filter(([code])=>data[edition]?.[code]);
@@ -533,13 +542,13 @@ function readerScreen() {
   const index = available.indexOf(book+'/'+chapter);
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
-  return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+readerSearch(edition,compare)+
+  return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+readerSearch(edition,comparison)+
     '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label><label class="field">성경<select data-reader="book">'+options(availableBooks,book)+'</select></label><label class="field">장<select data-reader="chapter">'+options(chapterOptions,chapter)+'</select></label></div>'+
-    '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(compare)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
+    '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
       '</div>'+
-    '<article class="reading bible-passage'+(compare?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
+    '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
     '<button class="btn chapter-arrow" data-step="-1" aria-label="위쪽 이전 장" '+(atStart?'disabled':'')+'>'+icon('left')+'</button>'+
-    '<div class="passage-title"><strong>'+titles[book]+' '+chapter+'장</strong><span>'+esc(editionLabel(edition))+(compare?' · '+esc(editionLabel(compare)):'')+'</span></div>'+
+    '<div class="passage-title"><strong>'+titles[book]+' '+chapter+'장</strong><span>'+[edition,...comparison].map(editionLabel).map(esc).join(' · ')+'</span></div>'+
     '<button class="btn chapter-arrow" data-step="1" aria-label="위쪽 다음 장" '+(atEnd?'disabled':'')+'>'+icon('right')+'</button></header>'+
     (rows || '<p>본문을 불러올 수 없어요. 연결을 확인한 뒤 다시 열어주세요.</p>')+'</article>'+verseActions()+
     (rows?chapterCheckControl(book,chapter):'')+
@@ -578,7 +587,7 @@ function searchBible(edition,query) {
   return {keys,limited:false};
 }
 function readerSearch(edition,comparison) {
-  const labels = [edition,comparison].filter(Boolean).map(editionLabel).map(esc).join(' · ');
+  const labels = [edition,...comparison].map(editionLabel).map(esc).join(' · ');
   return '<form class="reader-search" data-bible-search role="search">'+
     '<label class="field">성경 검색<input name="query" type="search" enterkeyhint="search" maxlength="120" placeholder="단어, 문장 또는 마 4:4" value="'+esc(bibleQuery)+'"></label>'+
     '<p class="muted">검색 대상 · '+labels+'</p></form>'+
@@ -587,7 +596,7 @@ function readerSearch(edition,comparison) {
 function readerSearchResults(edition,comparison) {
   const query = bibleQuery.trim();
   if (!query) return '';
-  return [edition,comparison].filter(Boolean).map(id=>{
+  return [edition,...comparison].map(id=>{
     const {keys,limited} = searchBible(id,query);
     return '<section class="reader-search-group"><h3>'+esc(editionLabel(id))+' <span class="muted">'+
       (limited?'처음 20개':keys.length+'개')+'</span></h3>'+
@@ -603,10 +612,10 @@ function updateReaderSearch() {
 function visitSearchResult(key) {
   const {edition,book,chapter,verse} = readRef(key);
   bibleQuery = '';
-  if (edition!==state.comparison || !data[state.reader.edition]?.[book]?.[chapter]) return visit(key);
+  if (!state.comparison.includes(edition) || !data[state.reader.edition]?.[book]?.[chapter]) return visit(key);
   const reader = state.reader;
   setReader([reader.edition,book,chapter,verse].join('/'));
-  jumpTo = 'compare-v-'+verse;
+  jumpTo = 'compare-v-'+edition+'-'+verse;
   navigate('bible');
 }
 function originalCodes(text) {
@@ -751,7 +760,7 @@ function openChapter(key) {
     const edition = Object.keys(editions).find(id=>data[id]?.[book]?.[chapter]);
     if (!edition) return notify('가져온 역본에서 이 장을 찾을 수 없어요.');
     state.reader.edition = edition;
-    if (state.comparison===edition) state.comparison = '';
+    state.comparison = state.comparison.filter(id=>id!==edition);
   }
   state.reader = {...state.reader,book,chapter:Number(chapter)};
   chosen.clear();
@@ -1404,12 +1413,14 @@ const actions = {
   },
   compare() {
     const available = Object.entries(editions).filter(([key])=>key!==state.reader.edition);
-    dialog('역본 대조','<p class="muted">각 구절 아래에 선택한 번역본을 함께 보여줘요.</p>'+
-      '<label class="field">함께 볼 번역본<select id="compare-edition">'+options(available,state.comparison)+'</select></label>'+
-      '<div class="row"><button class="btn" type="button" data-action="stop-compare" '+(!state.comparison?'disabled':'')+'>대조 끄기</button><button class="btn primary" type="button" data-action="start-compare">대조 켜기</button></div>');
+    const choices = available.map(([id,label])=>'<label class="compare-choice">'+
+      '<input type="checkbox" name="compare-edition" value="'+esc(id)+'" '+(state.comparison.includes(id)?'checked':'')+'>'+esc(label)+'</label>');
+    dialog('역본 대조','<p class="muted">함께 볼 번역본을 선택하세요. 여러 개를 선택할 수 있어요.</p>'+
+      '<div class="stack" role="group" aria-label="함께 볼 번역본">'+choices.join('')+'</div>'+
+      '<div class="row"><button class="btn" type="button" data-action="stop-compare" '+(!state.comparison.length?'disabled':'')+'>대조 끄기</button><button class="btn primary" type="button" data-action="start-compare">적용</button></div>');
   },
-  'start-compare'() { setComparison(modal.querySelector('#compare-edition').value); },
-  'stop-compare'() { setComparison(''); },
+  'start-compare'() { setComparison(new FormData(modal.querySelector('form')).getAll('compare-edition')); },
+  'stop-compare'() { setComparison([]); },
   'apply-mark'() { applyMark(); },
   'erase-mark'() { applyMark(true); },
   'add-prayer'() { showPrayerEditor(); },
@@ -1724,7 +1735,7 @@ main.addEventListener('change',async event => {
   if (field.id==='custom-font-file' && field.files[0]) return importCustomFont(field.files[0]);
   if (field.dataset.reader) {
     const reader = state.reader;
-    if (field.dataset.reader==='edition' && field.value===state.comparison) state.comparison = reader.edition;
+    if (field.dataset.reader==='edition') swapComparison(field.value);
     reader[field.dataset.reader] = field.dataset.reader==='chapter'?Number(field.value):field.value;
     if (!data[reader.edition]?.[reader.book]) reader.book = books.find(([code])=>data[reader.edition]?.[code])?.[0] ?? reader.book;
     if (field.dataset.reader==='book' || !data[reader.edition]?.[reader.book]?.[reader.chapter]) {
@@ -1789,7 +1800,7 @@ function migrate(input) {
     delete mark.highlight;
   }
   delete result.showCommentary;
-  result.comparison = Object.hasOwn(editions,input.comparison) && input.comparison!==result.reader.edition?input.comparison:'';
+  result.comparison = comparisonEditions(input.comparison,result.reader.edition);
   delete result.readingSize;
   for (const entry of Object.values(result.journal)) {
     if (typeof entry.reflection!=='string') {
@@ -1963,8 +1974,8 @@ function quickMarker() {
   if (keys.every(key=>markers.has(verseAddress(key)))) applyVerseMarks(keys,undefined,'말씀 표시를 지웠어요.');
   else applyVerseMarks(keys,{style:state.markerStyle,color:state.markerColor},'말씀 표시를 적용했어요.');
 }
-function setComparison(edition) {
-  state.comparison = edition!==state.reader.edition && Object.hasOwn(editions,edition)?edition:'';
+function setComparison(ids) {
+  state.comparison = comparisonEditions(ids,state.reader.edition);
   chosen.clear();
   modal.close();
   save();

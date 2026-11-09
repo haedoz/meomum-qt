@@ -471,6 +471,8 @@ select, .reader-controls select, .filters .pill, .reader-options .btn { font-siz
 .reader-options { flex-wrap: wrap; gap: 5px; }
 .reader-options > .btn { padding-inline: 8px; font-size: 0.75rem; }
 .reader-options svg { width: 15px; }
+.compare-choice { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 11px; overflow-wrap: anywhere; }
+.compare-choice input { flex: 0 0 auto; accent-color: var(--accent-ink); }
 .chapter-count { display: inline-block; color: var(--accent-ink); font-size: 0.75rem; font-weight: 650; white-space: nowrap; }
 .chapter-check .btn[aria-pressed="true"] {
   color: var(--accent-ink); background: var(--accent-soft); border-color: var(--line);
