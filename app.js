@@ -321,7 +321,8 @@ function navigate(screen, context) {
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
   const fallback = {thoughts:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records',search:'bible',commentary:'bible',original:'bible'};
-  history.replaceState(null,'','#'+(fallback[view] ?? 'today'));
+  const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
+  history.replaceState(null,'','#'+target);
   render();
 }
 function journalDate(hash) {
@@ -838,10 +839,16 @@ function jumpToChapter(form) {
   visit([edition,book,chapter,verse].join('/'));
 }
 function originalCodes(text) {
-  return esc(text).replace(/&lt;(W?[HG]\s*\d+[A-Za-z]?)\s*&gt;/gi,(_,code)=>{
-    const label = code.replace(/^W|\s/gi,'').toUpperCase();
-    return '<button type="button" class="original-code" data-strong-code="'+label+'" aria-label="'+label+' 뜻 보기">'+label+'</button>';
-  });
+  return esc(text).replace(/&lt;(W?[HG]\s*\d+[A-Za-z]?)\s*&gt;/gi,(_,code)=>strongCodeButton(code));
+}
+function strongCodeButton(code,current) {
+  const label = code.replace(/^W|\s/gi,'').replace(/^([HG])0+(?=\d)/i,'$1').toUpperCase();
+  return label===current?esc(code):'<button type="button" class="original-code" data-strong-code="'+label+
+    '" aria-label="'+label+' 뜻 보기">'+label+'</button>';
+}
+function dictionaryCodes(text,current) {
+  return esc(text).replace(/&lt;(W?[HG]\s*\d{1,5}[A-Za-z]?)\s*&gt;|\b(W?[HG]\s*\d{1,5}[A-Za-z]?)\b/gi,
+    (_,bracketed,bare)=>strongCodeButton(bracketed ?? bare,current));
 }
 function originalBody(body) {
   return body.split(/\r?\n/).filter(line=>line.trim()).map(line=>{
@@ -867,22 +874,24 @@ function showOriginalMeaning(button) {
   const entry = dictionariesByLanguage.find(item=>/^HebGrkKo$/i.test(item.label) && item.entries[code]) ??
     dictionariesByLanguage.find(item=>item.entries[code]);
   const definition = entry?
-    '<section class="dictionary-detail"><h3>원어사전 · '+esc(entry.label)+'</h3><div class="dictionary-copy">'+dictionaryParagraphs(entry.entries[code])+'</div></section>':
+    '<section class="dictionary-detail"><h3>원어사전 · '+esc(entry.label)+'</h3><div class="dictionary-copy">'+dictionaryParagraphs(entry.entries[code],code)+'</div></section>':
     '<div class="stack"><p class="muted">'+(dictionariesByLanguage.length?'가져온 원어사전에 이 코드의 상세 항목이 없어요.':'어원과 용례까지 보려면 한국어 원어사전 파일(.dct)을 추가해 주세요.')+'</p>'+
       '<button class="btn" type="button" data-nav="settings" data-import-link>원어사전 파일 가져오기</button></div>';
+  const linkedEntry = modal.open && modal.contains(button);
   dialog(esc(code)+' · '+(code.startsWith('H')?'히브리어':'헬라어'),
     '<div class="dictionary-body" tabindex="0" role="region" aria-label="원어사전 내용">'+definition+
     (form?'<div class="original-detail-form"><bdi>'+esc(form)+'</bdi></div>':'')+
     '<dl class="original-detail">'+fields.filter(([,value])=>value).map(([label,value])=>
       '<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl></div>','dictionary');
+  if (linkedEntry) modal.querySelector('#active-dialog-title')?.focus({preventScroll:true});
 }
-function dictionaryParagraphs(text) {
+function dictionaryParagraphs(text,current) {
   return text.trim().split(/\r?\n[ \t]*(?:\r?\n)+/).map((block,index)=>{
     const lines = block.trim().split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
     if (!lines.length) return '';
     const hasHeadword = index===0 && lines[0].length<=110 && /[\u0370-\u03ff\u0590-\u05ff]/u.test(lines[0]);
-    const headword = hasHeadword?'<p class="dictionary-headword"><bdi>'+esc(lines.shift().replace(/\s*\^+\s*/g,' '))+'</bdi></p>':'';
-    return headword+lines.map(line=>'<p>'+esc(line).replace(/^(\([\da-z]{1,3}\))(?=\s)/i,'<strong class="dictionary-sense">$1</strong>')+'</p>').join('');
+    const headword = hasHeadword?'<p class="dictionary-headword"><bdi>'+dictionaryCodes(lines.shift().replace(/\s*\^+\s*/g,' '),current)+'</bdi></p>':'';
+    return headword+lines.map(line=>'<p>'+dictionaryCodes(line,current).replace(/^(\([\da-z]{1,3}\))(?=\s)/i,'<strong class="dictionary-sense">$1</strong>')+'</p>').join('');
   }).join('');
 }
 function mannaCommentary() {
@@ -1364,7 +1373,8 @@ function renderPersonalSearch() {
   const rows = entries.map(({type,year,day,title,body,attribute,value})=>
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
-    '<strong>'+esc(title)+'</strong><span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
+    (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
+    '<span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
   readerSearchPanel.innerHTML = '<section class="reader-search-group">'+searchToolbar('내 기록 검색',
     searchTool('personal-search-type',personalSearchTypes[type],'filter')+
     searchTool('personal-search-year',personalYearLabel(year),'calendar'))+'<div class="reader-search-list">'+(rows ||
@@ -1521,7 +1531,7 @@ function render() {
       if (openSections.includes(summary.firstElementChild.textContent)) summary.parentElement.open = true;
     }
   }
-  const writing = main.querySelector('[data-journal-field="reflection"]');
+  const writing = main.querySelector('[data-journal-field="reflection"], [data-thought-editor] textarea');
   if (writing) resizeWriting(writing);
   const navView = ['calendar','prayers','thoughts','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
@@ -2139,6 +2149,7 @@ function resizeWriting(field) {
 }
 main.addEventListener('input',event => {
   const field = event.target;
+  if (field.tagName==='TEXTAREA' && field.form?.dataset.thoughtEditor) resizeWriting(field);
   if (field.dataset.journalField) {
     const entry = journalEntry(selectedDay);
     entry[field.dataset.journalField] = field.value;
@@ -2178,6 +2189,8 @@ readerSearchForm.addEventListener('submit',event=>{
   submitReaderSearch();
 });
 window.addEventListener('resize',()=>{
+  const thought = main.querySelector('[data-thought-editor] textarea');
+  if (thought) resizeWriting(thought);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
@@ -2218,10 +2231,6 @@ modal.addEventListener('submit',event => {
     event.preventDefault();
     return jumpToChapter(form);
   }
-  if ('thought' in form.dataset) {
-    event.preventDefault();
-    return saveThought(form);
-  }
   if (form.dataset.dailyNote) {
     event.preventDefault();
     return saveDailyNote(form);
@@ -2229,6 +2238,10 @@ modal.addEventListener('submit',event => {
 });
 main.addEventListener('submit',event => {
   const form = event.target;
+  if (form.dataset.thoughtEditor) {
+    event.preventDefault();
+    return saveThought(form);
+  }
   if (form.dataset.dailyNote) {
     event.preventDefault();
     return saveDailyNote(form);
@@ -2605,23 +2618,18 @@ function thoughtCard(item,showDate = true) {
     calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</div></article>';
 }
 function showThoughtEditor(item) {
-  const day = item ? item.day : dateKey();
-  dialog(item?'생각 노트 수정':'생각 노트','<p class="thought-date">'+(day?longDate(day):'날짜 미기록')+'</p>'+
-    '<textarea name="body" rows="6" required aria-label="생각" placeholder="지금 떠오른 생각을 적어보세요.">'+esc(item?thoughtText(item):'')+'</textarea>'+
-    '<button type="submit" class="btn primary block">'+(item?'수정 저장':'저장')+'</button>');
-  const form = modal.querySelector('form');
-  form.classList.add('thought-dialog');
-  form.dataset.thought = item?.id ?? '';
-  form.dataset.day = day ?? '';
+  navigate('prayer-edit/'+(item?.id ?? 'thought'));
 }
 async function saveThought(form) {
   const field = form.elements.body, body = field.value.trim();
   if (!body) return notify('생각을 적어 주세요.');
   const previous = state.prayers;
-  const existing = previous.find(item=>item.id===form.dataset.thought && item.kind==='thought');
-  if (form.dataset.thought && !existing) return;
+  const id = form.dataset.thoughtEditor;
+  const existing = previous.find(item=>item.id===id && item.kind==='thought');
+  if (id!=='thought' && !existing) return;
   const item = {id:existing?.id ?? newId(),kind:'thought',title:'',body,answer:'',done:false};
-  if (validDay(form.dataset.day)) item.day = form.dataset.day;
+  const day = form.elements.day.value;
+  if (validDay(day)) item.day = day;
   state.prayers = existing?previous.map(entry=>entry===existing?item:entry):[item,...previous];
   const button = form.querySelector('.primary');
   button.disabled = true;
@@ -2632,8 +2640,13 @@ async function saveThought(form) {
     field.readOnly = false;
     return;
   }
-  if (form.isConnected) modal.close();
-  render();
+  if (form.isConnected) {
+    if (history.state?.qtPrevious) history.back();
+    else {
+      history.replaceState(null,'','#thoughts');
+      render();
+    }
+  }
   notify('생각 노트에 저장했어요.');
 }
 function showPrayerEditor(item) {
@@ -2644,8 +2657,11 @@ function prayerEditorScreen(id) {
   const item = state.prayers.find(prayer=>prayer.id===id);
   if (!item && !['new','thought'].includes(id)) return '<p class="empty">이 기록을 찾을 수 없어요.</p>';
   if (id==='thought' || item?.kind==='thought') {
-    queueMicrotask(()=>{ if (view==='prayer-edit') showThoughtEditor(item); });
-    return thoughtsScreen();
+    return '<div class="post-editor thought-editor"><p class="eyebrow">생각 노트</p>'+
+      '<h1>'+(item?'생각 노트 편집':'새 생각 노트')+'</h1><form data-thought-editor="'+id+'">'+
+      editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+
+      editorField('생각','body',item?thoughtText(item):'','textarea','rows="5" required placeholder="지금 떠오른 생각을 적어보세요."')+
+      '<footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
   }
   return '<div class="post-editor"><p class="eyebrow">'+'기도 노트'+'</p>'+
     '<h1>'+(item?'기도제목 편집':'새 기도제목')+'</h1>'+
