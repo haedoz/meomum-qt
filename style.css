@@ -754,6 +754,15 @@ dialog .dialog-close.btn:not(.primary) {
 .original-caption { margin: 7px 2px 4px; color: var(--accent-ink); font-size: .82em; }
 .original-breakdown { margin: 0 0 14px; padding-inline-start: 1.9em; }
 .original-breakdown li::marker { color: var(--muted); font-size: .78em; }
+.original-word-reading { color: var(--muted); font-size: .88em; }
+.original-word-parts {
+  margin: 5px 0; padding-inline-start: 1em;
+  border-inline-start: 1px solid var(--line); font-size: .88em;
+}
+.original-word-parts li + li { margin-block-start: 3px; }
+.commentary-page .original-body :is(.original-pronunciation,.original-alternate) {
+  font-size: .88em; color: var(--muted);
+}
 .original-source-note {
   padding: 9px 11px; margin-bottom: 10px; border-radius: 8px;
   background: var(--soft); color: var(--muted); font-size: .875rem;

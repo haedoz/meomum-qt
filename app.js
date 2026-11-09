@@ -862,14 +862,38 @@ function originalVerseLines(body) {
     return {form,lemma,grammar:grammar.trim(),gloss:gloss==='_'?'':gloss};
   });
 }
+const originalStudyNotes = {
+  'GEN/1': {3:{
+    text:'וַיֹּאמֶר אֱלֹהִים יְהִי אוֹר וַיְהִי־אוֹר',
+    pronunciation:'와요메르 엘로힘 예히 오르 와예히 오르',
+    literal:'그리고 하나님이 말씀하셨다. “빛이 있어라!” 그러자 빛이 있었다.',
+    alternate:'그리고 하나님이 말씀하시기를 “빛이 생겨라” 하시니, 빛이 생겼다.',
+    words:[
+      {form:'וַיֹּאמֶר',reading:'와요메르',gloss:'그리고 그가 말씀하셨다',lemma:'<H559>',
+        parts:[['וַ','와','그리고 / 그러자. 앞 사건에 이어지는 서술을 이끌어요.'],
+          ['יֹּאמֶר','요메르','‘말하다’의 3인칭 남성 단수 형태예요.']]},
+      {form:'אֱלֹהִים',reading:'엘로힘',gloss:'하나님이',lemma:'<H430>',
+        grammar:'형태는 복수지만, 여기서는 단수 동사와 함께 쓰인 주어예요.'},
+      {form:'יְהִי',reading:'예히',gloss:'있어라 / 생겨라',lemma:'<H1961>',
+        grammar:'3인칭 남성 단수 간접 명령형(Jussive)이에요.'},
+      {form:'אוֹר',reading:'오르',gloss:'빛',lemma:'<H216>'},
+      {form:'וַיְהִי',reading:'와예히',gloss:'그러자 있었다 / 생겨났다',lemma:'<H1961>',
+        grammar:'말씀에 이어 일어난 일을 서술해요.'},
+      {form:'אוֹר',reading:'오르',gloss:'빛',lemma:'<H216>'},
+    ],
+  }},
+};
 function originalWordDetails(lines,numbered = false) {
   const tag = numbered?'li':'div';
-  return lines.map(({line,form,lemma,grammar,gloss})=>{
+  return lines.map(({line,form,lemma,grammar,gloss,reading,parts})=>{
     if (line) return numbered?'<li class="original-word">'+originalCodes(line)+'</li>':'<p>'+originalCodes(line)+'</p>';
     return '<'+tag+' class="original-word"><div class="original-word-head"><bdi>'+esc(form)+'</bdi>'+
+      (reading?'<span class="original-word-reading">('+esc(reading)+')</span>':'')+
       (gloss?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
-      (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+
-      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+'</'+tag+'>';
+      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+
+      (parts?'<ul class="original-word-parts">'+parts.map(([part,pronunciation,meaning])=>
+        '<li><bdi>'+esc(part)+'</bdi> <span class="original-word-reading">('+esc(pronunciation)+')</span> '+esc(meaning)+'</li>').join('')+'</ul>':'')+
+      (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+'</'+tag+'>';
   }).join('');
 }
 function originalPassageSources(book,chapter) {
@@ -890,23 +914,26 @@ function originalEditionFor(label,book,chapter) {
     (label==='한국어직역' && id==='local-a8084edc9bc642f0'));
   return candidates.find(id=>data[id]?.[book]?.[chapter]) ?? candidates.find(id=>data[id]?.[book]) ?? candidates[0];
 }
-function originalVerseReading(body,verse,sources) {
+function originalVerseReading(body,verse,sources,note) {
   if (originalLayout==='words' || Number(verse)>500) return originalWordDetails(originalVerseLines(body));
   const detailed = originalLayout==='gloss';
-  const words = detailed?originalVerseLines(body):[];
+  const words = detailed?(note?.words ?? originalVerseLines(body)):[];
   const imported = sources.source?.[verse]?.replace(/<W?[HG]\s*\d+[A-Za-z]?\s*>/gi,'').trim();
   const analysisText = words.filter(word=>word.form).map(word=>word.form).join(' ').replace(/־\s+/g,'־');
-  const originalText = imported || analysisText;
+  const originalText = imported || note?.text || analysisText;
   const original = originalText?
-    (detailed?'<h4 class="original-caption">'+(imported?sources.label+' 원문':'원전분해 원문 표기')+'</h4>':'')+
+    (detailed?'<h4 class="original-caption">'+(imported?sources.label+' 원문':note?'히브리어 원문':'원전분해 원문 표기')+'</h4>':'')+
     '<p class="original-verse-text" lang="'+sources.language+'" dir="'+sources.direction+'">'+esc(originalText)+'</p>':
     (sources.sourceId?'<p class="original-missing">이 절의 원문이 등록되어 있지 않아요.</p>':'');
   const breakdown = words.length?'<h4 class="original-caption">단어별 풀이</h4>'+
     '<ol class="original-breakdown">'+originalWordDetails(words,true)+'</ol>':'';
-  const korean = sources.translation?.[verse];
-  return original+breakdown+(detailed && (korean || sources.translationId)?'<h4 class="original-caption">한국어 직역</h4>':'')+
+  const korean = sources.translation?.[verse] || note?.literal;
+  const pronunciation = note?'<p class="original-pronunciation"><strong>발음</strong> '+esc(note.pronunciation)+'</p>':'';
+  return original+pronunciation+breakdown+(detailed && (korean || sources.translationId)?'<h4 class="original-caption">'+
+    (note?'어순을 살린 한국어 직역':'한국어 직역')+'</h4>':'')+
     (korean?'<p class="original-verse-gloss" lang="ko">'+esc(korean)+'</p>':
-      sources.translation?'<p class="original-missing">이 절의 한국어 직역이 등록되어 있지 않아요.</p>':'');
+      sources.translation?'<p class="original-missing">이 절의 한국어 직역이 등록되어 있지 않아요.</p>':'')+
+    (note?'<p class="original-alternate"><strong>다른 옮김</strong> '+esc(note.alternate)+'</p>':'');
 }
 function showOriginalMeaning(button) {
   const code = button.dataset.strongCode;
@@ -1009,9 +1036,10 @@ function studyScreen(mode) {
 }
 function studyPassage(mode,book,chapter,entries) {
   const original = mode==='original';
+  const notes = original && originalLayout==='gloss'?originalStudyNotes[book+'/'+chapter]:undefined;
   const sources = original && originalLayout!=='words'?originalPassageSources(book,chapter):undefined;
   const missingFiles = sources?[!sources.sourceId && sources.label+'.bdb',!sources.translationId && '한국어직역.bdb'].filter(Boolean):[];
-  const verseNumbers = [...new Set([entries,sources?.source,sources?.translation].flatMap(chapterVerses=>
+  const verseNumbers = [...new Set([entries,sources?.source,sources?.translation,notes].flatMap(chapterVerses=>
     Object.entries(chapterVerses ?? {}).filter(([verse,text])=>Number(verse)>0 && text).map(([verse])=>verse)))].sort((a,b)=>a-b);
   const translationLinks = sources?.translationId && !Object.values(sources.translation ?? {}).some(Boolean)?
     availableChapters(sources.translationId).slice(0,2).map(key=>{
@@ -1028,7 +1056,7 @@ function studyPassage(mode,book,chapter,entries) {
       (Number(verse)<=500?' data-reading-verse="'+verse+'"':'')+'><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
       (Number(verse)>500?'참고 항목 '+verse:verse+'절')+'</h3>'+
       (Number(verse)<=500?'<button type="button" class="text-action" data-study-return="'+verse+'" aria-label="'+verse+'절 성경 본문 보기">본문 보기 '+icon('arrow')+'</button>':'')+'</div>'+
-      (original?'<div class="original-body">'+originalVerseReading(entries[verse] ?? '',verse,sources)+'</div>':
+      (original?'<div class="original-body">'+originalVerseReading(entries[verse] ?? '',verse,sources,notes?.[verse])+'</div>':
         '<div class="commentary-copy">'+commentaryParagraphs(entries[verse]).join('')+'</div>')+
       '</section>').join('') || '<p class="empty">이 장에 등록된 자료가 없어요.</p>');
 }
