@@ -28,7 +28,7 @@ const main = document.querySelector('#main');
 const modal = document.querySelector('#modal');
 const toast = document.querySelector('#toast');
 const readerSearchForm = document.querySelector('#reader-search');
-const readerSearchInput = readerSearchForm.elements.query;
+const readerSearchInput = document.querySelector('#reader-search-input');
 const readerSearchButton = readerSearchForm.querySelector('.bible-search-button');
 const readerSearchClose = readerSearchForm.querySelector('.reader-search-close');
 const readerSearchPanel = readerSearchForm.querySelector('#reader-search-results');
@@ -605,19 +605,21 @@ function searchBible(edition,query) {
 }
 function showReaderSearch() {
   topBar.classList.add('search-open');
+  readerSearchInput.value = '';
   readerSearchInput.hidden = false;
   readerSearchClose.hidden = false;
   readerSearchButton.setAttribute('aria-expanded','true');
   readerSearchButton.setAttribute('aria-label','검색 실행');
   readerSearchInput.focus();
-  updateReaderSearch();
 }
 function closeReaderSearch(restoreFocus = false) {
   clearTimeout(bibleSearchTimer);
   topBar.classList.remove('search-open');
+  readerSearchInput.value = '';
   readerSearchInput.hidden = true;
   readerSearchClose.hidden = true;
   readerSearchPanel.hidden = true;
+  readerSearchPanel.innerHTML = '';
   readerSearchButton.setAttribute('aria-expanded','false');
   readerSearchButton.setAttribute('aria-label','성경 검색 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
@@ -640,7 +642,6 @@ function updateReaderSearch() {
   readerSearchPanel.scrollTop = 0;
 }
 function visitSearchResult(key) {
-  readerSearchInput.value = '';
   closeReaderSearch();
   visit(key);
 }
