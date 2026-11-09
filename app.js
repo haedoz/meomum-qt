@@ -42,6 +42,7 @@ const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
 let bibleSearchScope = 'all';
+let bibleSearchResults;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
 const selectedSearchVerses = new Set();
 let readerSwipe, ignoreReaderSwipeClickUntil = 0;
@@ -65,7 +66,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '';
 const recordSelection = {edition:'',book:'',year:''};
@@ -579,7 +580,6 @@ function availableChapters(edition) {
 const searchAliases = '창 출 레 민 신 수 삿 룻 삼상 삼하 왕상 왕하 대상 대하 스 느 에 욥 시 잠 전 아 사 렘 애 겔 단 호 욜 암 옵 욘 미 나 합 습 학 슥 말 마 막 눅 요 행 롬 고전 고후 갈 엡 빌 골 살전 살후 딤전 딤후 딛 몬 히 약 벧전 벧후 요일 요이 요삼 유 계'.split(' ');
 const searchBooks = Object.fromEntries(books.flatMap(([code,title],index)=>[[title,code],[searchAliases[index],code],[code.toLowerCase(),code]]));
 const searchText = text => text.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
-const searchPageSize = 20;
 function parseChapterVerse(query) {
   const match = query.match(/^(\d+)(?:(?:\s*:\s*|\s+|\s*장\s*:?\s*)(\d+)\s*절?|\s*장)?$/);
   if (!match) return;
@@ -597,7 +597,7 @@ function parseBibleReference(query) {
   const namedPosition = parseChapterVerse(match[2]);
   if (namedPosition) return {...namedPosition,book:searchBooks[alias]};
 }
-function searchBible(edition,query,page = 0) {
+function searchBible(edition,query) {
   const source = data[edition] ?? {};
   const position = parseBibleReference(query);
   if (position) {
@@ -606,25 +606,19 @@ function searchBible(edition,query,page = 0) {
     const chapter = position.chapter ?? Object.keys(chapters).find(number=>Object.values(chapters[number]).some(Boolean));
     const verses = chapters[chapter] ?? {};
     const verse = position.verse ?? (verses[1]?1:Object.keys(verses).find(number=>verses[number]));
-    return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],limited:false,reference:true};
+    return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],reference:true};
   }
   const needle = searchText(query), keys = [];
-  let skip = page*searchPageSize;
   if (needle) for (const [book] of books) {
     if (bibleSearchScope!=='all' && bibleSearchScope!==book && bibleSearchScope!==testamentByBook[book]) continue;
     for (const [chapter,verses] of Object.entries(source[book] ?? {})) {
       for (const [verse,body] of Object.entries(verses)) {
         if (!searchText(body).includes(needle)) continue;
-        if (skip>0) {
-          skip--;
-          continue;
-        }
-        if (keys.length===searchPageSize) return {keys,limited:true};
         keys.push([edition,book,chapter,verse].join('/'));
       }
     }
   }
-  return {keys,limited:false};
+  return {keys};
 }
 function showReaderSearch() {
   topBar.classList.add('search-open');
@@ -648,6 +642,7 @@ function closeReaderSearch(restoreFocus = false) {
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
 function clearReaderSearchResults() {
+  bibleSearchResults = undefined;
   selectedSearchVerses.clear();
   readerSearchPanel.hidden = true;
   readerSearchPanel.innerHTML = '';
@@ -659,28 +654,37 @@ function searchResultRow(key,canSelect) {
   return '<div class="search-result-row"><button type="button" class="record-open search-result" data-search-visit="'+key+'">'+
     '<strong>'+title+'</strong><span>'+esc(verseText(key))+'</span></button>'+checkbox+'</div>';
 }
-function readerSearchResults(edition,page = 0) {
-  const query = readerSearchInput.value.trim();
-  if (!query) return '';
-  const {keys,limited,reference:isReference} = searchBible(edition,query,page);
-  const offset = page*searchPageSize;
-  const count = keys.length && (page || limited) ? (offset+1)+'–'+(offset+keys.length)+'번째' : keys.length+'개';
-  const pager = page || limited ? '<div class="reader-search-pages" role="group" aria-label="검색 결과 페이지">'+
+function readerSearchResults(page = 0) {
+  if (!bibleSearchResults) return '';
+  const {keys,reference:isReference} = bibleSearchResults;
+  const fontSize = displayValue('fontSize',state.display.fontSize);
+  const panelHeight = Math.min(window.innerHeight*.68,620);
+  const pageSize = Math.max(1,Math.floor((panelHeight-155)/(fontSize*3.95+13)));
+  const pages = Math.ceil(keys.length/pageSize);
+  page = Math.min(page,Math.max(0,pages-1));
+  const visible = keys.slice(page*pageSize,(page+1)*pageSize);
+  const count = '검색 결과 '+keys.length.toLocaleString('ko-KR')+'개'+(pages?' · '+(page+1)+' / '+pages+'페이지':'');
+  const pager = pages>1 ? '<div class="reader-search-pages" role="group" aria-label="검색 결과 페이지">'+
     '<button type="button" class="btn" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>이전</button>'+
-    '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(!limited?'disabled':'')+'>다음</button></div>' : '';
+    '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(page+1>=pages?'disabled':'')+'>다음</button></div>' : '';
   const scope = isReference?'':'<button type="button" class="btn" data-action="pick-search-scope" aria-haspopup="dialog">범위 · '+
     esc(searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope])+'</button>';
   const selectedCount = selectedSearchVerses.size;
   const collect = !isReference && (keys.length || selectedCount)?'<button type="button" class="btn" data-action="view-search-selection" '+
     'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
-  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
-    count+'</span></h3><div class="reader-search-actions">'+scope+collect+'</div></div><div class="reader-search-list">'+pager+
-    (keys.map(key=>searchResultRow(key,!isReference)).join('') ||
+  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+count+
+    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+pager+'<div class="reader-search-list">'+
+    (visible.map(key=>searchResultRow(key,!isReference)).join('') ||
       '<p class="muted">검색 결과가 없어요.</p>')+'</div></section>';
+}
+function submitReaderSearch() {
+  const query = readerSearchInput.value.trim();
+  bibleSearchResults = query ? searchBible(state.reader.edition,query) : undefined;
+  updateReaderSearch();
 }
 function updateReaderSearch(page = 0) {
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
-  const results = readerSearchResults(state.reader.edition,page);
+  const results = readerSearchResults(page);
   readerSearchPanel.innerHTML = results;
   readerSearchPanel.hidden = !results;
 }
@@ -702,18 +706,63 @@ function showSearchScopePicker() {
 function chooseSearchScope(scope) {
   bibleSearchScope = scope;
   modal.close();
-  updateReaderSearch();
+  submitReaderSearch();
   readerSearchPanel.querySelector('[data-action="pick-search-scope"]')?.focus({preventScroll:true});
 }
 function showSelectedSearchVerses() {
   if (!selectedSearchVerses.size) return;
-  const passages = [...selectedSearchVerses].map(key=>
-    '<section class="search-selected-verse"><div class="row"><h3>'+esc(reference(key))+'</h3>'+
-    '<button type="button" class="text-action" data-search-visit="'+key+'">본문 보기</button></div>'+
-    '<p>'+esc(verseText(key))+'</p></section>').join('');
-  dialog('선택한 구절 '+selectedSearchVerses.size+'개',passages,'search-selected');
+  showVerseBundle(selectedVerseSnapshots());
+}
+function selectedVerseSnapshots() {
+  return [...selectedSearchVerses].filter(ref=>verseText(ref)).map(ref=>
+    ({ref,body:verseText(ref),label:editionLabel(readRef(ref).edition)}));
+}
+function showVerseBundle(verses,id) {
+  const passages = verses.map(({ref,body,label})=>
+    '<section class="search-selected-verse"><div class="row"><h3>'+esc(reference(ref))+' · '+esc(label)+'</h3>'+
+    (verseText(ref)?'<button type="button" class="text-action" data-search-visit="'+ref+'">본문 보기</button>':'')+'</div>'+
+    '<p>'+esc(body)+'</p></section>').join('');
+  const saveButton = id?'':'<button type="button" class="btn primary" data-action="save-verse-bundle">기록함에 저장</button>';
+  dialog('선택한 구절 '+verses.length+'개','<div class="bundle-actions">'+saveButton+
+    '<button type="button" class="btn" data-copy-bundle="'+(id ?? 'selection')+'">복사</button></div>'+
+    '<p class="muted" role="status" data-bundle-status></p>'+passages,id?'saved-verse-bundle':'search-selected');
+}
+async function saveVerseBundle(button) {
+  const verses = selectedVerseSnapshots();
+  if (!verses.length) return;
+  const bundle = {id:newId(),day:dateKey(),verses};
+  const status = modal.querySelector('[data-bundle-status]');
+  button.disabled = true;
+  state.verseBundles.unshift(bundle);
+  if (await save()) {
+    status.textContent = '기록함의 구절 모음에 저장했어요.';
+  } else {
+    state.verseBundles = state.verseBundles.filter(item=>item.id!==bundle.id);
+    status.textContent = '저장하지 못했어요. 다시 시도해 주세요.';
+    button.disabled = false;
+  }
+}
+async function copyVerseBundle(id) {
+  const verses = id==='selection'?selectedVerseSnapshots():state.verseBundles.find(bundle=>bundle.id===id)?.verses;
+  if (!verses?.length) return;
+  const text = verses.map(({ref,body,label})=>reference(ref)+' · '+label+'\n'+body).join('\n\n');
+  const status = modal.querySelector('[data-bundle-status]');
+  try {
+    await navigator.clipboard.writeText(text);
+    status.textContent = '구절 모음을 복사했어요.';
+  } catch {
+    if (!status.isConnected) return;
+    status.textContent = '자동 복사가 되지 않았어요. 아래 본문을 선택해서 복사해 주세요.';
+    if (!modal.querySelector('[data-bundle-copy-text]')) {
+      status.insertAdjacentHTML('afterend',editorField('복사할 구절','verses',text,'textarea','readonly rows="6" data-bundle-copy-text'));
+    }
+    const field = modal.querySelector('[data-bundle-copy-text]');
+    field.focus();
+    field.select();
+  }
 }
 function visitSearchResult(key) {
+  if (modal.open && modal.firstElementChild?.name==='saved-verse-bundle') modal.close();
   closeReaderSearch();
   visit(key);
 }
@@ -1250,6 +1299,11 @@ function recordsScreen() {
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
+    (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
+      '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
+      '<strong>'+esc(reference(bundle.verses[0].ref))+' · '+bundle.verses.length+'구절</strong>'+
+      '<span class="muted">'+esc(bundle.day)+'</span></button><button type="button" class="text-action destructive" '+
+      'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
     '<div class="section-head"><h2>말씀 기록</h2></div><div class="filters">'+Object.entries(recordFilters).map(([id,label])=>'<button class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
     '<div class="record-filters">'+pickers+'</div>'+
     '<label class="field spaced">기록 검색<input type="search" id="record-search" value="'+esc(keyword)+'" placeholder="구절, 본문, 메모 검색"></label><div id="record-list" class="spaced">'+recordList(rows)+'</div>';
@@ -1257,7 +1311,7 @@ function recordsScreen() {
 function settingsScreen() {
   return heading('MY NOTEBOOK','저장과 설정','묵상 노트는 이 기기에 저장돼요.')+
     menuOrderSettings()+displaySettings()+importPanel()+
-    '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>';
+    '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시와 구절 모음, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>';
 }
 function menuOrderSettings() {
   const order = state.menuOrder.map(route=>esc(menuItems.get(route).textContent.trim())).join(' · ');
@@ -1564,6 +1618,11 @@ function validatedBackup(payload) {
     if (new Set(input[name].map(item=>item.id)).size!==input[name].length) throw Error('duplicate id');
     result[name] = input[name];
   }
+  if (input.verseBundles!==undefined) {
+    if (!Array.isArray(input.verseBundles) || !input.verseBundles.every(validVerseBundle) ||
+        new Set(input.verseBundles.map(bundle=>bundle.id)).size!==input.verseBundles.length) throw Error('verse bundles');
+    result.verseBundles = input.verseBundles;
+  }
   if (input.chapterLog!==undefined) {
     if (!isObject(input.chapterLog)) throw Error('chapter log');
     for (const [day,chapters] of Object.entries(input.chapterLog)) {
@@ -1802,6 +1861,14 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (target.action==='save-verse-bundle') return saveVerseBundle(button);
+  if (target.copyBundle) return copyVerseBundle(target.copyBundle);
+  if (target.openVerseBundle) {
+    const bundle = state.verseBundles.find(item=>item.id===target.openVerseBundle);
+    if (bundle) showVerseBundle(bundle.verses,bundle.id);
+    return;
+  }
+  if (target.removeVerseBundle) return confirmItemRemoval('bundle',target.removeVerseBundle);
   if (target.menuChoice) return chooseMenuOrderItem(target.menuChoice);
   if ('recordOption' in target) return chooseRecordOption(button);
   if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
@@ -1972,8 +2039,11 @@ readerSearchPanel.addEventListener('change',event=>{
 readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
   if (readerSearchInput.hidden) return showReaderSearch();
-  updateReaderSearch();
   readerSearchInput.blur();
+  submitReaderSearch();
+});
+window.addEventListener('resize',()=>{
+  if (bibleSearchResults) updateReaderSearch();
 });
 document.addEventListener('pointerdown',event=>{
   if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
@@ -2301,6 +2371,12 @@ function newId() {
 function validId(id) {
   return typeof id==='string' && /^[a-zA-Z0-9-]{1,80}$/.test(id);
 }
+function validVerseBundle(bundle) {
+  return isObject(bundle) && validId(bundle.id) && validDay(bundle.day) &&
+    Array.isArray(bundle.verses) && bundle.verses.length>0 && bundle.verses.every(verse=>
+      isObject(verse) && validRef(verse.ref) && typeof verse.label==='string' && verse.label.length<=72 &&
+      typeof verse.body==='string' && verse.body.length>0 && verse.body.length<=10000);
+}
 function validPrayer(item) {
   return isObject(item) && validId(item.id) && typeof item.title==='string' &&
     typeof item.body==='string' && typeof item.answer==='string' && typeof item.done==='boolean' && (item.day===undefined || validDay(item.day)) && (item.kind===undefined || item.kind==='thought');
@@ -2523,7 +2599,7 @@ function saveComment() {
 }
 let pendingRemoval;
 function confirmItemRemoval(kind,id,day) {
-  const labels = {journal:'묵상',prayer:state.prayers.some(item=>item.id===id && item.kind==='thought')?'생각 기록':'기도제목',comment:'댓글',year:'새해 말씀',note:'구절 메모',dailyNote:'말씀 묵상'};
+  const labels = {journal:'묵상',prayer:state.prayers.some(item=>item.id===id && item.kind==='thought')?'생각 기록':'기도제목',comment:'댓글',year:'새해 말씀',note:'구절 메모',dailyNote:'말씀 묵상',bundle:'구절 모음'};
   const label = labels[kind];
   const details = kind==='journal'?'이 날짜의 묵상, 댓글, 담아둔 구절과 QT 체크가 함께 삭제돼요.':
     kind==='prayer'?'이 게시글의 내용이 함께 삭제돼요.':kind==='note'?reference(id)+'에 남긴 메모를 삭제할까요?':'이 기록을 삭제할까요?';
@@ -2534,7 +2610,8 @@ async function removeItem() {
   if (!pendingRemoval) return;
   const {kind,id,day,label} = pendingRemoval;
   const [container,key] = kind==='journal'?[state.journal,id]:
-    kind==='dailyNote'?[state.dailyNotes,id]:kind==='comment'?[state.journal[day],'comments']:kind==='note'?[state.marks,id]:[state,kind==='prayer'?'prayers':'newYear'];
+    kind==='dailyNote'?[state.dailyNotes,id]:kind==='comment'?[state.journal[day],'comments']:kind==='note'?[state.marks,id]:
+    [state,kind==='prayer'?'prayers':kind==='bundle'?'verseBundles':'newYear'];
   const previous = container?.[key];
   if (!previous) { modal.close(); return; }
   if (kind==='journal' || kind==='dailyNote') delete container[key];
@@ -2557,6 +2634,12 @@ async function removeItem() {
     container[key] = previous;
     confirm.disabled = false;
     modal.querySelector('p').textContent = '기기에 저장하지 못해 삭제를 취소했어요. 다시 시도해 주세요.';
+  }
+}
+
+function resetRestoredAndroidSettings() {
+  if (location.hash==='#settings' && /Android/i.test(navigator.userAgent) && matchMedia('(display-mode: standalone)').matches) {
+    history.replaceState(null,'',location.pathname+location.search);
   }
 }
 
@@ -2590,5 +2673,6 @@ try {
 } catch {
   writeError = true;
 }
+resetRestoredAndroidSettings();
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(() => {});
