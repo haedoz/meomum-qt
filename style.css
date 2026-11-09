@@ -254,6 +254,7 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
 .verse-actions-top, .marker-group, .item-actions { display: flex; align-items: center; gap: 5px; }
 .verse-actions-top { justify-content: space-between; color: var(--muted); padding-inline-start: 3px; }
 .verse-actions-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.verse-actions-main { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) 44px minmax(0, 1.2fr); }
 .verse-actions-row .btn { min-width: 0; padding-inline: 6px; }
 .icon-action { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; flex: 0 0 auto; }
 .icon-action:hover { background: var(--soft); }

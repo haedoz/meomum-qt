@@ -12,6 +12,7 @@ const icons = {
   compare:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
   comment:'<path d="M20 11a7 7 0 0 1-7 7H7l-4 3v-9a7 7 0 0 1 7-7h3a7 7 0 0 1 7 6Z"/><path d="M8 11h7m-7 3h4"/>',
   note:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6m-6 4h5"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 4H6a2 2 0 0 0-2 2v10"/>',
   left:'<path d="m15 5-7 7 7 7"/>',
   edit:'<path d="m4 16 11-11 4 4L8 20H4v-4Zm9-9 4 4"/>',
   right:'<path d="m9 5 7 7-7 7"/>',
@@ -909,12 +910,12 @@ function verseActions() {
   const marker = erase?selected[0]:{style:state.markerStyle,color:state.markerColor};
   const label = erase?'말씀 표시 해제':markStyles[marker.style]+' 바로 적용';
   return '<div class="selection verse-actions" aria-label="선택한 구절 메뉴"><div class="verse-actions-top">'+
-    '<span class="compact">'+chosen.size+'절 선택</span><div class="item-actions">'+
-    '<button type="button" class="btn" data-action="copy-verses">복사</button>'+
-    '<button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div></div>'+
-    '<div class="verse-actions-row"><div class="marker-group"><button class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
+    '<span class="compact">'+chosen.size+'절 선택</span><button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div>'+
+    '<div class="verse-actions-row verse-actions-main"><div class="marker-group"><button class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
     '<button class="icon-action marker-options" data-action="highlight" aria-label="형광펜 색상 및 밑줄 옵션">⌄</button></div>'+
-    '<button class="btn" data-action="note">메모</button><button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
+    '<button class="btn" data-action="note">메모</button>'+
+    '<button type="button" class="btn icon-action" data-action="copy-verses" aria-label="구절 복사" title="구절 복사">'+icon('copy')+'</button>'+
+    '<button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
     '<div class="verse-actions-row study-shortcuts"><button type="button" class="btn" data-nav="commentary">주석 보기</button>'+
     '<button type="button" class="btn" data-nav="original">원전분해 보기</button></div></div>';
 }
