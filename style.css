@@ -538,6 +538,7 @@ select, .filters .pill { font-size: 0.875rem; }
 .post-editor input[type="date"] { appearance: none; -webkit-appearance: none; text-align: start; }
 .post-editor input[type="date"]::-webkit-date-and-time-value { text-align: start; margin: 0; }
 .post-editor textarea { line-height: 1.6; }
+[data-prayer-editor] textarea { max-height: none; overflow-y: hidden; resize: none; }
 .post-response { padding-block: 9px; border-top: 1px solid var(--line); }
 .post-response summary { color: var(--accent-ink); font-weight: 650; cursor: pointer; }
 .post-response[open] summary { margin-bottom: 12px; }
@@ -735,13 +736,19 @@ dialog .dialog-close.btn:not(.primary) {
   font-size: var(--reading-size);
 }
 
-.original-body { padding: 1px 0 12px; }
+.settings-tabs.original-layout-tabs { grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0 0 12px; }
+.original-body { padding: 1px 0 12px; font-size: var(--reading-size); overflow-wrap: anywhere; }
 .original-word {
   margin: 5px 0; padding: 8px 10px; border-radius: 10px; background: var(--soft);
-  line-height: 1.55; font-size: .875rem; overflow-wrap: anywhere;
+  line-height: 1.55; overflow-wrap: anywhere;
 }
+.original-word .original-grammar { font-size: .86em; }
 .original-word-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
 .original-word-head bdi { color: var(--ink); font-size: 1.12em; font-weight: 700; }
+.commentary-page .original-body .original-verse-text {
+  padding: 7px 9px; background: var(--soft); border-radius: 8px;
+  font-size: calc(var(--reading-size) * 1.12); letter-spacing: normal;
+}
 .original-code {
   display: inline-block; margin-inline: 2px; min-height: 32px; padding: 3px 8px;
   border: 1px solid var(--line); border-radius: 8px;

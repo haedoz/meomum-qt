@@ -47,6 +47,8 @@ const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
+const originalLayouts = {words:'단어별',gloss:'절별 직역',parallel:'원문 · 직역'};
+let originalLayout = 'words';
 let bibleSearchScope = 'all';
 let bibleSearchResults, bibleSearchPage = 0, bibleSearchPageSize = 1;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
@@ -850,16 +852,32 @@ function dictionaryCodes(text,current) {
   return esc(text).replace(/&lt;(W?[HG]\s*\d{1,5}[A-Za-z]?)\s*&gt;|\b(W?[HG]\s*\d{1,5}[A-Za-z]?)\b/gi,
     (_,bracketed,bare)=>strongCodeButton(bracketed ?? bare,current));
 }
-function originalBody(body) {
+function originalVerseLines(body) {
   return body.split(/\r?\n/).filter(line=>line.trim()).map(line=>{
     const word = line.trim().match(/^\[([^\]]+)\]\s*(.*?)\s*@([^#]*)(?:#(.*))?$/);
-    if (!word) return '<p>'+originalCodes(line)+'</p>';
+    if (!word) return {line};
     const [,form,lemma,grammar,meaning] = word;
-    const gloss = meaning?.replace(/\*\s*$/,'').trim();
+    const gloss = meaning?.replace(/\*\s*$/,'').trim() || '';
+    return {form,lemma,grammar:grammar.trim(),gloss:gloss==='_'?'':gloss};
+  });
+}
+function originalBody(body) {
+  const lines = originalVerseLines(body);
+  if (originalLayout!=='words') {
+    const words = lines.filter(line=>line.form);
+    const text = words.map(word=>word.form).join(' ').replace(/־\s+/g,'־');
+    const gloss = words.some(word=>word.gloss)?words.map(word=>word.gloss || '—').join(' · '):'';
+    const unparsed = lines.filter(line=>line.line).map(({line})=>'<p>'+originalCodes(line)+'</p>').join('');
+    return (originalLayout==='parallel' && text?'<p class="original-verse-text" dir="auto">'+esc(text)+'</p>':'')+
+      (gloss?'<p class="original-verse-gloss">'+esc(gloss)+'</p>':
+        words.length?'<p class="muted">이 절에 등록된 단어 뜻이 없어요.</p>':'')+unparsed;
+  }
+  return lines.map(({line,form,lemma,grammar,gloss})=>{
+    if (line) return '<p>'+originalCodes(line)+'</p>';
     return '<div class="original-word"><div class="original-word-head"><bdi>'+esc(form)+'</bdi>'+
-      (gloss && gloss!=='_'?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
+      (gloss?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
       (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+
-      (grammar.trim()?'<div class="muted original-grammar">'+esc(grammar.trim())+'</div>':'')+'</div>';
+      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+'</div>';
   }).join('');
 }
 function showOriginalMeaning(button) {
@@ -940,16 +958,19 @@ function studyScreen(mode) {
   const entries = chapters[chapter];
   const verse = book===requested.book && chapter===requested.chapter && entries[requested.verse]?requested.verse:undefined;
   selection.location = {book,chapter,verse};
+  const layoutPicker = original?'<nav class="settings-tabs original-layout-tabs" aria-label="원전분해 보기 방식">'+
+    Object.entries(originalLayouts).map(([layout,label])=>'<button type="button" data-original-layout="'+layout+'" aria-pressed="'+
+      (layout===originalLayout)+'">'+label+'</button>').join('')+'</nav>':'';
   return headingHtml+
     '<div class="reader-controls commentary-controls">'+bookPickerField(book)+
       readerPickerField('장·절',chapter+'장'+(verse?' '+verse+'절':''),'jump-chapter','장·절 이동')+'</div>'+
-    '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
+    layoutPicker+'<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
 }
 function studyPassage(mode,book,chapter,entries) {
   const original = mode==='original';
   const verses = Object.entries(entries).filter(([verse,body])=>Number(verse)>0 && body);
   return '<header class="commentary-heading"><div><h2>'+esc(titles[book])+' '+chapter+'장</h2>'+
-    '<p class="muted">'+(original?'절별 원어 자료':'절별 주석')+'</p></div></header>'+
+    '<p class="muted">'+(original?(originalLayout==='words'?'절별 원어 자료':'자료에 있는 단어 뜻을 원문 순서대로 보여줘요.'): '절별 주석')+'</p></div></header>'+
     (verses.map(([verse,body])=>'<section class="commentary-verse"><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
       (Number(verse)>500?'참고 항목 '+verse:verse+'절')+'</h3>'+
       (Number(verse)<=500?'<button type="button" class="text-action" data-study-return="'+verse+'" aria-label="'+verse+'절 성경 본문 보기">본문 보기 '+icon('arrow')+'</button>':'')+'</div>'+
@@ -1405,6 +1426,9 @@ function recordPickerItems(key,rows) {
 }
 function recordsScreen() {
   const rows = recordRows();
+  const prayers = state.prayers.filter(item=>item.kind!=='thought');
+  const answered = prayers.filter(item=>item.done).length;
+  const thoughts = state.prayers.length-prayers.length;
   const counts = {all:rows.length,highlight:rows.filter(({mark})=>verseMark(mark)).length,note:rows.filter(({mark})=>mark.note).length};
   const pickers = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
@@ -1413,8 +1437,8 @@ function recordsScreen() {
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['calendar','calendar','달력','묵상 달력'],
-      ['prayers','prayer','기도','기도 기록'],
-      ['thoughts','note','생각 노트','생각 기록'],
+      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
+      ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
@@ -1531,8 +1555,7 @@ function render() {
       if (openSections.includes(summary.firstElementChild.textContent)) summary.parentElement.open = true;
     }
   }
-  const writing = main.querySelector('[data-journal-field="reflection"], [data-thought-editor] textarea');
-  if (writing) resizeWriting(writing);
+  resizeEditorWriting();
   const navView = ['calendar','prayers','thoughts','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
@@ -1992,6 +2015,12 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (view==='original' && Object.hasOwn(originalLayouts,target.originalLayout)) {
+    originalLayout = target.originalLayout;
+    render();
+    main.querySelector('[data-original-layout="'+originalLayout+'"]')?.focus({preventScroll:true});
+    return;
+  }
   if (target.settingsSection && Object.hasOwn(settingsSections,target.settingsSection)) {
     settingsSection = target.settingsSection;
     render();
@@ -2147,9 +2176,13 @@ function resizeWriting(field) {
   field.style.height = 'auto';
   field.style.height = field.scrollHeight+'px';
 }
+function resizeEditorWriting() {
+  main.querySelectorAll('[data-journal-field="reflection"], [data-thought-editor] textarea, [data-prayer-editor] textarea')
+    .forEach(resizeWriting);
+}
 main.addEventListener('input',event => {
   const field = event.target;
-  if (field.tagName==='TEXTAREA' && field.form?.dataset.thoughtEditor) resizeWriting(field);
+  if (field.tagName==='TEXTAREA' && (field.form?.dataset.thoughtEditor || field.form?.dataset.prayerEditor)) resizeWriting(field);
   if (field.dataset.journalField) {
     const entry = journalEntry(selectedDay);
     entry[field.dataset.journalField] = field.value;
@@ -2162,6 +2195,11 @@ main.addEventListener('input',event => {
     field.setAttribute('aria-valuetext',field.value+'장');
   }
 });
+main.addEventListener('toggle',event=>{
+  if (event.target.open && event.target.matches('[data-prayer-editor] .post-response')) {
+    event.target.querySelectorAll('textarea').forEach(resizeWriting);
+  }
+},true);
 readerSearchInput.addEventListener('input',()=>{
   if (view==='records') {
     personalSearchSubmitted = false;
@@ -2189,8 +2227,7 @@ readerSearchForm.addEventListener('submit',event=>{
   submitReaderSearch();
 });
 window.addEventListener('resize',()=>{
-  const thought = main.querySelector('[data-thought-editor] textarea');
-  if (thought) resizeWriting(thought);
+  resizeEditorWriting();
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
