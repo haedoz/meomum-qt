@@ -1395,6 +1395,7 @@ function render() {
   main.classList.toggle('study-view',view==='commentary' || view==='original');
   main.classList.toggle('journal-view',view==='journal');
   main.classList.toggle('today-view',view==='today');
+  main.classList.toggle('records-view',view==='records');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
   readerSearchForm.hidden = view!=='bible' || !state.reader.edition;
   if (readerSearchForm.hidden && !readerSearchInput.hidden) closeReaderSearch();
@@ -1873,6 +1874,7 @@ function chooseBook(book) {
   main.querySelector('[data-action="pick-book"]')?.focus({preventScroll:true});
 }
 document.addEventListener('click',event => {
+  if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
   const button = event.target.closest('button');
   if (!button) return;
   if (event.detail && Date.now()<ignoreReaderSwipeClickUntil && button.closest('.bible-passage')) {
@@ -2067,9 +2069,29 @@ window.addEventListener('resize',()=>{
   bibleSearchPageSize = fitReaderSearchPage();
   updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
-document.addEventListener('pointerdown',event=>{
-  if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
-});
+function keepScrollInOverlay(event,delta) {
+  const overlay = modal.open ? modal : readerSearchPanel.hidden ? null : readerSearchPanel;
+  if (!overlay || !event.cancelable) return;
+  for (let node = event.target; overlay.contains(node); node = node.parentElement) {
+    const remaining = node.scrollHeight-node.clientHeight-node.scrollTop;
+    if (((delta<0 && node.scrollTop>0) || (delta>0 && remaining>1)) &&
+        /^(auto|scroll)$/.test(getComputedStyle(node).overflowY)) return;
+    if (node===overlay) break;
+  }
+  event.preventDefault();
+}
+let overlayTouchY;
+document.addEventListener('wheel',event=>keepScrollInOverlay(event,event.deltaY),{passive:false});
+document.addEventListener('touchstart',event=>{
+  overlayTouchY = event.touches[0]?.clientY;
+},{passive:true});
+document.addEventListener('touchmove',event=>{
+  if (event.touches.length!==1) return;
+  const y = event.touches[0].clientY;
+  const delta = (overlayTouchY ?? y)-y;
+  overlayTouchY = y;
+  if (delta) keepScrollInOverlay(event,delta);
+},{passive:false});
 document.addEventListener('keydown',event=>{
   if (event.key!=='Escape' || readerSearchInput.hidden || modal.open) return;
   event.preventDefault();
