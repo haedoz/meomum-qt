@@ -674,16 +674,15 @@ function readerSearchResults(edition,page = 0) {
   const collect = !isReference && (keys.length || selectedCount)?'<button type="button" class="btn" data-action="view-search-selection" '+
     'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
   return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
-    count+'</span></h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+pager+
+    count+'</span></h3><div class="reader-search-actions">'+scope+collect+'</div></div><div class="reader-search-list">'+pager+
     (keys.map(key=>searchResultRow(key,!isReference)).join('') ||
-      '<p class="muted">검색 결과가 없어요.</p>')+'</section>';
+      '<p class="muted">검색 결과가 없어요.</p>')+'</div></section>';
 }
 function updateReaderSearch(page = 0) {
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
   const results = readerSearchResults(state.reader.edition,page);
   readerSearchPanel.innerHTML = results;
   readerSearchPanel.hidden = !results;
-  readerSearchPanel.scrollTop = 0;
 }
 function changeSearchPage(button) {
   const page = Number(button.dataset.searchPage);
@@ -784,10 +783,10 @@ function showOriginalMeaning(button) {
     '<div class="stack"><p class="muted">'+(dictionariesByLanguage.length?'가져온 원어사전에 이 코드의 상세 항목이 없어요.':'어원과 용례까지 보려면 한국어 원어사전 파일(.dct)을 추가해 주세요.')+'</p>'+
       '<button class="btn" type="button" data-nav="settings" data-import-link>원어사전 파일 가져오기</button></div>';
   dialog(esc(code)+' · '+(code.startsWith('H')?'히브리어':'헬라어'),
-    definition+(form?'<div class="original-detail-form"><bdi>'+esc(form)+'</bdi></div>':'')+
+    '<div class="dictionary-body" tabindex="0" role="region" aria-label="원어사전 내용">'+definition+
+    (form?'<div class="original-detail-form"><bdi>'+esc(form)+'</bdi></div>':'')+
     '<dl class="original-detail">'+fields.filter(([,value])=>value).map(([label,value])=>
-      '<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl>');
-  modal.querySelector('form').classList.add('dictionary-dialog');
+      '<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl></div>','dictionary');
 }
 function dictionaryParagraphs(text) {
   return text.trim().split(/\r?\n[ \t]*(?:\r?\n)+/).map((block,index)=>{
