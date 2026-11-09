@@ -1551,24 +1551,12 @@ function showVerseArrival(id) {
     verse.addEventListener('blur',()=>verse.classList.remove('verse-arrival-focus'),{once:true});
   }
   verse.focus({preventScroll:true});
-  main.querySelector('.verse-scroll-space')?.remove();
   const page = document.scrollingElement;
   const headerHeight = document.querySelector('.top').offsetHeight;
   const controlsHeight = view==='bible' ? (main.querySelector('.reader-controls')?.offsetHeight ?? 0) : 0;
   const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-headerHeight-controlsHeight-12);
-  // Leave enough room for the last verses of a chapter to reach the header.
-  const pageEnd = page.scrollHeight>page.clientHeight
-    ? page.scrollHeight
-    : main.getBoundingClientRect().bottom+page.scrollTop;
-  const extraSpace = Math.ceil(top+page.clientHeight-pageEnd);
-  if (top>0 && extraSpace>0) {
-    const spacer = document.createElement('div');
-    spacer.className = 'verse-scroll-space';
-    spacer.style.height = extraSpace+'px';
-    spacer.setAttribute('aria-hidden','true');
-    main.append(spacer);
-  }
-  window.scrollTo(0,top);
+  const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
+  window.scrollTo(0,Math.min(top,maxScroll));
   arrivedVerse = verse;
   verse.classList.add('verse-arrival');
   verseArrivalTimer = setTimeout(()=>{
