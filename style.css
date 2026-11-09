@@ -1033,10 +1033,20 @@ form[name="dictionary"] > .row:first-child {
   font-family: var(--sans); font-size: var(--reading-size); font-weight: 400;
   line-height: 1.5; letter-spacing: var(--reading-tracking);
 }
-.thought-list { display: grid; gap: 14px; margin-top: 16px; }
-.thought-group { display: grid; gap: 6px; }
-.thought-group h2 { margin: 0 2px; font-size: .78rem; color: var(--muted); }
+.thought-list { display: grid; gap: 22px; margin-top: 18px; }
+.thought-group { display: grid; gap: 8px; min-width: 0; }
+.thought-group-header {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 0 2px 6px; border-bottom: 1px solid var(--line);
+}
+.thought-group-header h2 { margin: 0; font-size: .94rem; }
+.thought-group-header span { color: var(--muted); font-size: .76rem; }
 .thought-card { padding: 10px 12px 2px; }
+.thought-group .thought-card { margin: 0; padding: 10px 12px 0; border-radius: 16px; }
+.thought-card-date {
+  display: inline-block; margin-bottom: 7px; padding: 2px 8px; border-radius: 7px;
+  background: var(--soft); color: var(--muted); font-size: .75rem; font-weight: 650;
+}
 .thought-card-footer { margin-top: 2px; }
 .thought-card-footer .muted { font-size: .75rem; }
 .thought-card .card-actions { margin-inline-start: auto; }

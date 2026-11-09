@@ -2750,13 +2750,13 @@ function thoughtsScreen() {
     .sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
   const groups = new Map();
   for (const item of items) {
-    const day = item.day ?? '';
-    if (!groups.has(day)) groups.set(day,[]);
-    groups.get(day).push(item);
+    const year = item.day?.slice(0,4) ?? '';
+    if (!groups.has(year)) groups.set(year,[]);
+    groups.get(year).push(item);
   }
-  const list = [...groups].map(([day,notes])=>'<section class="thought-group"><h2>'+
-    (day?'<time datetime="'+day+'">'+day.slice(0,4)+'년 '+longDate(day)+'</time>':'날짜 미기록')+'</h2>'+
-    notes.map(note=>thoughtCard(note,false)).join('')+'</section>').join('');
+  const list = [...groups].map(([year,notes])=>'<section class="thought-group"><header class="thought-group-header">'+
+    '<h2>'+(year?year+'년':'날짜 미기록')+'</h2><span>'+notes.length+'건</span></header>'+
+    notes.map(note=>thoughtCard(note,true)).join('')+'</section>').join('');
   return heading('THOUGHT NOTES','생각 노트','어떤 생각이든 자유롭게 적어보세요.')+
     '<button type="button" class="btn primary block thought-add" data-action="add-thought">＋ 생각 기록 추가</button><div class="thought-list">'+
     (list || '<p class="empty">아직 남긴 생각이 없어요.</p>')+'</div>';
@@ -2801,9 +2801,11 @@ function thoughtCopy(item) {
   return '<div class="thought-copy">'+thoughtText(item).trim().split(/\r?\n[ \t]*(?:\r?\n)+/)
     .map(paragraph=>'<p>'+esc(paragraph)+'</p>').join('')+'</div>';
 }
-function thoughtCard(item,showDate = true) {
-  return '<article class="card thought-card">'+thoughtCopy(item)+'<div class="row thought-card-footer">'+
-    (showDate?'<span class="muted">'+(item.day?longDate(item.day):'날짜 미기록')+'</span>':'')+
+function thoughtCard(item,inList = false) {
+  const date = inList && item.day?
+    '<time class="thought-card-date" datetime="'+item.day+'">'+Number(item.day.slice(5,7))+'월 '+Number(item.day.slice(8,10))+'일</time>':'';
+  return '<article class="card thought-card">'+date+thoughtCopy(item)+'<div class="row thought-card-footer">'+
+    (inList?'':'<span class="muted">'+(item.day?longDate(item.day):'날짜 미기록')+'</span>')+
     calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</div></article>';
 }
 function showThoughtEditor(item) {
