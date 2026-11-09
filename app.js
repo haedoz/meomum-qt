@@ -622,34 +622,27 @@ function closeReaderSearch(restoreFocus = false) {
   readerSearchButton.setAttribute('aria-label','성경 검색 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
-function readerSearchResults(edition,comparison) {
+function readerSearchResults(edition) {
   const query = readerSearchInput.value.trim();
   if (!query) return '';
-  return [edition,...comparison].map(id=>{
-    const {keys,limited} = searchBible(id,query);
-    return '<section class="reader-search-group"><h3>'+esc(editionLabel(id))+' <span class="muted">'+
-      (limited?'처음 20개':keys.length+'개')+'</span></h3>'+
-      (keys.map(key=>'<button type="button" class="record-open search-result" data-search-visit="'+key+'"><strong>'+esc(reference(key))+'</strong><span>'+esc(verseText(key))+'</span></button>').join('') ||
-        '<p class="muted">검색 결과가 없어요.</p>')+'</section>';
-  }).join('');
+  const {keys,limited} = searchBible(edition,query);
+  return '<section class="reader-search-group"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
+    (limited?'처음 20개':keys.length+'개')+'</span></h3>'+
+    (keys.map(key=>'<button type="button" class="record-open search-result" data-search-visit="'+key+'"><strong>'+esc(reference(key))+'</strong><span>'+esc(verseText(key))+'</span></button>').join('') ||
+      '<p class="muted">검색 결과가 없어요.</p>')+'</section>';
 }
 function updateReaderSearch() {
   clearTimeout(bibleSearchTimer);
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
-  const results = readerSearchResults(state.reader.edition,state.comparison);
+  const results = readerSearchResults(state.reader.edition);
   readerSearchPanel.innerHTML = results;
   readerSearchPanel.hidden = !results;
   readerSearchPanel.scrollTop = 0;
 }
 function visitSearchResult(key) {
-  const {edition,book,chapter,verse} = readRef(key);
   readerSearchInput.value = '';
   closeReaderSearch();
-  if (!state.comparison.includes(edition) || !data[state.reader.edition]?.[book]?.[chapter]) return visit(key);
-  const reader = state.reader;
-  setReader([reader.edition,book,chapter,verse].join('/'));
-  jumpTo = 'compare-v-'+edition+'-'+verse;
-  navigate('bible');
+  visit(key);
 }
 function showChapterJump() {
   const {book,source,selection} = bookPickerContext();
@@ -1261,17 +1254,21 @@ function render() {
 function showVerseArrival(id,block = 'center') {
   const verse = document.getElementById(id);
   if (!verse) return;
+  clearTimeout(verseArrivalTimer);
+  arrivedVerse?.classList.remove('verse-arrival');
+  if (arrivedVerse===verse) void verse.offsetWidth;
+  if (!verse.classList.contains('verse-arrival-focus')) {
+    verse.classList.add('verse-arrival-focus');
+    verse.addEventListener('blur',()=>verse.classList.remove('verse-arrival-focus'),{once:true});
+  }
   verse.focus({preventScroll:true});
   verse.scrollIntoView({block});
-  verse.classList.remove('verse-arrival');
-  requestAnimationFrame(()=>verse.classList.add('verse-arrival'));
-  clearTimeout(verseArrivalTimer);
-  if (arrivedVerse!==verse) arrivedVerse?.classList.remove('verse-arrival');
   arrivedVerse = verse;
+  verse.classList.add('verse-arrival');
   verseArrivalTimer = setTimeout(()=>{
     verse.classList.remove('verse-arrival');
     arrivedVerse = undefined;
-  },2000);
+  },1600);
 }
 
 function dialog(title,body,formName) {
