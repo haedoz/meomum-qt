@@ -39,7 +39,7 @@ const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
-let bibleSearchTimer, recordYear = "";
+let bibleSearchTimer;
 const localLanguages = {};
 let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
@@ -62,7 +62,9 @@ const chosen = new Set();
 let pickingIndividualVerses = false;
 const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[]});
 let state = blank(), db, writeError = false;
-let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '', recordEdition = '', recordBook = '';
+let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '';
+const recordSelection = {edition:'',book:'',year:''};
+const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse;
@@ -537,7 +539,7 @@ function readingModes(current) {
 }
 function readerScreen() {
   const {edition,book,chapter} = state.reader;
-  if (!edition) return heading('BIBLE READER','성경 읽기','내 기기에 추가한 역본으로 읽어요.')+readingModes('bible')+
+  if (!edition) return readingModes('bible')+
     '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings">성경 번역본 추가</button></section>';
   const chapters = data[edition]?.[book] ?? {};
   const verses = chapters[chapter] ?? {};
@@ -556,7 +558,7 @@ function readerScreen() {
   const index = available.indexOf(book+'/'+chapter);
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
-  return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+
+  return readingModes('bible')+
     '<div class="reader-controls">'+readerPickerField('번역본',editionLabel(edition),'pick-edition','번역본 선택')+
       bookPickerField(book)+readerPickerField('장',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
     '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
@@ -650,9 +652,10 @@ function visitSearchResult(key) {
   navigate('bible');
 }
 function showChapterJump() {
-  const {edition,book,chapter} = state.reader;
-  const chapters = Object.keys(data[edition]?.[book] ?? {});
-  if (view!=='bible' || !chapters.length) return;
+  const {book,source,selection} = bookPickerContext();
+  const chapter = selection?.location?.chapter ?? state.reader.chapter;
+  const chapters = Object.keys(source?.[book] ?? {});
+  if (!chapters.length) return;
   dialog(esc(titles[book])+' · 장·절 이동','<label class="field">이동할 장·절'+
     '<input name="chapter" type="text" enterkeyhint="go" maxlength="20" placeholder="예: 12, 12 3, 12:3" autofocus></label>'+
     '<p class="muted">장 번호만 입력하면 1절로 이동해요. 현재 '+chapter+'장 · '+chapters[0]+'~'+chapters.at(-1)+'장</p>'+
@@ -663,17 +666,23 @@ function jumpToChapter(form) {
   const [,chapterNumber,verseNumber] = input.value.normalize('NFKC').trim()
     .match(/^(\d+)(?:(?:\s*:\s*|\s+)(\d+)|\s*장)?$/) ?? [];
   const chapter = Number(chapterNumber);
-  const {edition,book} = state.reader;
-  const verses = data[edition]?.[book]?.[chapter];
-  const verse = verseNumber===undefined
-    ? (verses?.[1]?1:Object.keys(verses ?? {}).find(number=>verses[number]))
-    : Number(verseNumber);
-  if (!verses?.[verse]) {
-    form.querySelector('[data-chapter-error]').textContent = '이 역본에서 열 수 있는 장·절 번호를 입력해 주세요.';
+  const {edition,book,source,selection} = bookPickerContext();
+  const verses = source?.[book]?.[chapter] ?? {};
+  const available = Object.keys(verses).filter(number=>verses[number] &&
+    (!selection || (Number(number)>0 && Number(number)<=500)));
+  const verse = Number(verseNumber ?? (available.includes('1')?'1':available[0]));
+  if (!available.includes(String(verse))) {
+    form.querySelector('[data-chapter-error]').textContent = '이 자료에서 열 수 있는 장·절 번호를 입력해 주세요.';
     input.focus();
     return;
   }
   modal.close();
+  if (selection) {
+    selection.location = {book,chapter,verse};
+    render();
+    showVerseArrival('study-v-'+verse,'start');
+    return;
+  }
   visit([edition,book,chapter,verse].join('/'));
 }
 function originalCodes(text) {
@@ -750,18 +759,11 @@ function commentaryParagraphs(body) {
 function studySource(mode) {
   return mode==='original'?Object.values(originals).find(item=>editionName(item.label)==='원전분해'):mannaCommentary();
 }
-function studyChapterOptions(chapters, chapter) {
-  return options(Object.keys(chapters).map(number=>[number,number+'장']),chapter);
-}
-function studyVerseOptions(entries, selected) {
-  const verses = Object.entries(entries).filter(([verse,body])=>Number(verse)>0 && Number(verse)<=500 && body);
-  return options([['','절 선택'],...verses.map(([verse])=>[verse,verse+'절'])],selected ?? '');
-}
 function studyScreen(mode) {
   const original = mode==='original';
-  const headingHtml = (original?
+  const headingHtml = readingModes(mode)+(original?
     heading('ORIGINAL LANGUAGES','원전분해','히브리어와 헬라어의 단어별 뜻과 문법을 살펴봐요.'):
-    heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.'))+readingModes(mode);
+    heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.'));
   const source = studySource(mode);
   if (!source) {
     const file = original?'원전분해.sdb':'만나주석.cdb';
@@ -779,8 +781,7 @@ function studyScreen(mode) {
   selection.location = {book,chapter,verse};
   return headingHtml+
     '<div class="reader-controls commentary-controls">'+bookPickerField(book)+
-      '<label class="field">장<select data-study-field="chapter">'+studyChapterOptions(chapters,chapter)+'</select></label>'+
-      '<label class="field">절<select data-study-field="verse">'+studyVerseOptions(entries,verse)+'</select></label></div>'+
+      readerPickerField('장·절',chapter+'장'+(verse?' '+verse+'절':''),'jump-chapter','장·절 이동')+'</div>'+
     '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
 }
 function studyPassage(mode,book,chapter,entries) {
@@ -961,7 +962,17 @@ function setReadingRange(range) {
   render();
 }
 modal.addEventListener('change',event=>{
-  const field = event.target, side = field.dataset.rangeBook;
+  const field = event.target;
+  if (field.name==='compare-edition') {
+    pendingComparison = pendingComparison.filter(id=>id!==field.value);
+    if (field.checked) pendingComparison.push(field.value);
+    for (const choice of modal.querySelectorAll('.compare-choice')) {
+      const rank = pendingComparison.indexOf(choice.querySelector('input').value)+1;
+      choice.querySelector('.compare-order').textContent = rank || '';
+    }
+    return;
+  }
+  const side = field.dataset.rangeBook;
   if (!side) return;
   const chapters = chapterNumbers(field.value);
   modal.querySelector('[data-range-chapter="'+side+'"]').innerHTML =
@@ -1128,8 +1139,9 @@ function recordList(rows = recordRows()) {
     const {edition,book} = readRef(key);
     const matchesFilter = filter==='all' || (filter==='highlight' && verseMark(mark)) || (filter==='note' && mark.note);
     return matchesFilter &&
-      (!recordEdition || edition===recordEdition) && (!recordBook || book===recordBook) &&
-      (!recordYear || (day?.slice(0,4) ?? 'undated')===recordYear) &&
+      (!recordSelection.edition || edition===recordSelection.edition) &&
+      (!recordSelection.book || book===recordSelection.book) &&
+      (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year) &&
       [selectionReference(key,verses),...recordPassage(key,verses).map(([,body])=>body),mark.note ?? ''].join(' ').toLowerCase().includes(query);
   });
   let previousYear;
@@ -1154,18 +1166,26 @@ function recordList(rows = recordRows()) {
         (verseMark(mark)?highlightDeleteButton(key):'')+'</div></div></article>';
     }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
 }
+function recordPickerItems(key,rows) {
+  if (key==='edition') return Object.entries(editions);
+  if (key==='book') return books;
+  const years = [...new Set(rows.map(({day})=>day?.slice(0,4) ?? 'undated'))];
+  return years.map(year=>[year,year==='undated'?'날짜 미기록':year+'년']);
+}
 function recordsScreen() {
   const rows = recordRows();
   const counts = {all:rows.length,highlight:rows.filter(({mark})=>verseMark(mark)).length,note:rows.filter(({mark})=>mark.note).length};
-  const years = [...new Set(rows.map(({day})=>day?.slice(0,4) ?? 'undated'))];
+  const pickers = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
+    const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
+    return readerPickerField(label,selected?.[1] ?? all,'pick-record-'+key,label+' 선택');
+  }).join('');
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     '<div class="section-head"><h2>말씀 기록</h2></div><div class="filters">'+Object.entries(recordFilters).map(([id,label])=>'<button class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
-    '<div class="record-filters"><label class="field">번역본<select id="record-edition">'+options([['','모든 번역본'],...Object.entries(editions)],recordEdition)+'</select></label>'+
-    '<label class="field">성경<select id="record-book">'+options([['','모든 성경'],...books],recordBook)+'</select></label><label class="field">연도<select id="record-year">'+options([['','모든 연도'],...years.map(year=>[year,year==='undated'?'날짜 미기록':year+'년'])],recordYear)+'</select></label></div>'+
+    '<div class="record-filters">'+pickers+'</div>'+
     '<label class="field spaced">기록 검색<input type="search" id="record-search" value="'+esc(keyword)+'" placeholder="구절, 본문, 메모 검색"></label><div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
 function settingsScreen() {
@@ -1184,7 +1204,7 @@ function render() {
   const changed = activeRoute!==route;
   let studyJump;
   if (changed) {
-    if (next!=='bible' && modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
+    if (modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
     if (Object.hasOwn(studySelection,next) && view==='bible') {
       const first = chosen.values().next().value;
       const selected = first?readRef(first):state.reader;
@@ -1452,7 +1472,7 @@ function validatedBackup(payload) {
   result.readingSize = input.readingSize;
   return migrate(result);
 }
-let pendingImport;
+let pendingImport, pendingComparison = [];
 const actions = {
   'close-bible-search'() { closeReaderSearch(true); },
   'jump-chapter':showChapterJump,
@@ -1480,13 +1500,17 @@ const actions = {
   },
   compare() {
     const available = Object.entries(editions).filter(([key])=>key!==state.reader.edition);
-    const choices = available.map(([id,label])=>'<label class="compare-choice">'+
-      '<input type="checkbox" name="compare-edition" value="'+esc(id)+'" '+(state.comparison.includes(id)?'checked':'')+'>'+esc(label)+'</label>');
-    dialog('역본 대조','<p class="muted">함께 볼 번역본을 선택하세요. 여러 개를 선택할 수 있어요.</p>'+
+    pendingComparison = [...state.comparison];
+    const choices = available.map(([id,label])=>{
+      const rank = pendingComparison.indexOf(id)+1;
+      return '<label class="compare-choice"><input type="checkbox" name="compare-edition" value="'+esc(id)+'" '+(rank?'checked':'')+'>'+
+        esc(label)+'<span class="compare-order">'+(rank || '')+'</span></label>';
+    });
+    dialog('역본 대조','<p class="muted">함께 볼 번역본을 선택하세요. 선택한 순서대로 표시돼요.</p>'+
       '<div class="stack" role="group" aria-label="함께 볼 번역본">'+choices.join('')+'</div>'+
       '<div class="row"><button class="btn" type="button" data-action="stop-compare" '+(!state.comparison.length?'disabled':'')+'>대조 끄기</button><button class="btn primary" type="button" data-action="start-compare">적용</button></div>');
   },
-  'start-compare'() { setComparison(new FormData(modal.querySelector('form')).getAll('compare-edition')); },
+  'start-compare'() { setComparison(pendingComparison); },
   'stop-compare'() { setComparison([]); },
   'apply-mark'() { applyMark(); },
   'erase-mark'() { applyMark(true); },
@@ -1601,15 +1625,36 @@ function chooseEdition(edition) {
   }
   main.querySelector('[data-action="pick-edition"]')?.focus({preventScroll:true});
 }
+function bookPickerSections(items,active,attribute) {
+  const sections = [['old','구약'],['new','신약']].map(([testament,label])=>{
+    const choices = items.filter(([code])=>testamentByBook[code]===testament);
+    return '<section class="book-picker-section" aria-label="'+label+'"><h3>'+label+'</h3>'+
+      (choices.length?pickerOptions(choices,active,attribute):'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
+  }).join('');
+  return '<div class="book-picker">'+sections+'</div>';
+}
 function showBookPicker() {
   const {book,source} = bookPickerContext();
   if (!source) return;
-  const sections = [['old','구약'],['new','신약']].map(([testament,label])=>{
-    const choices = books.filter(([code])=>testamentByBook[code]===testament && source[code]);
-    return '<section class="book-picker-section" aria-label="'+label+'"><h3>'+label+'</h3>'+
-      (choices.length?pickerOptions(choices,book,'data-pick-book'):'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
-  }).join('');
-  dialog('성경책 선택','<div class="book-picker">'+sections+'</div>');
+  dialog('성경책 선택',bookPickerSections(books.filter(([code])=>source[code]),book,'data-pick-book'));
+}
+function showRecordPicker(key) {
+  if (!Object.hasOwn(recordPickerLabels,key)) return;
+  const [label,all] = recordPickerLabels[key];
+  const items = recordPickerItems(key,recordRows());
+  const active = recordSelection[key];
+  const attribute = 'data-record-option';
+  const choices = key==='book'
+    ? pickerOptions([['',all]],active,attribute)+bookPickerSections(items,active,attribute)
+    : pickerOptions([['',all],...items],active,attribute);
+  dialog(label+' 선택','<div class="stack" data-record-filter="'+key+'">'+choices+'</div>');
+}
+function chooseRecordOption(button) {
+  const {recordFilter:key} = button.closest('[data-record-filter]').dataset;
+  recordSelection[key] = button.dataset.recordOption;
+  modal.close();
+  render();
+  main.querySelector('[data-action="pick-record-'+key+'"]')?.focus({preventScroll:true});
 }
 function chooseBook(book) {
   const current = bookPickerContext();
@@ -1628,6 +1673,8 @@ document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
   const target = button.dataset;
+  if ('recordOption' in target) return chooseRecordOption(button);
+  if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
   if (target.pickEdition) return chooseEdition(target.pickEdition);
   if (target.pickBook) return chooseBook(target.pickBook);
   if (target.action==='pick-book') return showBookPicker();
@@ -1820,35 +1867,12 @@ main.addEventListener('submit',event => {
 });
 main.addEventListener('change',async event => {
   const field = event.target;
-  if (['record-edition','record-book','record-year'].includes(field.id)) {
-    if (field.id==='record-edition') recordEdition = field.value;
-    else if (field.id==='record-book') recordBook = field.value;
-    else recordYear = field.value;
-    document.querySelector('#record-list').innerHTML = recordList();
-  }
   if (field.id==='reading-goal') {
     state.readingGoal = Number(field.value);
     const focused = document.activeElement===field;
     save();
     render();
     if (focused) document.getElementById('reading-goal')?.focus({preventScroll:true});
-  }
-  if (field.dataset.studyField) {
-    const selection = studySelection[view], key = field.dataset.studyField;
-    if (key==='verse') {
-      selection.location.verse = Number(field.value) || undefined;
-      if (selection.location.verse) showVerseArrival('study-v-'+selection.location.verse,'start');
-      return;
-    }
-    const {book} = selection.location;
-    const chapters = studySource(view)?.verses[book];
-    if (!chapters) return;
-    const chapter = Number(field.value);
-    selection.location = {book,chapter};
-    const entries = chapters[chapter];
-    main.querySelector('[data-study-field="verse"]').innerHTML = studyVerseOptions(entries);
-    main.querySelector('.commentary-page').innerHTML = studyPassage(view,book,chapter,entries);
-    return;
   }
   if (field.id==='tracker-book') {
     trackerBook = field.value;
@@ -1867,7 +1891,7 @@ main.addEventListener('change',async event => {
       pendingImport = validatedBackup(JSON.parse(await field.files[0].text()));
       dialog('백업 기록 가져오기','<p>이 기기의 현재 기록을 백업 파일의 내용으로 바꿔요. 현재 기록을 보관하려면 먼저 내보내세요.</p><button class="btn primary block" type="button" data-action="restore">백업으로 복원</button>');
     } catch {
-      notify('이 파일을 읽을 수 없어요. 말씀일지에서 내보낸 백업인지 확인해 주세요.');
+      notify('이 파일을 읽을 수 없어요. M-BIBLE에서 내보낸 백업인지 확인해 주세요.');
     }
     field.value = '';
   }
@@ -1963,7 +1987,6 @@ async function importCustomFont(file) {
 }
 function applyDisplay() {
   const root = document.documentElement;
-  root.dataset.theme = state.theme;
   const size = displayValue('fontSize',state.display.fontSize);
   root.style.setProperty('--reading-size',size+'px');
   const uiSize = Math.max(14,Math.min(24,16+(size-settings.fontSize.initial)*0.6));
@@ -1976,6 +1999,7 @@ function applyDisplay() {
   root.style.setProperty('--reading-tracking',displayValue('letterSpace',state.display.letterSpace)+'px');
   const dark = state.theme==='dark' || (state.theme==='system' && matchMedia('(prefers-color-scheme: dark)').matches);
   root.dataset.appearance = dark?'dark':'light';
+  document.querySelector('meta[name=color-scheme]').content = dark?'dark':'only light';
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(root).getPropertyValue('--paper').trim();
 }
 function displayFields() {
