@@ -54,6 +54,7 @@ let pickingIndividualVerses = false;
 const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',markerColor:markerColors.gold,markerStyle:'fill',comparison:'',chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '', recordEdition = '', recordBook = '';
+let renderedDailyDate;
 const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse;
 let toastTimer, jumpTo, activeRoute, prayerFilter = 'open', editId, trackerBook, editingVerseNote;
@@ -347,30 +348,32 @@ function savedVerseText(key) {
   return verseText(key) || '해당 역본의 본문을 표시할 수 없어요.';
 }
 function dailyVerse(day,edition) {
-  const pool = ['PSA/23/1','PSA/46/1','PSA/119/105','ISA/40/31','LAM/3/23','MAT/5/9','MAT/11/28','JHN/15/5','ROM/12/12','PHP/4/6','1PE/5/7','JAS/1/5','PSA/34/18','PSA/121/2','PRO/3/5','ISA/41/10','JHN/14/27','ROM/8/39','COL/3/15','1TH/5/18'];
+  const source = data[edition];
+  const available = [];
+  for (const [book] of books) {
+    for (const [chapter,verses] of Object.entries(source?.[book] ?? {})) {
+      for (const [verse,body] of Object.entries(verses)) {
+        if (body) available.push([edition,book,chapter,verse].join('/'));
+      }
+    }
+  }
+  if (!available.length) return;
   let hash = 2166136261;
   for (const char of day) hash = Math.imul(hash ^ char.charCodeAt(0),16777619);
-  const available = pool.filter(ref=>verseText(edition+'/'+ref));
-  if (available.length) return edition+'/'+available[(hash>>>0)%available.length];
-  const {book,chapter} = state.reader;
-  for (const location of new Set([book+'/'+chapter,...availableChapters(edition)])) {
-    const [code,number] = location.split('/');
-    const verse = Object.keys(data[edition]?.[code]?.[number] ?? {}).find(num=>data[edition][code][number][num]);
-    if (verse) return edition+'/'+location+'/'+verse;
-  }
+  return available[(hash>>>0)%available.length];
 }
 function rememberDailyVerse(day) {
   const edition = state.reader.edition;
   if (!edition) return;
   const saved = state.dailyVerses[day];
-  const previousRef = saved?.ref ?? state.dailyNotes[day]?.ref;
+  const previousRef = saved?.wholeBible ? saved.ref : undefined;
   const matchingRef = previousRef && edition+previousRef.slice(previousRef.indexOf('/'));
   const ref = matchingRef && verseText(matchingRef)?matchingRef:dailyVerse(day,edition);
   if (!ref || !validRef(ref)) return;
   const body = verseText(ref);
   const label = editionLabel(edition);
-  if (saved?.ref===ref && saved.body===body && saved.label===label) return;
-  state.dailyVerses[day] = {ref,body,label};
+  if (saved?.wholeBible && saved.ref===ref && saved.body===body && saved.label===label) return;
+  state.dailyVerses[day] = {ref,body,label,wholeBible:true};
   if (db) save();
 }
 function journalEntry(key) {
@@ -1136,7 +1139,10 @@ function render() {
   document.querySelector('.back-button').hidden = view==='today';
   document.querySelector('.bottom').hidden = view==='journal' || view==='prayer-edit';
   applyDisplay();
-  if (view==='today' || view==='calendar') rememberDailyVerse(dateKey());
+  if (view==='today' || view==='calendar') {
+    renderedDailyDate = dateKey();
+    rememberDailyVerse(renderedDailyDate);
+  }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
   main.innerHTML = screens[view](prayerId || editorId);
@@ -1307,6 +1313,7 @@ function validatedBackup(payload) {
           typeof verse.body!=='string' || !verse.body.trim() || verse.body.length>10000 ||
           typeof verse.label!=='string' || verse.label.length>72) throw Error('daily verse');
       result.dailyVerses[day] = {ref:verse.ref,body:verse.body,label:verse.label};
+      if (verse.wholeBible===true) result.dailyVerses[day].wholeBible = true;
     }
   }
   if (input.dailyNotes!==undefined) {
@@ -2246,7 +2253,9 @@ async function removeItem() {
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyDisplay);
 document.addEventListener('visibilitychange',()=>{
-  if (!document.hidden) refreshLocalEditions();
+  if (document.hidden) return;
+  if ((view==='today' || view==='calendar') && renderedDailyDate!==dateKey()) render();
+  refreshLocalEditions();
 });
 document.querySelector('.brand').addEventListener('click',event => {
   event.preventDefault();
