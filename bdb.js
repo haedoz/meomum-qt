@@ -112,12 +112,14 @@ export async function readBdb(bytes,name,canonical,openDatabase) {
     const hasOriginalCodes = samples.filter(text=>(text.match(/<W[HG]\s*\d+[A-Za-z]?\s*>/gi)?.length ?? 0)>=2).length>=2;
     const kind = editionKind(name,hasOriginalCodes || ext==='.sdb'?'original':ext==='.cdb'?'commentary':'bible');
     const commentary = kind==='commentary', original = kind==='original';
+    // Some Bible editions include a verse numbered 0 (for example, LXXStp at Daniel 5:0).
+    const firstVerse = original ? 1 : 0;
     const verses = {};
     for (const [number,chapter,verse,text] of rows) {
       if ((commentary && text==null) || (original && (text==null || (typeof text==='string' && !text.trim())))) continue;
       const book = Number.isInteger(number) ? books[number-1]?.[0] : undefined;
       if (!book || !Number.isInteger(chapter) || chapter<1 || chapter>canonical[book] ||
-          !Number.isInteger(verse) || verse<(commentary?0:1) || verse>(commentary?9999:500) || typeof text!=='string' || text.length>(commentary?3000000:10000)) {
+          !Number.isInteger(verse) || verse<firstVerse || verse>(commentary?9999:500) || typeof text!=='string' || text.length>(commentary?3000000:10000)) {
         throw Error('invalid verse');
       }
       const bookData = verses[book] ??= {};

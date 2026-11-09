@@ -1,5 +1,5 @@
 import { books, chapterCounts } from './books.js';
-import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=35';
+import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=36';
 
 const icons = {
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
@@ -1290,9 +1290,10 @@ function isObject(value) {
 function validRef(key) {
   if (typeof key !== 'string') return false;
   const {edition,book,chapter,verse} = readRef(key);
+  const local = localEditionId(edition);
   return [edition,book,chapter,verse].join('/') === key &&
-    (localEditionId(edition) || Object.hasOwn(retiredEditions,edition)) &&
-    validChapter(book+'/'+chapter) && Number.isInteger(verse) && verse>=1 && verse<=500;
+    (local || Object.hasOwn(retiredEditions,edition)) &&
+    validChapter(book+'/'+chapter) && Number.isInteger(verse) && verse>=(local?0:1) && verse<=500;
 }
 function validatedBackup(payload) {
   const input = payload?.data;
