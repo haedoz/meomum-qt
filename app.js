@@ -507,10 +507,13 @@ function todayScreen() {
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
 }
+function readerPickerField(label,value,action,description) {
+  return '<div class="field"><span>'+label+'</span><button type="button" class="reader-picker-trigger" data-action="'+action+'" '+
+    'aria-haspopup="dialog" aria-label="'+description+' · '+esc(value)+'">'+
+    '<span>'+esc(value)+'</span></button></div>';
+}
 function bookPickerField(book) {
-  return '<div class="field"><span>성경</span><button type="button" class="book-picker-trigger" data-action="pick-book" '+
-    'aria-haspopup="dialog" aria-label="성경책 선택 · '+esc(titles[book])+'">'+
-    '<span>'+esc(titles[book])+'</span></button></div>';
+  return readerPickerField('성경',titles[book],'pick-book','성경책 선택');
 }
 function verseButton(edition,book,chapter,num,content,marker,secondary = false) {
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
@@ -548,9 +551,8 @@ function readerScreen() {
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
   return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+
-    '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label>'+
-      bookPickerField(book)+'<div class="field"><span>장</span><button type="button" class="chapter-picker-trigger" data-action="jump-chapter" '+
-        'aria-haspopup="dialog" aria-label="'+chapter+'장 · 장 이동">'+chapter+'장</button></div></div>'+
+    '<div class="reader-controls">'+readerPickerField('번역본',editionLabel(edition),'pick-edition','번역본 선택')+
+      bookPickerField(book)+readerPickerField('장',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
     '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
       '</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
@@ -636,26 +638,28 @@ function showChapterJump() {
   const {edition,book,chapter} = state.reader;
   const chapters = Object.keys(data[edition]?.[book] ?? {});
   if (view!=='bible' || !chapters.length) return;
-  dialog(esc(titles[book])+' · 장 이동','<label class="field">이동할 장 번호'+
-    '<input name="chapter" type="text" inputmode="numeric" enterkeyhint="go" maxlength="5" placeholder="'+chapters[0]+'" autofocus></label>'+
-    '<p class="muted">현재 '+chapter+'장 · '+chapters[0]+'~'+chapters.at(-1)+'장</p>'+
+  dialog(esc(titles[book])+' · 장·절 이동','<label class="field">이동할 장·절'+
+    '<input name="chapter" type="text" enterkeyhint="go" maxlength="20" placeholder="예: 12, 12 3, 12:3" autofocus></label>'+
+    '<p class="muted">장 번호만 입력하면 1절로 이동해요. 현재 '+chapter+'장 · '+chapters[0]+'~'+chapters.at(-1)+'장</p>'+
     '<p class="muted" data-chapter-error role="status"></p><button type="submit" class="btn primary">이동</button>','chapter-jump');
 }
 function jumpToChapter(form) {
   const input = form.elements.chapter;
-  const number = input.value.normalize('NFKC').trim().match(/^(\d+)\s*장?$/)?.[1];
-  const chapter = Number(number);
+  const [,chapterNumber,verseNumber] = input.value.normalize('NFKC').trim()
+    .match(/^(\d+)(?:(?:\s*:\s*|\s+)(\d+)|\s*장)?$/) ?? [];
+  const chapter = Number(chapterNumber);
   const {edition,book} = state.reader;
-  if (!data[edition]?.[book]?.[chapter]) {
-    form.querySelector('[data-chapter-error]').textContent = '이 역본에서 열 수 있는 장 번호를 입력해 주세요.';
+  const verses = data[edition]?.[book]?.[chapter];
+  const verse = verseNumber===undefined
+    ? (verses?.[1]?1:Object.keys(verses ?? {}).find(number=>verses[number]))
+    : Number(verseNumber);
+  if (!verses?.[verse]) {
+    form.querySelector('[data-chapter-error]').textContent = '이 역본에서 열 수 있는 장·절 번호를 입력해 주세요.';
     input.focus();
     return;
   }
   modal.close();
-  setReader([edition,book,chapter,1].join('/'));
-  render();
-  window.scrollTo(0,0);
-  main.querySelector('.chapter-picker-trigger')?.focus({preventScroll:true});
+  visit([edition,book,chapter,verse].join('/'));
 }
 function originalCodes(text) {
   return esc(text).replace(/&lt;(W?[HG]\s*\d+[A-Za-z]?)\s*&gt;/gi,(_,code)=>{
@@ -1436,6 +1440,7 @@ let pendingImport;
 const actions = {
   'bible-search':showReaderSearch,
   'jump-chapter':showChapterJump,
+  'pick-edition':showEditionPicker,
   'close-dialog'() { modal.close(); },
   back() { goBack(); },
   'open-today-note'() { showDailyNote(); },
@@ -1557,15 +1562,36 @@ function bookPickerContext() {
     ? {book:selection.location?.book,source:studySource(view)?.verses,selection}
     : {book,source:data[edition],edition};
 }
+function pickerOptions(items,active,attribute) {
+  return '<div class="reader-picker-options">'+items.map(([id,label])=>
+    '<button type="button" class="btn" '+attribute+'="'+esc(id)+'"'+(id===active?' aria-current="true"':'')+
+    '>'+esc(label)+'</button>').join('')+'</div>';
+}
+function showEditionPicker() {
+  if (view!=='bible' || !state.reader.edition) return;
+  dialog('번역본 선택',pickerOptions(Object.entries(editions),state.reader.edition,'data-pick-edition'));
+}
+function chooseEdition(edition) {
+  if (!Object.hasOwn(editions,edition)) return;
+  const reader = state.reader;
+  modal.close();
+  if (reader.edition!==edition) {
+    const chapters = data[edition]?.[reader.book];
+    const location = chapters
+      ? {book:reader.book,chapter:chapters[reader.chapter]?reader.chapter:Object.keys(chapters)[0]}
+      : initialReader(edition);
+    setReader([edition,location.book,location.chapter,1].join('/'));
+    render();
+  }
+  main.querySelector('[data-action="pick-edition"]')?.focus({preventScroll:true});
+}
 function showBookPicker() {
   const {book,source} = bookPickerContext();
   if (!source) return;
   const sections = [['old','구약'],['new','신약']].map(([testament,label])=>{
     const choices = books.filter(([code])=>testamentByBook[code]===testament && source[code]);
     return '<section class="book-picker-section" aria-label="'+label+'"><h3>'+label+'</h3>'+
-      (choices.length?'<div class="book-picker-books">'+choices.map(([code,title])=>
-        '<button type="button" class="btn" data-pick-book="'+code+'"'+(code===book?' aria-current="true"':'')+
-        '>'+esc(title)+'</button>').join('')+'</div>':'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
+      (choices.length?pickerOptions(choices,book,'data-pick-book'):'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
   }).join('');
   dialog('성경책 선택','<div class="book-picker">'+sections+'</div>');
 }
@@ -1580,12 +1606,13 @@ function chooseBook(book) {
     else setReader([current.edition,book,chapter,1].join('/'));
     render();
   }
-  main.querySelector('.book-picker-trigger')?.focus({preventScroll:true});
+  main.querySelector('[data-action="pick-book"]')?.focus({preventScroll:true});
 }
 document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
   const target = button.dataset;
+  if (target.pickEdition) return chooseEdition(target.pickEdition);
   if (target.pickBook) return chooseBook(target.pickBook);
   if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
@@ -1817,18 +1844,6 @@ main.addEventListener('change',async event => {
     save();
   }
   if (field.id==='custom-font-file' && field.files[0]) return importCustomFont(field.files[0]);
-  if (field.dataset.reader==='edition') {
-    const reader = state.reader;
-    swapComparison(field.value);
-    reader.edition = field.value;
-    if (!data[reader.edition]?.[reader.book]) reader.book = books.find(([code])=>data[reader.edition]?.[code])?.[0] ?? reader.book;
-    if (!data[reader.edition]?.[reader.book]?.[reader.chapter]) {
-      reader.chapter = Number(Object.keys(data[reader.edition]?.[reader.book] ?? {})[0] ?? 1);
-    }
-    chosen.clear();
-    save();
-    render();
-  }
   if (field.id==='bdb-files') return importBibleFiles([...field.files]);
   if (field.id==='backup-file' && field.files[0]) {
     try {

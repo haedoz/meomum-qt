@@ -731,7 +731,7 @@ body { min-height: 100vh; min-height: 100dvh; }
   position: relative;
   align-content: start;
 }
-.reader-controls select, .book-picker-trigger, .chapter-picker-trigger {
+.reader-controls select, .reader-picker-trigger {
   appearance: none; -webkit-appearance: none;
   width: 100%; height: var(--control-height); min-width: 0;
   padding: 6px 28px 6px 9px; text-align: left;
@@ -745,16 +745,16 @@ body { min-height: 100vh; min-height: 100dvh; }
   width: 7px; height: 7px; border: solid var(--ink); border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg); pointer-events: none;
 }
-.book-picker-trigger span { display: block; overflow: hidden; text-overflow: ellipsis; }
-.book-picker, .book-picker-books { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.reader-picker-trigger span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.book-picker, .reader-picker-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .book-picker { gap: 12px; }
 .book-picker-section h3 { color: var(--accent-ink); margin-bottom: 7px; }
-.book-picker-books { gap: 4px; }
-.book-picker-books .btn {
+.reader-picker-options { gap: 4px; }
+.reader-picker-options .btn {
   min-width: 0; padding: 5px 3px; border-radius: 9px; text-align: center;
   font-size: .8125rem; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere;
 }
-.book-picker-books [aria-current="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-ink); }
+.reader-picker-options [aria-current="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-ink); }
 .journal-editor .post-meta { flex-wrap: wrap; gap: 6px 12px; }
 .journal-editor-fields { display: grid; gap: 18px; margin-block: 18px 8px; }
 .journal-editor textarea { min-height: 160px; resize: vertical; }
