@@ -652,13 +652,15 @@ dialog::backdrop { background: #1c263867; }
 .palette-swatch[data-swatch="oat"] { background: linear-gradient(145deg,#f8f4ed,#b7a48a); }
 .palette-swatch[data-swatch="gray"] { background: linear-gradient(145deg,#fcfcfc,#bfc1c5); }
 
+#main.reader-view:has(> .reader-controls) { padding-top: 0; }
 .reader-view > .reader-controls {
   position: sticky; top: calc(var(--top-bar-height) + env(safe-area-inset-top)); z-index: 3;
-  margin-top: 0;
+  margin-block: 0;
   padding-block: 8px;
   background: var(--paper);
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr) minmax(3.75rem, .62fr);
 }
+.reader-view > .reader-controls + .bible-passage { margin-top: 0; }
 .reader-controls .compare-toggle {
   width: var(--control-height); height: var(--control-height); padding: 0; border-radius: 9px;
 }
