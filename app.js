@@ -42,7 +42,7 @@ const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
 let bibleSearchScope = 'all';
-let bibleSearchResults;
+let bibleSearchResults, bibleSearchPage = 0, bibleSearchPageSize = 1;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
 const selectedSearchVerses = new Set();
 let readerSwipe, ignoreReaderSwipeClickUntil = 0;
@@ -658,19 +658,16 @@ function searchResultRow(key,canSelect) {
   return '<div class="search-result-row"><button type="button" class="record-open search-result" data-search-visit="'+key+'">'+
     '<strong>'+title+'</strong><span>'+esc(verseText(key))+'</span></button>'+checkbox+'</div>';
 }
-function readerSearchResults(page = 0) {
+function readerSearchResults(page = 0,pageSize = bibleSearchPageSize) {
   if (!bibleSearchResults) return '';
   const {keys,bookStart,reference:isReference} = bibleSearchResults;
-  const fontSize = displayValue('fontSize',state.display.fontSize);
-  const panelHeight = Math.min(window.innerHeight*.76,660);
-  const pageSize = Math.max(5,Math.min(6,Math.floor((panelHeight-155-(bookStart?50:0))/(fontSize*3.95+13))));
   const pages = Math.ceil(keys.length/pageSize);
   page = Math.min(page,Math.max(0,pages-1));
   const visible = keys.slice(page*pageSize,(page+1)*pageSize);
-  const count = (bookStart?'본문 검색 결과 ':'검색 결과 ')+keys.length.toLocaleString('ko-KR')+'개'+(pages?' · '+(page+1)+' / '+pages+'페이지':'');
-  const pager = pages>1 ? '<div class="reader-search-pages" role="group" aria-label="검색 결과 페이지">'+
-    '<button type="button" class="btn" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>이전</button>'+
-    '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(page+1>=pages?'disabled':'')+'>다음</button></div>' : '';
+  const pager = pages>1 ? '<nav class="reader-search-pages" aria-label="검색 결과 페이지">'+
+    '<button type="button" class="search-page-arrow" aria-label="이전 페이지" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>'+icon('left')+'</button>'+
+    '<span class="search-page-number" aria-label="'+(page+1)+'페이지, 전체 '+pages+'페이지">'+(page+1)+' / '+pages+'</span>'+
+    '<button type="button" class="search-page-arrow" aria-label="다음 페이지" data-search-page="'+(page+1)+'" data-search-direction="next" '+(page+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>' : '';
   const scope = isReference?'':'<button type="button" class="btn" data-action="pick-search-scope" aria-haspopup="dialog">범위 · '+
     esc(searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope])+'</button>';
   const selectedCount = selectedSearchVerses.size;
@@ -678,18 +675,34 @@ function readerSearchResults(page = 0) {
     'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
   const bookLink = bookStart?'<div class="reader-search-book-start"><button type="button" class="btn" data-search-book-start="'+
     bookStart+'">'+esc(titles[readRef(bookStart).book])+' 책 열기 '+icon('arrow')+'</button></div>':'';
-  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+count+
-    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+bookLink+pager+'<div class="reader-search-list">'+
+  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>검색 결과'+
+    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+bookLink+'<div class="reader-search-list">'+
     (visible.map(key=>searchResultRow(key,!isReference)).join('') ||
-      '<p class="muted">'+(bookStart?'본문에 일치하는 구절이 없어요.':'검색 결과가 없어요.')+'</p>')+'</div></section>';
+      '<p class="muted">'+(bookStart?'본문에 일치하는 구절이 없어요.':'검색 결과가 없어요.')+'</p>')+'</div>'+pager+'</section>';
+}
+function fitReaderSearchPage() {
+  const count = bibleSearchResults?.keys.length ?? 0;
+  if (count<2) return 1;
+  readerSearchPanel.hidden = false;
+  readerSearchPanel.innerHTML = readerSearchResults(0,1);
+  const heightOf = selector=>readerSearchPanel.querySelector(selector)?.getBoundingClientRect().height ?? 0;
+  const rowHeight = heightOf('.search-result-row');
+  if (!rowHeight) return 1;
+  const maxHeight = parseFloat(getComputedStyle(readerSearchPanel).maxHeight);
+  const panelHeight = Number.isFinite(maxHeight) ? maxHeight : Math.min(window.innerHeight*.76,660);
+  const available = panelHeight-heightOf('.reader-search-toolbar')-heightOf('.reader-search-book-start')-2;
+  if (count*rowHeight<=available) return count;
+  return Math.max(1,Math.floor((available-heightOf('.reader-search-pages'))/rowHeight));
 }
 function submitReaderSearch() {
   const query = readerSearchInput.value.trim();
   bibleSearchResults = query ? searchBible(state.reader.edition,query) : undefined;
+  bibleSearchPageSize = fitReaderSearchPage();
   updateReaderSearch();
 }
 function updateReaderSearch(page = 0) {
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
+  bibleSearchPage = page;
   const results = readerSearchResults(page);
   readerSearchPanel.innerHTML = results;
   readerSearchPanel.hidden = !results;
@@ -2049,7 +2062,10 @@ readerSearchForm.addEventListener('submit',event=>{
   submitReaderSearch();
 });
 window.addEventListener('resize',()=>{
-  if (bibleSearchResults) updateReaderSearch();
+  if (!bibleSearchResults) return;
+  const firstVisible = bibleSearchPage*bibleSearchPageSize;
+  bibleSearchPageSize = fitReaderSearchPage();
+  updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
 document.addEventListener('pointerdown',event=>{
   if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
