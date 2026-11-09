@@ -731,6 +731,9 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
 .reader-search-list > .muted { padding-top: 8px; }
 .reader-search-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .reader-search-toolbar .btn { min-height: 44px; padding-inline: 10px; font-size: .8125rem; }
+.reader-search-book-start { flex: none; padding: 6px 14px 0; }
+.reader-search-book-start .btn { min-height: 44px; padding-inline: 12px; }
+.reader-search-book-start svg { width: 16px; }
 .reader-search-pages { flex: none; display: flex; gap: 6px; padding: 6px 14px 4px; }
 .reader-search-pages .btn { min-height: 44px; padding-inline: 12px; }
 .search-result-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid var(--line); }

@@ -600,13 +600,17 @@ function parseBibleReference(query) {
 function searchBible(edition,query) {
   const source = data[edition] ?? {};
   const position = parseBibleReference(query);
+  let bookStart;
   if (position) {
     const {book = state.reader.book} = position;
     const chapters = source[book] ?? {};
     const chapter = position.chapter ?? Object.keys(chapters).find(number=>Object.values(chapters[number]).some(Boolean));
     const verses = chapters[chapter] ?? {};
     const verse = position.verse ?? (verses[1]?1:Object.keys(verses).find(number=>verses[number]));
-    return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],reference:true};
+    const key = verses[verse]?[edition,book,chapter,verse].join('/'):undefined;
+    const fullBookName = position.chapter===undefined && position.book && titles[position.book]===query.normalize('NFKC').trim();
+    if (!fullBookName) return {keys:key?[key]:[],reference:true};
+    bookStart = key;
   }
   const needle = searchText(query), keys = [];
   if (needle) for (const [book] of books) {
@@ -618,7 +622,7 @@ function searchBible(edition,query) {
       }
     }
   }
-  return {keys};
+  return {keys,bookStart};
 }
 function showReaderSearch() {
   topBar.classList.add('search-open');
@@ -656,14 +660,14 @@ function searchResultRow(key,canSelect) {
 }
 function readerSearchResults(page = 0) {
   if (!bibleSearchResults) return '';
-  const {keys,reference:isReference} = bibleSearchResults;
+  const {keys,bookStart,reference:isReference} = bibleSearchResults;
   const fontSize = displayValue('fontSize',state.display.fontSize);
   const panelHeight = Math.min(window.innerHeight*.68,620);
-  const pageSize = Math.max(1,Math.floor((panelHeight-155)/(fontSize*3.95+13)));
+  const pageSize = Math.max(1,Math.floor((panelHeight-155-(bookStart?50:0))/(fontSize*3.95+13)));
   const pages = Math.ceil(keys.length/pageSize);
   page = Math.min(page,Math.max(0,pages-1));
   const visible = keys.slice(page*pageSize,(page+1)*pageSize);
-  const count = '검색 결과 '+keys.length.toLocaleString('ko-KR')+'개'+(pages?' · '+(page+1)+' / '+pages+'페이지':'');
+  const count = (bookStart?'본문 검색 결과 ':'검색 결과 ')+keys.length.toLocaleString('ko-KR')+'개'+(pages?' · '+(page+1)+' / '+pages+'페이지':'');
   const pager = pages>1 ? '<div class="reader-search-pages" role="group" aria-label="검색 결과 페이지">'+
     '<button type="button" class="btn" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>이전</button>'+
     '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(page+1>=pages?'disabled':'')+'>다음</button></div>' : '';
@@ -672,10 +676,12 @@ function readerSearchResults(page = 0) {
   const selectedCount = selectedSearchVerses.size;
   const collect = !isReference && (keys.length || selectedCount)?'<button type="button" class="btn" data-action="view-search-selection" '+
     'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
+  const bookLink = bookStart?'<div class="reader-search-book-start"><button type="button" class="btn" data-search-book-start="'+
+    bookStart+'">'+esc(titles[readRef(bookStart).book])+' 책 열기 '+icon('arrow')+'</button></div>':'';
   return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+count+
-    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+pager+'<div class="reader-search-list">'+
+    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+bookLink+pager+'<div class="reader-search-list">'+
     (visible.map(key=>searchResultRow(key,!isReference)).join('') ||
-      '<p class="muted">검색 결과가 없어요.</p>')+'</div></section>';
+      '<p class="muted">'+(bookStart?'본문에 일치하는 구절이 없어요.':'검색 결과가 없어요.')+'</p>')+'</div></section>';
 }
 function submitReaderSearch() {
   const query = readerSearchInput.value.trim();
@@ -1902,7 +1908,7 @@ document.addEventListener('click',event => {
     setReader([edition,location.book,location.chapter,1].join('/'));
     return navigate('bible');
   }
-  if (target.searchVisit) return visitSearchResult(target.searchVisit);
+  if (target.searchVisit || target.searchBookStart) return visitSearchResult(target.searchVisit ?? target.searchBookStart);
   if (target.searchScope) return chooseSearchScope(target.searchScope);
   if ('searchPage' in target) return changeSearchPage(button);
   if (target.visit) return visit(target.visit);
