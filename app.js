@@ -304,7 +304,7 @@ function navigate(screen, context) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'today',journal:'calendar',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'bible',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'today',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records',search:'bible',commentary:'bible',original:'bible'};
   history.replaceState(null,'','#'+(fallback[view] ?? 'today'));
   render();
 }
@@ -516,12 +516,12 @@ function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
 }
 function readerPickerField(label,value,action,description) {
-  return '<div class="field"><span>'+label+'</span><button type="button" class="reader-picker-trigger" data-action="'+action+'" '+
+  return '<div class="field">'+(label?'<span>'+label+'</span>':'')+'<button type="button" class="reader-picker-trigger" data-action="'+action+'" '+
     'aria-haspopup="dialog" aria-label="'+description+' · '+esc(value)+'">'+
     '<span>'+esc(value)+'</span></button></div>';
 }
-function bookPickerField(book) {
-  return readerPickerField('성경',titles[book],'pick-book','성경책 선택');
+function bookPickerField(book,label = '성경') {
+  return readerPickerField(label,titles[book],'pick-book','성경책 선택');
 }
 function verseButton(edition,book,chapter,num,content,marker,secondary = false) {
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
@@ -532,15 +532,9 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   return mark?.note?'<div class="verse-with-note">'+verse+
     '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
 }
-function readingModes(current) {
-  return '<nav class="reading-modes" aria-label="성경 읽기 화면">'+
-    [['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>
-      '<button type="button" data-nav="'+route+'"'+(route===current?' aria-current="page"':'')+'>'+label+'</button>').join('')+'</nav>';
-}
 function readerScreen() {
   const {edition,book,chapter} = state.reader;
-  if (!edition) return readingModes('bible')+
-    '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings">성경 번역본 추가</button></section>';
+  if (!edition) return '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings">성경 번역본 추가</button></section>';
   const chapters = data[edition]?.[book] ?? {};
   const verses = chapters[chapter] ?? {};
   const comparison = state.comparison;
@@ -558,9 +552,8 @@ function readerScreen() {
   const index = available.indexOf(book+'/'+chapter);
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
-  return readingModes('bible')+
-    '<div class="reader-controls">'+readerPickerField('번역본',editionLabel(edition),'pick-edition','번역본 선택')+
-      bookPickerField(book)+readerPickerField('장',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
+  return '<div class="reader-controls">'+readerPickerField('',editionLabel(edition),'pick-edition','번역본 선택')+
+      bookPickerField(book,'')+readerPickerField('',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
     '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
       '</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
@@ -767,9 +760,9 @@ function studySource(mode) {
 }
 function studyScreen(mode) {
   const original = mode==='original';
-  const headingHtml = readingModes(mode)+(original?
+  const headingHtml = original?
     heading('ORIGINAL LANGUAGES','원전분해','히브리어와 헬라어의 단어별 뜻과 문법을 살펴봐요.'):
-    heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.'));
+    heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.');
   const source = studySource(mode);
   if (!source) {
     const file = original?'원전분해.sdb':'만나주석.cdb';
@@ -1187,6 +1180,8 @@ function recordsScreen() {
   }).join('');
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
+      ['calendar','calendar','달력','묵상 달력'],
+      ['prayers','prayer','기도','기도 기록'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
@@ -1249,9 +1244,9 @@ function render() {
   }
   const writing = main.querySelector('[data-journal-field="reflection"]');
   if (writing) resizeWriting(writing);
+  const navView = ['calendar','prayers','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
   document.querySelectorAll('.bottom [data-nav]').forEach(button => {
-    if (button.dataset.nav===view || (view==='newyear' && button.dataset.nav==='records') ||
-        (view==='journal' && button.dataset.nav==='calendar') || (['prayer','prayer-edit'].includes(view) && button.dataset.nav==='prayers') || (['commentary','original'].includes(view) && button.dataset.nav==='bible')) button.setAttribute('aria-current','page');
+    if (button.dataset.nav===navView) button.setAttribute('aria-current','page');
     else button.removeAttribute('aria-current');
   });
   if (changed) window.scrollTo(0,0);
@@ -1706,9 +1701,6 @@ document.addEventListener('click',event => {
   if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
-  if (target.nav==='bible' && button.closest('.reading-modes') && studySelection[view]) {
-    return returnToBible(studySelection[view].location);
-  }
   if (target.nav) {
     if (modal.contains(button)) modal.close();
     navigate(target.nav);
