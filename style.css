@@ -859,12 +859,20 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
 }
 .search-result-check { position: relative; display: grid; place-items: center; min-width: 44px; min-height: 44px; cursor: pointer; }
 .search-result-check input {
-  appearance: none; -webkit-appearance: none; width: 21px; height: 21px; margin: 0;
-  border: 2px solid var(--muted); border-radius: 0; background: var(--card); cursor: pointer;
+  appearance: none; -webkit-appearance: none; width: 22px; height: 22px; margin: 0;
+  border: 1px solid var(--muted);
+  border-color: color-mix(in srgb, var(--muted) 62%, var(--line));
+  border-radius: 6px; background: linear-gradient(var(--card), var(--soft)); cursor: pointer;
+  box-shadow: inset 0 1px var(--glass-shine), 0 1px 2px var(--glass-shadow);
 }
-.search-result-check input:checked { border-color: var(--muted); background: var(--accent-soft); }
+.search-result-check input:checked {
+  border-color: var(--line);
+  border-color: color-mix(in srgb, var(--accent-ink) 34%, var(--line));
+  background: var(--accent-soft);
+  box-shadow: inset 0 1px var(--glass-shine);
+}
 .search-result-check:has(input:checked)::after {
-  content: ""; position: absolute; inset: 50% auto auto 50%; width: 6px; height: 10px;
+  content: ""; position: absolute; inset: 50% auto auto 50%; width: 6px; height: 10px; border-end-end-radius: 1px;
   border: solid var(--accent-ink); border-width: 0 2px 2px 0;
   transform: translate(-50%, -60%) rotate(45deg); pointer-events: none;
 }
