@@ -112,7 +112,7 @@ async function refreshLocalEditions() {
   for (const id of removed) forgetLocalEdition(id);
   for (const edition of library.added) registerLocalEdition(edition);
   reconcileReaderEdition();
-  if (['bible','settings','commentary','original'].includes(view)) render();
+  if (['today','calendar','bible','settings','commentary','original'].includes(view)) render();
 }
 function storeLocal(key,value) {
   return new Promise((resolve,reject) => {
@@ -215,6 +215,7 @@ async function importBibleFiles(files) {
     reconcileReaderEdition();
     if (previous!==state.reader.edition || comparison!==state.comparison) save();
     importMessage = results.join('\n');
+    if (view==='today' || view==='calendar') render();
     if (view==='settings') render();
     else notify('성경 파일 처리가 끝났어요. 설정에서 결과를 확인할 수 있어요.');
   }
@@ -344,22 +345,31 @@ function returnToBible(location, verse = location?.verse) {
 function savedVerseText(key) {
   return verseText(key) || '해당 역본의 본문을 표시할 수 없어요.';
 }
-function dailyVerse(day) {
+function dailyVerse(day,edition) {
   const pool = ['PSA/23/1','PSA/46/1','PSA/119/105','ISA/40/31','LAM/3/23','MAT/5/9','MAT/11/28','JHN/15/5','ROM/12/12','PHP/4/6','1PE/5/7','JAS/1/5','PSA/34/18','PSA/121/2','PRO/3/5','ISA/41/10','JHN/14/27','ROM/8/39','COL/3/15','1TH/5/18'];
   let hash = 2166136261;
   for (const char of day) hash = Math.imul(hash ^ char.charCodeAt(0),16777619);
-  const edition = state.reader.edition;
   const available = pool.filter(ref=>verseText(edition+'/'+ref));
   if (available.length) return edition+'/'+available[(hash>>>0)%available.length];
   const {book,chapter} = state.reader;
-  return [edition,book,chapter,Object.keys(data[edition]?.[book]?.[chapter] ?? {})[0] ?? 1].join('/');
+  for (const location of new Set([book+'/'+chapter,...availableChapters(edition)])) {
+    const [code,number] = location.split('/');
+    const verse = Object.keys(data[edition]?.[code]?.[number] ?? {}).find(num=>data[edition][code][number][num]);
+    if (verse) return edition+'/'+location+'/'+verse;
+  }
 }
 function rememberDailyVerse(day) {
-  if (state.dailyVerses[day]) return;
-  const ref = state.dailyNotes[day]?.ref ?? dailyVerse(day);
+  const edition = state.reader.edition;
+  if (!edition) return;
+  const saved = state.dailyVerses[day];
+  const previousRef = saved?.ref ?? state.dailyNotes[day]?.ref;
+  const matchingRef = previousRef && edition+previousRef.slice(previousRef.indexOf('/'));
+  const ref = matchingRef && verseText(matchingRef)?matchingRef:dailyVerse(day,edition);
+  if (!ref || !validRef(ref)) return;
   const body = verseText(ref);
-  if (!body || !validRef(ref)) return;
-  state.dailyVerses[day] = {ref,body,label:editionLabel(readRef(ref).edition)};
+  const label = editionLabel(edition);
+  if (saved?.ref===ref && saved.body===body && saved.label===label) return;
+  state.dailyVerses[day] = {ref,body,label};
   if (db) save();
 }
 function journalEntry(key) {
