@@ -16,6 +16,7 @@ const icons = {
   left:'<path d="m15 5-7 7 7 7"/>',
   edit:'<path d="m4 16 11-11 4 4L8 20H4v-4Zm9-9 4 4"/>',
   right:'<path d="m9 5 7 7-7 7"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
   check:'<path d="m5 12 4 4L19 6"/>',
   close:'<path d="m6 6 12 12M18 6 6 18"/>',
   back:'<path d="m14 6-6 6 6 6m-6-6h13"/>',
@@ -506,15 +507,10 @@ function todayScreen() {
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
 }
-function booksInTestament(availableBooks,testament) {
-  return availableBooks.filter(([book])=>testamentByBook[book]===testament);
-}
-function bookTestamentButtons(availableBooks,book) {
-  return '<div class="book-testament" role="group" aria-label="성경책 선택 범위">'+
-    [['old','구약'],['new','신약']].map(([testament,label])=>
-      '<button type="button" class="btn" data-book-testament="'+testament+'" aria-pressed="'+
-      (testamentByBook[book]===testament)+'" '+(booksInTestament(availableBooks,testament).length?'':'disabled')+
-      '>'+label+'</button>').join('')+'</div>';
+function bookPickerField(book) {
+  return '<div class="field"><span>성경</span><button type="button" class="book-picker-trigger" data-action="pick-book" '+
+    'aria-haspopup="dialog" aria-label="성경책 선택 · '+esc(titles[book])+'">'+
+    '<span>'+esc(titles[book])+'</span>'+icon('down')+'</button></div>';
 }
 function verseButton(edition,book,chapter,num,content,marker,secondary = false) {
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
@@ -548,14 +544,13 @@ function readerScreen() {
     return '<div class="verse-pair">'+first+alternatives.join('')+'</div>';
   }).join('');
   const chapterOptions = Object.keys(chapters).map(number => [number,number+'장']);
-  const availableBooks = books.filter(([code])=>data[edition]?.[code]);
   const available = availableChapters(edition);
   const index = available.indexOf(book+'/'+chapter);
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
   return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+readerSearch(edition,comparison)+
-    bookTestamentButtons(availableBooks,book)+
-    '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label><label class="field">성경<select data-reader="book">'+options(booksInTestament(availableBooks,testamentByBook[book]),book)+'</select></label><label class="field">장<select data-reader="chapter">'+options(chapterOptions,chapter)+'</select></label></div>'+
+    '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label>'+
+      bookPickerField(book)+'<label class="field">장<select data-reader="chapter">'+options(chapterOptions,chapter)+'</select></label></div>'+
     '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
       '</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
@@ -731,9 +726,8 @@ function studyScreen(mode) {
   const entries = chapters[chapter];
   const verse = book===requested.book && chapter===requested.chapter && entries[requested.verse]?requested.verse:undefined;
   selection.location = {book,chapter,verse};
-  return headingHtml+bookTestamentButtons(availableBooks,book)+
-    '<div class="reader-controls commentary-controls">'+
-      '<label class="field">성경<select data-study-field="book">'+options(booksInTestament(availableBooks,testamentByBook[book]),book)+'</select></label>'+
+  return headingHtml+
+    '<div class="reader-controls commentary-controls">'+bookPickerField(book)+
       '<label class="field">장<select data-study-field="chapter">'+studyChapterOptions(chapters,chapter)+'</select></label>'+
       '<label class="field">절<select data-study-field="verse">'+studyVerseOptions(entries,verse)+'</select></label></div>'+
     '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
@@ -1517,25 +1511,44 @@ function stepChapter(offset) {
   render();
   window.scrollTo(0,0);
 }
-function switchBookTestament(button) {
-  if (button.getAttribute('aria-pressed')==='true') return;
-  const testament = button.dataset.bookTestament;
-  const {edition} = state.reader;
+function bookPickerContext() {
+  const {edition,book} = state.reader;
   const selection = studySelection[view];
-  const source = selection ? studySource(view)?.verses : data[edition];
-  const selected = booksInTestament(books,testament).find(([book])=>source?.[book]);
-  if (!selected) return;
-  const [book] = selected;
-  if (selection) selection.location = {book};
-  else setReader([edition,book,Object.keys(source[book])[0],1].join('/'));
-  render();
-  main.querySelector('[data-book-testament="'+testament+'"]')?.focus({preventScroll:true});
+  return selection
+    ? {book:selection.location?.book,source:studySource(view)?.verses,selection}
+    : {book,source:data[edition],edition};
+}
+function showBookPicker() {
+  const {book,source} = bookPickerContext();
+  if (!source) return;
+  const sections = [['old','구약'],['new','신약']].map(([testament,label])=>{
+    const choices = books.filter(([code])=>testamentByBook[code]===testament && source[code]);
+    return '<section class="book-picker-section" aria-label="'+label+'"><h3>'+label+'</h3>'+
+      (choices.length?'<div class="book-picker-books">'+choices.map(([code,title])=>
+        '<button type="button" class="btn" data-pick-book="'+code+'"'+(code===book?' aria-current="true"':'')+
+        '>'+esc(title)+'</button>').join('')+'</div>':'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
+  }).join('');
+  dialog('성경책 선택','<div class="book-picker">'+sections+'</div>');
+}
+function chooseBook(book) {
+  const current = bookPickerContext();
+  const chapters = current.source?.[book];
+  if (!chapters) return;
+  modal.close();
+  if (current.book!==book) {
+    const chapter = Number(Object.keys(chapters)[0]);
+    if (current.selection) current.selection.location = {book,chapter};
+    else setReader([current.edition,book,chapter,1].join('/'));
+    render();
+  }
+  main.querySelector('.book-picker-trigger')?.focus({preventScroll:true});
 }
 document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
   const target = button.dataset;
-  if (target.bookTestament) return switchBookTestament(button);
+  if (target.pickBook) return chooseBook(target.pickBook);
+  if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
   if (target.nav==='bible' && button.closest('.reading-modes') && studySelection[view]) {
@@ -1739,12 +1752,11 @@ main.addEventListener('change',async event => {
       if (selection.location.verse) showVerseArrival('study-v-'+selection.location.verse,'start');
       return;
     }
-    const book = key==='book'?field.value:selection.location.book;
+    const {book} = selection.location;
     const chapters = studySource(view)?.verses[book];
     if (!chapters) return;
-    const chapter = Number(key==='book'?Object.keys(chapters)[0]:field.value);
+    const chapter = Number(field.value);
     selection.location = {book,chapter};
-    if (key==='book') main.querySelector('[data-study-field="chapter"]').innerHTML = studyChapterOptions(chapters,chapter);
     const entries = chapters[chapter];
     main.querySelector('[data-study-field="verse"]').innerHTML = studyVerseOptions(entries);
     main.querySelector('.commentary-page').innerHTML = studyPassage(view,book,chapter,entries);
@@ -1766,7 +1778,7 @@ main.addEventListener('change',async event => {
     if (field.dataset.reader==='edition') swapComparison(field.value);
     reader[field.dataset.reader] = field.dataset.reader==='chapter'?Number(field.value):field.value;
     if (!data[reader.edition]?.[reader.book]) reader.book = books.find(([code])=>data[reader.edition]?.[code])?.[0] ?? reader.book;
-    if (field.dataset.reader==='book' || !data[reader.edition]?.[reader.book]?.[reader.chapter]) {
+    if (!data[reader.edition]?.[reader.book]?.[reader.chapter]) {
       reader.chapter = Number(Object.keys(data[reader.edition]?.[reader.book] ?? {})[0] ?? 1);
     }
     chosen.clear();
