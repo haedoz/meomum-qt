@@ -1,5 +1,5 @@
 import { books, chapterCounts } from './books.js';
-import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=36';
+import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=37';
 
 const icons = {
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
@@ -47,6 +47,7 @@ const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
+let readingArrival;
 const originalLayouts = {words:'단어별',gloss:'절별 직역',parallel:'원문 · 직역'};
 let originalLayout = 'words';
 let bibleSearchScope = 'all';
@@ -255,9 +256,8 @@ async function importBibleFiles(files) {
     reconcileReaderEdition();
     if (previous!==state.reader.edition || comparisonCount!==state.comparison.length) save();
     importMessage = results.join('\n');
-    if (view==='today' || view==='calendar') render();
-    if (view==='settings') render();
-    else notify('성경 파일 처리가 끝났어요. 설정에서 결과를 확인할 수 있어요.');
+    if (['today','calendar','bible','commentary','original','settings'].includes(view)) render();
+    if (view!=='settings') notify('성경 파일 처리가 끝났어요. 설정에서 결과를 확인할 수 있어요.');
   }
 }
 function confirmEditionRemoval(id) {
@@ -315,10 +315,10 @@ async function save() {
     return false;
   }
 }
-function navigate(screen, context) {
+function navigate(screen, context, studyFromSelection = false) {
   const hash = '#'+screen;
   if (location.hash!==hash) history.pushState({qtPrevious:true,...context},'',hash);
-  render();
+  render(studyFromSelection);
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
@@ -546,7 +546,8 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
   const key = [edition,book,chapter,num].join('/');
   const mark = state.marks[key];
-  const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'" lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
+  const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'"'+
+    (!secondary && !state.comparison.length?' data-reading-verse="'+num+'"':'')+' lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
     '<span class="number">'+(secondary?'':num)+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span>':'')+markedText(content,marker)+'</span></button>';
   return mark?.note?'<div class="verse-with-note">'+verse+
     '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
@@ -565,7 +566,7 @@ function readerScreen() {
     const first = verseButton(edition,book,chapter,num,verses[num],marker);
     if (!comparison.length) return first;
     const alternatives = comparison.map((id,index)=>verseButton(id,book,chapter,num,otherVerses[index][num],undefined,true));
-    return '<div class="verse-pair">'+first+alternatives.join('')+'</div>';
+    return '<div class="verse-pair" data-reading-verse="'+num+'">'+first+alternatives.join('')+'</div>';
   }).join('');
   const available = availableChapters(edition);
   const index = available.indexOf(book+'/'+chapter);
@@ -812,7 +813,7 @@ function showChapterJump() {
   const {book,source,selection} = bookPickerContext();
   const chapter = selection?.location?.chapter ?? state.reader.chapter;
   const chapters = Object.keys(source?.[book] ?? {});
-  if (!chapters.length) return;
+  if (!chapters.length) return notify('이 책에 등록된 자료가 없어요.');
   dialog(esc(titles[book])+' · 장·절 이동','<label class="field">이동할 장·절'+
     '<input name="chapter" type="text" enterkeyhint="go" maxlength="20" placeholder="예: 12, 12 3, 12:3" autofocus></label>'+
     '<p class="muted">장 번호만 입력하면 1절로 이동해요. 현재 '+chapter+'장 · '+chapters[0]+'~'+chapters.at(-1)+'장</p>'+
@@ -822,7 +823,7 @@ function jumpToChapter(form) {
   const input = form.elements.chapter;
   const {chapter,verse:requestedVerse} = parseChapterVerse(input.value.normalize('NFKC').trim()) ?? {};
   const {edition,book,source,selection} = bookPickerContext();
-  const verses = source?.[book]?.[chapter] ?? {};
+  const verses = selection?studyChapterVerses(view,book,chapter):source?.[book]?.[chapter] ?? {};
   const available = Object.keys(verses).filter(number=>verses[number] &&
     (!selection || (Number(number)>0 && Number(number)<=500)));
   const verse = Number(requestedVerse ?? (available.includes('1')?'1':available[0]));
@@ -861,24 +862,51 @@ function originalVerseLines(body) {
     return {form,lemma,grammar:grammar.trim(),gloss:gloss==='_'?'':gloss};
   });
 }
-function originalBody(body) {
-  const lines = originalVerseLines(body);
-  if (originalLayout!=='words') {
-    const words = lines.filter(line=>line.form);
-    const text = words.map(word=>word.form).join(' ').replace(/־\s+/g,'־');
-    const gloss = words.some(word=>word.gloss)?words.map(word=>word.gloss || '—').join(' · '):'';
-    const unparsed = lines.filter(line=>line.line).map(({line})=>'<p>'+originalCodes(line)+'</p>').join('');
-    return (originalLayout==='parallel' && text?'<p class="original-verse-text" dir="auto">'+esc(text)+'</p>':'')+
-      (gloss?'<p class="original-verse-gloss">'+esc(gloss)+'</p>':
-        words.length?'<p class="muted">이 절에 등록된 단어 뜻이 없어요.</p>':'')+unparsed;
-  }
+function originalWordDetails(lines,numbered = false) {
+  const tag = numbered?'li':'div';
   return lines.map(({line,form,lemma,grammar,gloss})=>{
-    if (line) return '<p>'+originalCodes(line)+'</p>';
-    return '<div class="original-word"><div class="original-word-head"><bdi>'+esc(form)+'</bdi>'+
+    if (line) return numbered?'<li class="original-word">'+originalCodes(line)+'</li>':'<p>'+originalCodes(line)+'</p>';
+    return '<'+tag+' class="original-word"><div class="original-word-head"><bdi>'+esc(form)+'</bdi>'+
       (gloss?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
       (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+
-      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+'</div>';
+      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+'</'+tag+'>';
   }).join('');
+}
+function originalPassageSources(book,chapter) {
+  const hebrew = testamentByBook[book]==='old';
+  const label = hebrew?'BHSStp':'LXXStp';
+  const sourceId = originalEditionFor(label,book,chapter);
+  const translationId = originalEditionFor('한국어직역',book,chapter);
+  return {
+    label, language:hebrew?'he':'grc', direction:hebrew?'rtl':'ltr',
+    sourceId, translationId,
+    source:data[sourceId]?.[book]?.[chapter], translation:data[translationId]?.[book]?.[chapter],
+  };
+}
+function originalEditionFor(label,book,chapter) {
+  const candidates = Object.keys(editions).filter(id=>
+    editionName(editions[id]).toLowerCase().includes(label.toLowerCase()) ||
+    // Recognize the previously supplied 82-verse file even if its download was renamed.
+    (label==='한국어직역' && id==='local-a8084edc9bc642f0'));
+  return candidates.find(id=>data[id]?.[book]?.[chapter]) ?? candidates.find(id=>data[id]?.[book]) ?? candidates[0];
+}
+function originalVerseReading(body,verse,sources) {
+  if (originalLayout==='words' || Number(verse)>500) return originalWordDetails(originalVerseLines(body));
+  const detailed = originalLayout==='gloss';
+  const words = detailed?originalVerseLines(body):[];
+  const imported = sources.source?.[verse]?.replace(/<W?[HG]\s*\d+[A-Za-z]?\s*>/gi,'').trim();
+  const analysisText = words.filter(word=>word.form).map(word=>word.form).join(' ').replace(/־\s+/g,'־');
+  const originalText = imported || analysisText;
+  const original = originalText?
+    (detailed?'<h4 class="original-caption">'+(imported?sources.label+' 원문':'원전분해 원문 표기')+'</h4>':'')+
+    '<p class="original-verse-text" lang="'+sources.language+'" dir="'+sources.direction+'">'+esc(originalText)+'</p>':
+    (sources.sourceId?'<p class="original-missing">이 절의 원문이 등록되어 있지 않아요.</p>':'');
+  const breakdown = words.length?'<h4 class="original-caption">단어별 풀이</h4>'+
+    '<ol class="original-breakdown">'+originalWordDetails(words,true)+'</ol>':'';
+  const korean = sources.translation?.[verse];
+  return original+breakdown+(detailed && (korean || sources.translationId)?'<h4 class="original-caption">한국어 직역</h4>':'')+
+    (korean?'<p class="original-verse-gloss" lang="ko">'+esc(korean)+'</p>':
+      sources.translation?'<p class="original-missing">이 절의 한국어 직역이 등록되어 있지 않아요.</p>':'');
 }
 function showOriginalMeaning(button) {
   const code = button.dataset.strongCode;
@@ -938,25 +966,35 @@ function commentaryParagraphs(body) {
 function studySource(mode) {
   return mode==='original'?Object.values(originals).find(item=>editionName(item.label)==='원전분해'):mannaCommentary();
 }
+function studyBookChapters(mode,book) {
+  const analysis = studySource(mode)?.verses[book];
+  if (mode!=='original' || originalLayout==='words') return analysis;
+  const {sourceId,translationId} = originalPassageSources(book);
+  const original = data[sourceId]?.[book], translation = data[translationId]?.[book];
+  if (analysis || original || translation) return {...original,...translation,...analysis};
+}
+function studyChapterVerses(mode,book,chapter) {
+  const analysis = studySource(mode)?.verses[book]?.[chapter] ?? {};
+  if (mode!=='original' || originalLayout==='words') return analysis;
+  const {source,translation} = originalPassageSources(book,chapter);
+  return {...analysis,...source,...translation};
+}
 function studyScreen(mode) {
   const original = mode==='original';
   const headingHtml = original?
     heading('ORIGINAL LANGUAGES','원전분해','히브리어와 헬라어의 단어별 뜻과 문법을 살펴봐요.'):
     heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.');
   const source = studySource(mode);
-  if (!source) {
-    const file = original?'원전분해.sdb':'만나주석.cdb';
-    return headingHtml+'<section class="card stack spaced"><p>'+file+' 파일을 가져오면 여기서 볼 수 있어요.</p>'+
-      '<button class="btn primary" data-nav="settings" data-import-link>'+(original?'원어':'주석')+' 파일 가져오기</button></section>';
+  if (!source && !original) {
+    return headingHtml+'<section class="card stack spaced"><p>만나주석.cdb 파일을 가져오면 여기서 볼 수 있어요.</p>'+
+      '<button class="btn primary" data-nav="settings" data-import-link>주석 파일 가져오기</button></section>';
   }
   const selection = studySelection[mode];
-  const availableBooks = books.filter(([code])=>source.verses[code]);
-  const requested = selection.location ?? state.reader;
-  const book = source.verses[requested.book]?requested.book:availableBooks[0][0];
-  const chapters = source.verses[book];
-  const chapter = Object.hasOwn(chapters,requested.chapter)?requested.chapter:Number(Object.keys(chapters)[0]);
-  const entries = chapters[chapter];
-  const verse = book===requested.book && chapter===requested.chapter && entries[requested.verse]?requested.verse:undefined;
+  const firstBook = books.find(([code])=>studyBookChapters(mode,code))?.[0];
+  const {book,chapter,verse} = selection.location ?? (studyBookChapters(mode,state.reader.book)?.[state.reader.chapter]
+    ? state.reader
+    : {book:firstBook ?? state.reader.book,chapter:Number(Object.keys(studyBookChapters(mode,firstBook) ?? {})[0] ?? 1)});
+  const entries = source?.verses[book]?.[chapter] ?? {};
   selection.location = {book,chapter,verse};
   const layoutPicker = original?'<nav class="settings-tabs original-layout-tabs" aria-label="원전분해 보기 방식">'+
     Object.entries(originalLayouts).map(([layout,label])=>'<button type="button" data-original-layout="'+layout+'" aria-pressed="'+
@@ -964,18 +1002,34 @@ function studyScreen(mode) {
   return headingHtml+
     '<div class="reader-controls commentary-controls">'+bookPickerField(book)+
       readerPickerField('장·절',chapter+'장'+(verse?' '+verse+'절':''),'jump-chapter','장·절 이동')+'</div>'+
-    layoutPicker+'<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
+    layoutPicker+(original && originalLayout==='words' && !source?
+      '<section class="card stack spaced"><p>단어별 풀이를 보려면 원전분해.sdb 파일을 추가해 주세요.</p>'+
+      '<button class="btn primary" data-nav="settings" data-import-link>원어 파일 가져오기</button></section>':
+      '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>');
 }
 function studyPassage(mode,book,chapter,entries) {
   const original = mode==='original';
-  const verses = Object.entries(entries).filter(([verse,body])=>Number(verse)>0 && body);
+  const sources = original && originalLayout!=='words'?originalPassageSources(book,chapter):undefined;
+  const missingFiles = sources?[!sources.sourceId && sources.label+'.bdb',!sources.translationId && '한국어직역.bdb'].filter(Boolean):[];
+  const verseNumbers = [...new Set([entries,sources?.source,sources?.translation].flatMap(chapterVerses=>
+    Object.entries(chapterVerses ?? {}).filter(([verse,text])=>Number(verse)>0 && text).map(([verse])=>verse)))].sort((a,b)=>a-b);
+  const translationLinks = sources?.translationId && !Object.values(sources.translation ?? {}).some(Boolean)?
+    availableChapters(sources.translationId).slice(0,2).map(key=>{
+      const [code,number] = key.split('/');
+      return '<button type="button" class="btn" data-original-chapter="'+key+'">'+esc(titles[code])+' '+number+'장</button>';
+    }).join(''):'';
   return '<header class="commentary-heading"><div><h2>'+esc(titles[book])+' '+chapter+'장</h2>'+
-    '<p class="muted">'+(original?(originalLayout==='words'?'절별 원어 자료':'자료에 있는 단어 뜻을 원문 순서대로 보여줘요.'): '절별 주석')+'</p></div></header>'+
-    (verses.map(([verse,body])=>'<section class="commentary-verse"><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
+    '<p class="muted">'+(sources?sources.label+' 원문 · 한국어 직역':original?'절별 원어 자료':'절별 주석')+'</p></div></header>'+
+    (missingFiles.length?'<div class="original-source-note"><p>'+missingFiles.join(', ')+' 파일을 추가하면 가져온 본문을 볼 수 있어요.</p>'+
+      '<button type="button" class="text-action" data-nav="settings" data-import-link>자료 추가 '+icon('arrow')+'</button></div>':'')+
+    (translationLinks?'<div class="original-source-note"><p>이 장은 가져온 한국어 직역 파일에 없어요. 수록된 장으로 이동할 수 있어요.</p>'+
+      '<div class="original-translation-links">'+translationLinks+'</div></div>':'')+
+    (verseNumbers.map(verse=>'<section class="commentary-verse"'+
+      (Number(verse)<=500?' data-reading-verse="'+verse+'"':'')+'><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
       (Number(verse)>500?'참고 항목 '+verse:verse+'절')+'</h3>'+
       (Number(verse)<=500?'<button type="button" class="text-action" data-study-return="'+verse+'" aria-label="'+verse+'절 성경 본문 보기">본문 보기 '+icon('arrow')+'</button>':'')+'</div>'+
-      (original?'<div class="original-body">'+originalBody(body)+'</div>':
-        '<div class="commentary-copy">'+commentaryParagraphs(body).join('')+'</div>')+
+      (original?'<div class="original-body">'+originalVerseReading(entries[verse] ?? '',verse,sources)+'</div>':
+        '<div class="commentary-copy">'+commentaryParagraphs(entries[verse]).join('')+'</div>')+
       '</section>').join('') || '<p class="empty">이 장에 등록된 자료가 없어요.</p>');
 }
 function chapterNumbers(book) {
@@ -1500,7 +1554,51 @@ function chooseMenuOrderItem(route) {
     choice.querySelector('.menu-order-position').textContent = position || '';
   }
 }
-function render() {
+function readingLocation(screen) {
+  return screen==='bible'?(state.reader.edition?state.reader:undefined):studySelection[screen]?.location;
+}
+function readingTop(screen) {
+  const headerBottom = document.querySelector('.top').getBoundingClientRect().bottom;
+  const controlsBottom = screen==='bible'?main.querySelector('.reader-controls')?.getBoundingClientRect().bottom:0;
+  return Math.max(headerBottom,controlsBottom ?? 0);
+}
+function currentReadingPosition(useSelection = false) {
+  const location = readingLocation(view);
+  if (!location) return;
+  const {book,chapter} = location;
+  const selected = useSelection && view==='bible'?chosen.values().next().value:undefined;
+  if (selected) return readRef(selected);
+  if (readingArrival?.book===book && readingArrival.chapter===chapter &&
+      Math.abs(readingArrival.scrollTop-document.scrollingElement.scrollTop)<=2) return readingArrival;
+  const rows = [...main.querySelectorAll('[data-reading-verse]')];
+  const top = readingTop(view);
+  const row = rows.find(element=>element.getBoundingClientRect().bottom>top+12) ?? rows.at(-1);
+  return {book,chapter,verse:row?Number(row.dataset.readingVerse):location.verse};
+}
+function syncBiblePosition({book,chapter,verse}) {
+  const choices = new Set([state.reader.edition,...state.comparison,...Object.keys(editions)]);
+  const edition = [...choices].find(id=>data[id]?.[book]?.[chapter]);
+  if (!edition) return notify('가져온 역본에서 이 장을 찾을 수 없어요.');
+  if (edition!==state.reader.edition || book!==state.reader.book || chapter!==state.reader.chapter) {
+    setReader([edition,book,chapter,verse].join('/'));
+  }
+  if (verse===undefined) return;
+  if (data[edition][book][chapter][verse]) {
+    jumpTo = 'v-'+verse;
+    return;
+  }
+  const comparison = state.comparison.find(id=>data[id]?.[book]?.[chapter]?.[verse]);
+  if (comparison) jumpTo = 'compare-v-'+comparison+'-'+verse;
+  else notify('가져온 역본에서 해당 절을 찾을 수 없어요.');
+}
+function rememberReadingArrival(verse) {
+  const location = readingLocation(view);
+  if (location) {
+    const {book,chapter} = location;
+    readingArrival = {book,chapter,verse,scrollTop:document.scrollingElement.scrollTop};
+  }
+}
+function render(studyFromSelection = false) {
   const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
@@ -1512,12 +1610,18 @@ function render() {
   let studyJump;
   if (changed) {
     if (modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
-    if (Object.hasOwn(studySelection,next) && view==='bible') {
-      const first = chosen.values().next().value;
-      const selected = first?readRef(first):state.reader;
-      studySelection[next].location = selected;
-      studyJump = selected.verse;
+    if (Object.hasOwn(studySelection,next) || (next==='bible' && !jumpTo)) {
+      const position = currentReadingPosition(studyFromSelection);
+      if (position && next==='bible') syncBiblePosition(position);
+      else if (position) {
+        const {book,chapter,verse} = position;
+        studySelection[next].location = {book,chapter,verse};
+      }
+      if (Object.hasOwn(studySelection,next)) studyJump = studySelection[next].location?.verse;
+    } else if (studySelection[view]) {
+      studySelection[view].location = currentReadingPosition();
     }
+    readingArrival = undefined;
     chosen.clear();
     if (next==='reading') trackerBook = state.reader.book;
   }
@@ -1549,6 +1653,7 @@ function render() {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
+  main.style.removeProperty('--study-arrival-room');
   main.innerHTML = screens[view](prayerId || editorId);
   if (openSections.length) {
     for (const summary of main.querySelectorAll('.day-detail > summary')) {
@@ -1563,15 +1668,36 @@ function render() {
     if (button.dataset.nav===navView) button.setAttribute('aria-current','page');
     else button.removeAttribute('aria-current');
   });
-  if (changed) window.scrollTo(0,0);
-  if (view==='bible' && jumpTo) {
-    showVerseArrival(jumpTo);
-    jumpTo = undefined;
+  let arrival = view==='bible'?jumpTo:undefined;
+  if (view==='bible') jumpTo = undefined;
+  if (studyJump!==undefined) {
+    const id = 'study-v-'+studyJump;
+    if (studyJump>0 && studyJump<=500 && document.getElementById(id)) arrival = id;
   }
-  if (studyJump && studySource(view)) {
-    if (studySelection[view].location.verse===studyJump) showVerseArrival('study-v-'+studyJump);
-    else notify('선택한 절의 자료가 없어요.');
+  if (arrival) {
+    showVerseArrival(arrival);
+  } else if (changed) {
+    window.scrollTo(0,0);
+    if (studyJump!==undefined) {
+      rememberReadingArrival(studyJump);
+      if (studySource(view)) notify('해당 절의 자료가 없어요.');
+    }
   }
+}
+function alignVerseArrival(verse) {
+  const page = document.scrollingElement;
+  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-readingTop(view)-12);
+  if (studySelection[view]) {
+    const mainEnd = main.getBoundingClientRect().bottom+page.scrollTop;
+    const room = Math.max(0,Math.ceil(top+page.clientHeight-Math.min(mainEnd,page.scrollHeight)));
+    if (room) {
+      const existing = Number.parseFloat(main.style.getPropertyValue('--study-arrival-room')) || 0;
+      main.style.setProperty('--study-arrival-room',(existing+room)+'px');
+    }
+  }
+  const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
+  window.scrollTo(0,Math.min(top,maxScroll));
+  rememberReadingArrival(Number(verse.id.split('-').at(-1)));
 }
 function showVerseArrival(id) {
   const verse = document.getElementById(id);
@@ -1584,14 +1710,13 @@ function showVerseArrival(id) {
     verse.addEventListener('blur',()=>verse.classList.remove('verse-arrival-focus'),{once:true});
   }
   verse.focus({preventScroll:true});
-  const page = document.scrollingElement;
-  const headerHeight = document.querySelector('.top').offsetHeight;
-  const controlsHeight = view==='bible' ? (main.querySelector('.reader-controls')?.offsetHeight ?? 0) : 0;
-  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-headerHeight-controlsHeight-12);
-  const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
-  window.scrollTo(0,Math.min(top,maxScroll));
+  alignVerseArrival(verse);
   arrivedVerse = verse;
   verse.classList.add('verse-arrival');
+  window.requestAnimationFrame(()=>{
+    if (arrivedVerse===verse && verse.isConnected &&
+        Math.abs(document.scrollingElement.scrollTop-readingArrival?.scrollTop)<=2) alignVerseArrival(verse);
+  });
   verseArrivalTimer = setTimeout(()=>{
     verse.classList.remove('verse-arrival');
     arrivedVerse = undefined;
@@ -1936,7 +2061,7 @@ function bookPickerContext() {
   const {edition,book} = state.reader;
   const selection = studySelection[view];
   return selection
-    ? {book:selection.location?.book,source:studySource(view)?.verses,selection}
+    ? {book:selection.location?.book,source:Object.fromEntries(books.map(([code])=>[code,studyBookChapters(view,code)])),selection}
     : {book,source:data[edition],edition};
 }
 function pickerOptions(items,active,attribute) {
@@ -2015,6 +2140,16 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (view==='original' && validChapter(target.originalChapter)) {
+    const [book,chapter] = target.originalChapter.split('/');
+    const verses = originalPassageSources(book,Number(chapter)).translation;
+    if (!verses) return;
+    const verse = Number(Object.keys(verses).find(number=>Number(number)>0 && verses[number]));
+    studySelection.original.location = {book,chapter:Number(chapter),verse};
+    render();
+    showVerseArrival('study-v-'+verse);
+    return;
+  }
   if (view==='original' && Object.hasOwn(originalLayouts,target.originalLayout)) {
     originalLayout = target.originalLayout;
     render();
@@ -2048,7 +2183,8 @@ document.addEventListener('click',event => {
   if (target.nav) {
     if (modal.contains(button)) modal.close();
     if (target.nav==='settings' && 'importLink' in target) settingsSection = 'library';
-    navigate(target.nav);
+    const studyFromSelection = Object.hasOwn(studySelection,target.nav) && button.closest('.study-shortcuts');
+    navigate(target.nav,undefined,Boolean(studyFromSelection));
     if (target.nav==='bible') refreshLocalEditions();
     if ('importLink' in target) {
       const heading = document.getElementById('local-library-heading');
@@ -2869,6 +3005,7 @@ window.addEventListener('hashchange',() => {
 window.addEventListener('popstate',() => {
   if (activeRoute!==location.hash.slice(1)) render();
 });
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 try {
   db = await openDB();
   const [saved,imported,font] = await Promise.all([

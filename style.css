@@ -724,6 +724,8 @@ dialog .dialog-close.btn:not(.primary) {
 }
 .compare-toggle svg { width: 19px; }
 .commentary-controls { margin-top: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#main.study-view { min-height: 0; }
+#main.study-view::after { content: ""; display: block; height: var(--study-arrival-room, 0px); }
 .commentary-page { padding: clamp(12px, 4vw, 20px); }
 .commentary-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .commentary-heading { padding-bottom: 12px; }
@@ -749,6 +751,16 @@ dialog .dialog-close.btn:not(.primary) {
   padding: 7px 9px; background: var(--soft); border-radius: 8px;
   font-size: calc(var(--reading-size) * 1.12); letter-spacing: normal;
 }
+.original-caption { margin: 7px 2px 4px; color: var(--accent-ink); font-size: .82em; }
+.original-breakdown { margin: 0 0 14px; padding-inline-start: 1.9em; }
+.original-breakdown li::marker { color: var(--muted); font-size: .78em; }
+.original-source-note {
+  padding: 9px 11px; margin-bottom: 10px; border-radius: 8px;
+  background: var(--soft); color: var(--muted); font-size: .875rem;
+}
+.original-source-note .text-action { color: var(--accent-ink); }
+.original-translation-links { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 6px; }
+.commentary-page .original-body .original-missing { color: var(--muted); font-size: .875rem; }
 .original-code {
   display: inline-block; margin-inline: 2px; min-height: 32px; padding: 3px 8px;
   border: 1px solid var(--line); border-radius: 8px;
