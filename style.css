@@ -358,9 +358,8 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
   padding: 6px 0; border-bottom: 1px solid var(--line);
 }
 .reading-stepper strong { font-size: 0.875rem; font-weight: 650; }
-.menu-order-list { margin: 0; padding: 0; list-style: none; }
-.menu-order-list li:last-child { border-bottom: 0; }
-.menu-order-actions { display: flex; gap: 6px; }
+.menu-order-choices { gap: 6px; }
+.menu-order-choices .btn { justify-content: space-between; }
 .stepper-controls { display: grid; grid-template-columns: 44px minmax(55px,auto) 44px; align-items: center; text-align: center; }
 .stepper-controls output { font-size: 0.8125rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .step-button {
@@ -445,12 +444,12 @@ select, .filters .pill { font-size: 0.875rem; }
 .post-writing { padding-inline: clamp(8px, 2.3vw, 14px); }
 .compare-choice { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 11px; overflow-wrap: anywhere; }
 .compare-choice input { flex: 0 0 auto; accent-color: var(--accent-ink); }
-.compare-order {
+.compare-order, .menu-order-position {
   display: grid; place-items: center; margin-inline-start: auto; min-width: 24px; height: 24px;
   padding-inline: 5px; border-radius: 999px; color: var(--accent-ink); background: var(--accent-soft);
   font-size: .75rem; font-weight: 700;
 }
-.compare-order:empty { display: none; }
+.compare-order:empty, .menu-order-position:empty { display: none; }
 .chapter-count { display: inline-block; color: var(--accent-ink); font-size: 0.75rem; font-weight: 650; white-space: nowrap; }
 .chapter-check .btn[aria-pressed="true"] {
   color: var(--accent-ink); background: var(--accent-soft); border-color: var(--line);

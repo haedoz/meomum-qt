@@ -1197,27 +1197,36 @@ function settingsScreen() {
     '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>';
 }
 function menuOrderSettings() {
-  const rows = state.menuOrder.map((route,index)=>{
-    const label = esc(menuItems.get(route).textContent.trim());
-    return '<li class="reading-stepper"><strong>'+label+'</strong><div class="menu-order-actions">'+
-      '<button type="button" class="step-button" data-menu-move="'+route+'" data-direction="-1" aria-label="'+label+' 위로 이동" '+(index===0?'disabled':'')+'>↑</button>'+
-      '<button type="button" class="step-button" data-menu-move="'+route+'" data-direction="1" aria-label="'+label+' 아래로 이동" '+(index===state.menuOrder.length-1?'disabled':'')+'>↓</button>'+
-      '</div></li>';
-  }).join('');
+  const order = state.menuOrder.map(route=>esc(menuItems.get(route).textContent.trim())).join(' · ');
   return '<div class="section-head"><h2>메뉴 순서</h2></div><section class="card stack">'+
-    '<p class="muted">화살표를 눌러 순서를 바꾸면 메뉴바에 바로 반영돼요.</p><ol class="menu-order-list" role="list">'+rows+'</ol></section>';
+    '<p class="muted">현재 순서</p><p>'+order+'</p>'+
+    '<button type="button" class="btn" data-action="choose-menu-order" aria-haspopup="dialog">순서 바꾸기</button></section>';
 }
-function moveMenuItem(button) {
-  const {menuMove:route,direction} = button.dataset;
-  const order = state.menuOrder;
-  const from = order.indexOf(route), to = from+Number(direction);
-  if (from<0 || to<0 || to>=order.length) return;
-  [order[from],order[to]] = [order[to],order[from]];
-  save();
-  render();
-  const control = '[data-menu-move="'+route+'"]';
-  (main.querySelector(control+'[data-direction="'+direction+'"]:not(:disabled)') ??
-    main.querySelector(control+':not(:disabled)'))?.focus({preventScroll:true});
+function showMenuOrderPicker() {
+  pendingMenuOrder = [];
+  const choices = state.menuOrder.map(route=>
+    '<button type="button" class="btn" data-menu-choice="'+route+'" aria-pressed="false">'+
+    esc(menuItems.get(route).textContent.trim())+'<span class="menu-order-position"></span></button>').join('');
+  dialog('메뉴 순서 바꾸기','<p class="muted">원하는 순서대로 메뉴를 눌러 주세요. 모두 고르면 자동으로 저장돼요.</p>'+
+    '<div class="stack menu-order-choices" role="group" aria-label="메뉴 순서">'+choices+'</div>');
+}
+function chooseMenuOrderItem(route) {
+  const index = pendingMenuOrder.indexOf(route);
+  if (index<0) pendingMenuOrder.push(route);
+  else pendingMenuOrder.splice(index,1);
+  if (pendingMenuOrder.length===menuItems.size) {
+    state.menuOrder = [...pendingMenuOrder];
+    modal.close();
+    save();
+    render();
+    main.querySelector('[data-action="choose-menu-order"]')?.focus({preventScroll:true});
+    return;
+  }
+  for (const choice of modal.querySelectorAll('[data-menu-choice]')) {
+    const position = pendingMenuOrder.indexOf(choice.dataset.menuChoice)+1;
+    choice.setAttribute('aria-pressed',String(Boolean(position)));
+    choice.querySelector('.menu-order-position').textContent = position || '';
+  }
 }
 function render() {
   const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
@@ -1522,9 +1531,10 @@ function validatedBackup(payload) {
   result.readingSize = input.readingSize;
   return migrate(result);
 }
-let pendingImport, pendingComparison = [];
+let pendingImport, pendingComparison = [], pendingMenuOrder = [];
 const actions = {
   'close-bible-search'() { closeReaderSearch(true); },
+  'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
   'close-dialog'() { modal.close(); },
@@ -1723,7 +1733,7 @@ document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
   const target = button.dataset;
-  if (target.menuMove) return moveMenuItem(button);
+  if (target.menuChoice) return chooseMenuOrderItem(target.menuChoice);
   if ('recordOption' in target) return chooseRecordOption(button);
   if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
   if (target.pickEdition) return chooseEdition(target.pickEdition);
