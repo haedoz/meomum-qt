@@ -581,14 +581,28 @@ function availableChapters(edition) {
 const searchAliases = '창 출 레 민 신 수 삿 룻 삼상 삼하 왕상 왕하 대상 대하 스 느 에 욥 시 잠 전 아 사 렘 애 겔 단 호 욜 암 옵 욘 미 나 합 습 학 슥 말 마 막 눅 요 행 롬 고전 고후 갈 엡 빌 골 살전 살후 딤전 딤후 딛 몬 히 약 벧전 벧후 요일 요이 요삼 유 계'.split(' ');
 const searchBooks = Object.fromEntries(books.flatMap(([code,title],index)=>[[title,code],[searchAliases[index],code],[code.toLowerCase(),code]]));
 const searchText = text => text.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+function parseChapterVerse(query) {
+  const match = query.match(/^(\d+)(?:(?:\s*:\s*|\s+|\s*장\s*:?\s*)(\d+)\s*절?|\s*장)?$/);
+  if (!match) return;
+  return {chapter:Number(match[1]),verse:match[2]===undefined?undefined:Number(match[2])};
+}
+function parseBibleReference(query) {
+  const normalized = query.normalize('NFKC').trim();
+  const position = parseChapterVerse(normalized);
+  if (position) return position;
+  const match = normalized.match(/^(.+?)\s*(\d.*)$/);
+  const alias = match?.[1].trim().toLowerCase();
+  if (!Object.hasOwn(searchBooks,alias)) return;
+  const namedPosition = parseChapterVerse(match[2]);
+  if (namedPosition) return {...namedPosition,book:searchBooks[alias]};
+}
 function searchBible(edition,query) {
   const source = data[edition] ?? {};
-  const match = query.normalize('NFKC').trim().match(/^([^\d]+?)\s*(\d+)\s*장?(?:(?:\s*:\s*|\s+)(\d+)\s*절?)?$/);
-  const book = match && searchBooks[match[1].trim().toLowerCase()];
-  if (book) {
-    const chapter = Number(match[2]);
+  const position = parseBibleReference(query);
+  if (position) {
+    const {book = state.reader.book,chapter} = position;
     const verses = source[book]?.[chapter] ?? {};
-    const verse = Number(match[3] ?? Object.keys(verses)[0]);
+    const verse = position.verse ?? (verses[1]?1:Object.keys(verses).find(number=>verses[number]));
     return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],limited:false};
   }
   const needle = searchText(query), keys = [];
@@ -657,14 +671,12 @@ function showChapterJump() {
 }
 function jumpToChapter(form) {
   const input = form.elements.chapter;
-  const [,chapterNumber,verseNumber] = input.value.normalize('NFKC').trim()
-    .match(/^(\d+)(?:(?:\s*:\s*|\s+)(\d+)|\s*장)?$/) ?? [];
-  const chapter = Number(chapterNumber);
+  const {chapter,verse:requestedVerse} = parseChapterVerse(input.value.normalize('NFKC').trim()) ?? {};
   const {edition,book,source,selection} = bookPickerContext();
   const verses = source?.[book]?.[chapter] ?? {};
   const available = Object.keys(verses).filter(number=>verses[number] &&
     (!selection || (Number(number)>0 && Number(number)<=500)));
-  const verse = Number(verseNumber ?? (available.includes('1')?'1':available[0]));
+  const verse = Number(requestedVerse ?? (available.includes('1')?'1':available[0]));
   if (!available.includes(String(verse))) {
     form.querySelector('[data-chapter-error]').textContent = '이 자료에서 열 수 있는 장·절 번호를 입력해 주세요.';
     input.focus();
