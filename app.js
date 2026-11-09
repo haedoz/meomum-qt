@@ -27,13 +27,19 @@ document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = icon(el.da
 const main = document.querySelector('#main');
 const modal = document.querySelector('#modal');
 const toast = document.querySelector('#toast');
+const readerSearchForm = document.querySelector('#reader-search');
+const readerSearchInput = readerSearchForm.elements.query;
+const readerSearchButton = readerSearchForm.querySelector('.bible-search-button');
+const readerSearchClose = readerSearchForm.querySelector('.reader-search-close');
+const readerSearchPanel = readerSearchForm.querySelector('#reader-search-results');
+const topBar = document.querySelector('.top-inner');
 const titles = Object.fromEntries(books);
 const testamentByBook = Object.fromEntries(books.map(([book],index)=>[book,index<39?'old':'new']));
 const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
-let bibleQuery = "", bibleSearchTimer, recordYear = "";
+let bibleSearchTimer, recordYear = "";
 const localLanguages = {};
 let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
@@ -596,19 +602,26 @@ function searchBible(edition,query) {
   return {keys,limited:false};
 }
 function showReaderSearch() {
-  const {edition} = state.reader;
-  if (view!=='bible' || !edition) return;
-  const {comparison} = state;
-  const labels = [edition,...comparison].map(editionLabel).map(esc).join(' · ');
-  dialog('성경 검색','<div class="reader-search">'+
-    '<div class="reader-search-input"><input name="query" type="search" enterkeyhint="search" maxlength="120" '+
-    'aria-label="검색어 또는 구절 주소" placeholder="단어, 문장 또는 마 4:4" value="'+esc(bibleQuery)+'" autofocus>'+
-    '<button type="submit" class="btn primary">검색</button></div>'+
-    '<p class="muted">검색 대상 · '+labels+'</p></div>'+
-    '<div id="reader-search-results" aria-live="polite">'+readerSearchResults(edition,comparison)+'</div>','bible-search');
+  topBar.classList.add('search-open');
+  readerSearchInput.hidden = false;
+  readerSearchClose.hidden = false;
+  readerSearchButton.setAttribute('aria-expanded','true');
+  readerSearchButton.setAttribute('aria-label','검색 실행');
+  readerSearchInput.focus();
+  updateReaderSearch();
+}
+function closeReaderSearch(restoreFocus = false) {
+  clearTimeout(bibleSearchTimer);
+  topBar.classList.remove('search-open');
+  readerSearchInput.hidden = true;
+  readerSearchClose.hidden = true;
+  readerSearchPanel.hidden = true;
+  readerSearchButton.setAttribute('aria-expanded','false');
+  readerSearchButton.setAttribute('aria-label','성경 검색 열기');
+  if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
 function readerSearchResults(edition,comparison) {
-  const query = bibleQuery.trim();
+  const query = readerSearchInput.value.trim();
   if (!query) return '';
   return [edition,...comparison].map(id=>{
     const {keys,limited} = searchBible(id,query);
@@ -620,14 +633,16 @@ function readerSearchResults(edition,comparison) {
 }
 function updateReaderSearch() {
   clearTimeout(bibleSearchTimer);
-  const results = modal.open && modal.querySelector('#reader-search-results');
-  if (results) results.innerHTML = readerSearchResults(state.reader.edition,state.comparison);
+  if (readerSearchInput.hidden || readerSearchForm.hidden) return;
+  const results = readerSearchResults(state.reader.edition,state.comparison);
+  readerSearchPanel.innerHTML = results;
+  readerSearchPanel.hidden = !results;
+  readerSearchPanel.scrollTop = 0;
 }
 function visitSearchResult(key) {
   const {edition,book,chapter,verse} = readRef(key);
-  bibleQuery = '';
-  clearTimeout(bibleSearchTimer);
-  modal.close();
+  readerSearchInput.value = '';
+  closeReaderSearch();
   if (!state.comparison.includes(edition) || !data[state.reader.edition]?.[book]?.[chapter]) return visit(key);
   const reader = state.reader;
   setReader([reader.edition,book,chapter,verse].join('/'));
@@ -1169,7 +1184,7 @@ function render() {
   const changed = activeRoute!==route;
   let studyJump;
   if (changed) {
-    if (next!=='bible' && modal.open && ['bible-search','chapter-jump'].includes(modal.firstElementChild?.name)) modal.close();
+    if (next!=='bible' && modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
     if (Object.hasOwn(studySelection,next) && view==='bible') {
       const first = chosen.values().next().value;
       const selected = first?readRef(first):state.reader;
@@ -1190,7 +1205,8 @@ function render() {
   main.classList.toggle('journal-view',view==='journal');
   main.classList.toggle('today-view',view==='today');
   document.querySelector('.back-button').hidden = view==='today' || (view==='bible' && !history.state?.qtPrevious);
-  document.querySelector('.bible-search-button').hidden = view!=='bible' || !state.reader.edition;
+  readerSearchForm.hidden = view!=='bible' || !state.reader.edition;
+  if (readerSearchForm.hidden && !readerSearchInput.hidden) closeReaderSearch();
   document.querySelector('.bottom').hidden = view==='journal' || view==='prayer-edit';
   applyDisplay();
   if (view==='today' || view==='calendar') {
@@ -1438,7 +1454,7 @@ function validatedBackup(payload) {
 }
 let pendingImport;
 const actions = {
-  'bible-search':showReaderSearch,
+  'close-bible-search'() { closeReaderSearch(true); },
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
   'close-dialog'() { modal.close(); },
@@ -1746,16 +1762,24 @@ main.addEventListener('input',event => {
     document.querySelector('#record-list').innerHTML = recordList();
   }
 });
-modal.addEventListener('input',event=>{
-  if (event.target.form?.name!=='bible-search') return;
-  bibleQuery = event.target.value;
+readerSearchInput.addEventListener('input',event=>{
   clearTimeout(bibleSearchTimer);
   if (!event.isComposing) bibleSearchTimer = setTimeout(updateReaderSearch,180);
 });
-modal.addEventListener('compositionend',event=>{
-  if (event.target.form?.name!=='bible-search') return;
-  bibleQuery = event.target.value;
+readerSearchInput.addEventListener('compositionend',updateReaderSearch);
+readerSearchForm.addEventListener('submit',event=>{
+  event.preventDefault();
+  if (readerSearchInput.hidden) return showReaderSearch();
   updateReaderSearch();
+  readerSearchInput.blur();
+});
+document.addEventListener('pointerdown',event=>{
+  if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target)) closeReaderSearch();
+});
+document.addEventListener('keydown',event=>{
+  if (event.key!=='Escape' || readerSearchInput.hidden || modal.open) return;
+  event.preventDefault();
+  closeReaderSearch(true);
 });
 modal.addEventListener('submit',event => {
   const form = event.target;
@@ -1763,13 +1787,6 @@ modal.addEventListener('submit',event => {
   if (form.name==='chapter-jump') {
     event.preventDefault();
     return jumpToChapter(form);
-  }
-  if (form.name==='bible-search') {
-    event.preventDefault();
-    bibleQuery = form.elements.query.value;
-    updateReaderSearch();
-    form.elements.query.blur();
-    return;
   }
   if ('thought' in form.dataset) {
     event.preventDefault();
