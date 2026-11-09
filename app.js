@@ -13,6 +13,7 @@ const icons = {
   comment:'<path d="M20 11a7 7 0 0 1-7 7H7l-4 3v-9a7 7 0 0 1 7-7h3a7 7 0 0 1 7 6Z"/><path d="M8 11h7m-7 3h4"/>',
   note:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6m-6 4h5"/>',
   left:'<path d="m15 5-7 7 7 7"/>',
+  edit:'<path d="m4 16 11-11 4 4L8 20H4v-4Zm9-9 4 4"/>',
   right:'<path d="m9 5 7 7-7 7"/>',
   check:'<path d="m5 12 4 4L19 6"/>',
   close:'<path d="m6 6 12 12M18 6 6 18"/>',
@@ -905,7 +906,9 @@ function verseActions() {
   const marker = erase?selected[0]:{style:state.markerStyle,color:state.markerColor};
   const label = erase?'말씀 표시 해제':markStyles[marker.style]+' 바로 적용';
   return '<div class="selection verse-actions" aria-label="선택한 구절 메뉴"><div class="verse-actions-top">'+
-    '<span class="compact">'+chosen.size+'절 선택</span><button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div>'+
+    '<span class="compact">'+chosen.size+'절 선택</span><div class="item-actions">'+
+    '<button type="button" class="btn" data-action="copy-verses">복사</button>'+
+    '<button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div></div>'+
     '<div class="verse-actions-row"><div class="marker-group"><button class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
     '<button class="icon-action marker-options" data-action="highlight" aria-label="형광펜 색상 및 밑줄 옵션">⌄</button></div>'+
     '<button class="btn" data-action="note">메모</button><button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
@@ -1415,6 +1418,21 @@ const actions = {
     showVerseNote(key,refs.length===1?undefined:refs.map(verseNumber));
   },
   'save-note'() { saveVerseNote(); },
+  async 'copy-verses'() {
+    const refs = [...chosen].filter(ref=>verseText(ref)).sort((a,b)=>verseNumber(a)-verseNumber(b));
+    if (!refs.length) return notify('복사할 구절을 선택해 주세요.');
+    const first = refs[0];
+    const citation = selectionReference(first,refs.map(verseNumber))+' · '+editionLabel(readRef(first).edition);
+    const verses = refs.map(ref=>verseNumber(ref)+' '+verseText(ref));
+    const text = citation+'\n'+verses.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      notify('선택한 구절을 복사했어요.');
+    } catch {
+      dialog('구절 복사','<p class="muted">아래 본문을 선택해 복사해 주세요.</p>'+
+        editorField('선택한 구절','verses',text,'textarea','readonly rows="6"'));
+    }
+  },
   attach() {
     const entry = journalEntry(dateKey());
     entry.verses = [...new Set([...entry.verses,...chosen])];
@@ -2023,7 +2041,7 @@ function editorField(label,name,value='',type='text',extra='') {
 }
 function editorActions(kind,item) {
   return '<div class="row">'+(item?'<button type="button" class="btn" data-delete="'+kind+'">삭제</button>':'')+
-    '<button class="btn primary" type="button" data-action="save-'+kind+'">저장</button></div>';
+    '<button class="btn primary'+(item?'':' block')+'" type="button" data-action="save-'+kind+'">저장</button></div>';
 }
 function thoughtText(item) {
   return [item.title,item.body,item.answer].filter(Boolean).join('\n\n');
@@ -2121,7 +2139,8 @@ function newYearScreen() {
   return heading('YEARLY VERSES','새해 말씀','한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.')+
     '<button class="btn primary block spaced" data-action="add-year">＋ 새해 말씀 추가</button>'+
     (years.map(year=>'<div class="section-head"><h2>'+year+'년</h2></div>'+
-      state.newYear.filter(item=>item.year===year).map(item=>'<section class="card"><div class="row"><h3 class="item-title">'+esc(item.title)+'</h3><button class="btn" data-year-edit="'+item.id+'">편집</button></div>'+
+      state.newYear.filter(item=>item.year===year).map(item=>'<section class="card"><div class="row"><h3 class="item-title">'+esc(item.title)+'</h3>'+
+        '<button type="button" class="icon-action" data-year-edit="'+item.id+'" aria-label="새해 말씀 편집" title="새해 말씀 편집">'+icon('edit')+'</button></div>'+
         (item.day?'<p class="muted">'+esc(item.day)+'</p>':'')+item.refs.map(ref=>'<div class="year-verse"><button class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button><p class="record-text">'+esc(savedVerseText(ref))+'</p></div>').join('')+
         (item.note?'<p class="record-text">'+esc(item.note)+'</p>':'')+'</section>').join('')
     ).join('') || '<p class="empty spaced">성경에서 구절을 골라 담거나, 기억하고 싶은 말씀을 직접 적어보세요.</p>');

@@ -1,5 +1,5 @@
-const version = 'meomum-pages-v52';
-const paths = ['./','./app.js?v=52','./books.js','./bdb.js?v=35','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=50','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const version = 'meomum-pages-v54';
+const paths = ['./','./app.js?v=54','./books.js','./bdb.js?v=35','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=50','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(version).then(cache => cache.addAll(paths)));
 });
