@@ -27,6 +27,7 @@ const main = document.querySelector('#main');
 const modal = document.querySelector('#modal');
 const toast = document.querySelector('#toast');
 const titles = Object.fromEntries(books);
+const testamentByBook = Object.fromEntries(books.map(([book],index)=>[book,index<39?'old':'new']));
 const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
@@ -505,6 +506,16 @@ function todayScreen() {
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
 }
+function booksInTestament(availableBooks,testament) {
+  return availableBooks.filter(([book])=>testamentByBook[book]===testament);
+}
+function bookTestamentButtons(availableBooks,book) {
+  return '<div class="book-testament" role="group" aria-label="성경책 선택 범위">'+
+    [['old','구약'],['new','신약']].map(([testament,label])=>
+      '<button type="button" class="btn" data-book-testament="'+testament+'" aria-pressed="'+
+      (testamentByBook[book]===testament)+'" '+(booksInTestament(availableBooks,testament).length?'':'disabled')+
+      '>'+label+'</button>').join('')+'</div>';
+}
 function verseButton(edition,book,chapter,num,content,marker,secondary = false) {
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
   const key = [edition,book,chapter,num].join('/');
@@ -543,7 +554,8 @@ function readerScreen() {
   const atStart = index<=0;
   const atEnd = index>=available.length-1;
   return heading('BIBLE READER','성경 읽기','두 절을 눌러 범위를 고른 뒤, 원하는 절만 더하거나 빼세요.')+readingModes('bible')+readerSearch(edition,comparison)+
-    '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label><label class="field">성경<select data-reader="book">'+options(availableBooks,book)+'</select></label><label class="field">장<select data-reader="chapter">'+options(chapterOptions,chapter)+'</select></label></div>'+
+    bookTestamentButtons(availableBooks,book)+
+    '<div class="reader-controls"><label class="field">번역본<select data-reader="edition">'+options(Object.entries(editions),edition)+'</select></label><label class="field">성경<select data-reader="book">'+options(booksInTestament(availableBooks,testamentByBook[book]),book)+'</select></label><label class="field">장<select data-reader="chapter">'+options(chapterOptions,chapter)+'</select></label></div>'+
     '<div class="reader-options row"><button class="btn compare-toggle" data-action="compare" aria-pressed="'+Boolean(comparison.length)+'" '+(Object.keys(editions).length<2?'disabled':'')+'>'+icon('compare')+'역본 대조</button>'+
       '</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
@@ -719,9 +731,9 @@ function studyScreen(mode) {
   const entries = chapters[chapter];
   const verse = book===requested.book && chapter===requested.chapter && entries[requested.verse]?requested.verse:undefined;
   selection.location = {book,chapter,verse};
-  return headingHtml+
+  return headingHtml+bookTestamentButtons(availableBooks,book)+
     '<div class="reader-controls commentary-controls">'+
-      '<label class="field">성경<select data-study-field="book">'+options(availableBooks,book)+'</select></label>'+
+      '<label class="field">성경<select data-study-field="book">'+options(booksInTestament(availableBooks,testamentByBook[book]),book)+'</select></label>'+
       '<label class="field">장<select data-study-field="chapter">'+studyChapterOptions(chapters,chapter)+'</select></label>'+
       '<label class="field">절<select data-study-field="verse">'+studyVerseOptions(entries,verse)+'</select></label></div>'+
     '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
@@ -1505,10 +1517,25 @@ function stepChapter(offset) {
   render();
   window.scrollTo(0,0);
 }
+function switchBookTestament(button) {
+  if (button.getAttribute('aria-pressed')==='true') return;
+  const testament = button.dataset.bookTestament;
+  const {edition} = state.reader;
+  const selection = studySelection[view];
+  const source = selection ? studySource(view)?.verses : data[edition];
+  const selected = booksInTestament(books,testament).find(([book])=>source?.[book]);
+  if (!selected) return;
+  const [book] = selected;
+  if (selection) selection.location = {book};
+  else setReader([edition,book,Object.keys(source[book])[0],1].join('/'));
+  render();
+  main.querySelector('[data-book-testament="'+testament+'"]')?.focus({preventScroll:true});
+}
 document.addEventListener('click',event => {
   const button = event.target.closest('button');
   if (!button) return;
   const target = button.dataset;
+  if (target.bookTestament) return switchBookTestament(button);
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
   if (target.nav==='bible' && button.closest('.reading-modes') && studySelection[view]) {

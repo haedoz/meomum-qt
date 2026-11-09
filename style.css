@@ -725,7 +725,8 @@ body { min-height: 100vh; min-height: 100dvh; }
 #main.frame { width: min(calc(100% - 2 * var(--page-gutter)), 660px); }
 .reader-search { margin-block: 10px 14px; }
 .reader-search input { min-height: 40px; padding: 6px 9px; font-size: .875rem; }
-.reader-search + #reader-search-results + .reader-controls { margin-top: 10px; }
+.book-testament { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 10px 8px; }
+.book-testament + .reader-controls { margin-top: 8px; }
 @media (hover: none) {
   .reader-search input:focus { font-size: max(16px,.875rem); }
 }
