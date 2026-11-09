@@ -44,6 +44,10 @@ const studySelection = {commentary:{},original:{}};
 let bibleSearchScope = 'all';
 let bibleSearchResults, bibleSearchPage = 0, bibleSearchPageSize = 1;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
+const personalSearchTypes = {all:'모든 종류',journal:'QT 묵상',daily:'말씀 묵상',thought:'생각 노트',
+  prayer:'기도',yearly:'새해 말씀',mark:'구절 메모·표시',bundle:'구절 모음',reading:'묵상 체크'};
+const personalSearchFilters = {type:'all',year:'all'};
+let personalSearchSubmitted = false;
 const selectedSearchVerses = new Set();
 let readerSwipe, ignoreReaderSwipeClickUntil = 0;
 const localLanguages = {};
@@ -68,7 +72,7 @@ const chosen = new Set();
 let pickingIndividualVerses = false;
 const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
-let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all', keyword = '';
+let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
 const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
@@ -310,7 +314,7 @@ function navigate(screen, context) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'today',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records',search:'bible',commentary:'bible',original:'bible'};
   history.replaceState(null,'','#'+(fallback[view] ?? 'today'));
   render();
 }
@@ -632,17 +636,20 @@ function showReaderSearch() {
   readerSearchButton.setAttribute('aria-expanded','true');
   readerSearchButton.setAttribute('aria-label','검색 실행');
   readerSearchInput.focus();
+  if (view==='records') renderPersonalSearch();
 }
 function closeReaderSearch(restoreFocus = false) {
   bibleSearchScope = 'all';
-  if (modal.open && ['search-scope','search-selected'].includes(modal.firstElementChild?.name)) modal.close();
+  personalSearchFilters.type = personalSearchFilters.year = 'all';
+  personalSearchSubmitted = false;
+  if (modal.open && ['search-scope','search-selected','personal-search-filter'].includes(modal.firstElementChild?.name)) modal.close();
   topBar.classList.remove('search-open');
   readerSearchInput.value = '';
   readerSearchInput.hidden = true;
   readerSearchClose.hidden = true;
   clearReaderSearchResults();
   readerSearchButton.setAttribute('aria-expanded','false');
-  readerSearchButton.setAttribute('aria-label','성경 검색 열기');
+  readerSearchButton.setAttribute('aria-label',view==='records'?'기록 검색 열기':'성경 검색 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
 function clearReaderSearchResults() {
@@ -1266,15 +1273,13 @@ function recordPassage(key,verses) {
   return verses.filter(verse=>passage?.[verse]).map(verse=>[verse,passage[verse]]);
 }
 function recordList(rows = recordRows()) {
-  const query = keyword.toLowerCase().trim();
-  const matching = rows.filter(({key,verses,day,mark}) => {
+  const matching = rows.filter(({key,day,mark}) => {
     const {edition,book} = readRef(key);
     const matchesFilter = filter==='all' || (filter==='highlight' && verseMark(mark)) || (filter==='note' && mark.note);
     return matchesFilter &&
       (!recordSelection.edition || edition===recordSelection.edition) &&
       (!recordSelection.book || book===recordSelection.book) &&
-      (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year) &&
-      [selectionReference(key,verses),...recordPassage(key,verses).map(([,body])=>body),mark.note ?? ''].join(' ').toLowerCase().includes(query);
+      (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year);
   });
   let previousYear;
   return '<p class="record-result muted">말씀 기록 '+matching.length+'건</p>'+
@@ -1298,6 +1303,78 @@ function recordList(rows = recordRows()) {
         (verseMark(mark)?highlightDeleteButton(key):'')+'</div></div></article>';
     }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
 }
+function personalSearchEntries() {
+  const entries = [];
+  const add = (type,day,title,body,attribute,value,year = day?.slice(0,4))=>
+    entries.push({type,day,year:year || 'undated',title,body,attribute,value});
+  const refsText = refs=>refs.map(ref=>reference(ref)+' '+verseText(ref)).join('\n');
+  for (const [day,entry] of Object.entries(state.journal)) {
+    if (hasJournalContent(entry)) add('journal',day,entry.title || 'QT 묵상',
+      [entry.reflection,refsText(entry.verses),...(entry.comments ?? []).map(comment=>comment.body)].filter(Boolean).join('\n'),
+      'data-nav','journal/'+day);
+  }
+  for (const [day,note] of Object.entries(state.dailyNotes)) {
+    add('daily',day,reference(note.ref),note.body,'data-edit-daily-note',day);
+  }
+  for (const item of state.prayers) {
+    const thought = item.kind==='thought';
+    add(thought?'thought':'prayer',item.day,item.title || '생각 노트',
+      [item.body,item.answer].filter(Boolean).join('\n'),'data-nav','prayer/'+item.id);
+  }
+  for (const item of state.newYear) {
+    add('yearly',item.day,item.title,[item.note,refsText(item.refs)].filter(Boolean).join('\n'),
+      'data-year-edit',item.id,String(item.year));
+  }
+  for (const row of recordRows()) {
+    add('mark',row.day,selectionReference(row.key,row.verses),
+      [row.mark.note,...recordPassage(row.key,row.verses).map(([,body])=>body)].filter(Boolean).join('\n'),
+      row.noteKey?'data-edit-verse-note':'data-visit',row.noteKey ?? row.key);
+  }
+  for (const bundle of state.verseBundles) {
+    add('bundle',bundle.day,reference(bundle.verses[0].ref)+' 외 '+bundle.verses.length+'구절',
+      bundle.verses.map(verse=>reference(verse.ref)+' '+verse.body).join('\n'),'data-open-verse-bundle',bundle.id);
+  }
+  for (const [day,chapters] of Object.entries(state.chapterLog)) {
+    if (chapters.length) add('reading',day,'묵상 체크',chapters.map(chapterLabel).join(' · '),'data-nav','reading');
+  }
+  return entries.sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
+}
+function personalYearLabel(year) {
+  return year==='all'?'모든 연도':year==='undated'?'날짜 미기록':year+'년';
+}
+function renderPersonalSearch() {
+  const {type,year} = personalSearchFilters;
+  const query = searchText(readerSearchInput.value);
+  const entries = personalSearchSubmitted ? personalSearchEntries().filter(item=>
+    (type==='all' || item.type===type) && (year==='all' || item.year===year) &&
+    searchText([item.title,item.body,personalSearchTypes[item.type],item.day ?? '',personalYearLabel(item.year)].join(' ')).includes(query)) : [];
+  const rows = entries.map(({type,year,day,title,body,attribute,value})=>
+    '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
+    '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
+    '<strong>'+esc(title)+'</strong><span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
+  readerSearchPanel.innerHTML = '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>내 기록 검색</h3>'+
+    '<div class="reader-search-actions"><button type="button" class="btn" data-action="personal-search-type" aria-haspopup="dialog">'+
+    esc(personalSearchTypes[type])+'</button><button type="button" class="btn" data-action="personal-search-year" aria-haspopup="dialog">'+
+    esc(personalYearLabel(year))+'</button></div></div><div class="reader-search-list">'+(rows ||
+    '<p class="muted">'+(personalSearchSubmitted?'조건에 맞는 기록이 없어요.':'문구를 입력해 검색하거나 종류·연도를 선택해 주세요.')+'</p>')+'</div></section>';
+  readerSearchPanel.hidden = false;
+}
+function showPersonalSearchFilter(key) {
+  const years = key==='year'?[...new Set(personalSearchEntries().map(item=>item.year))]
+    .sort((a,b)=>a==='undated'?1:b==='undated'?-1:b.localeCompare(a)):[];
+  const options = key==='type'?Object.entries(personalSearchTypes):['all',...years].map(year=>[year,personalYearLabel(year)]);
+  dialog(key==='type'?'기록 종류':'기록 연도',
+    pickerOptions(options.map(([id,label])=>[key+':'+id,label]),key+':'+personalSearchFilters[key],'data-personal-filter'),
+    'personal-search-filter');
+}
+function choosePersonalSearchFilter(choice) {
+  const [key,value] = choice.split(':');
+  personalSearchFilters[key] = value;
+  personalSearchSubmitted = true;
+  modal.close();
+  renderPersonalSearch();
+  readerSearchPanel.querySelector('[data-action="personal-search-'+key+'"]')?.focus({preventScroll:true});
+}
 function recordPickerItems(key,rows) {
   if (key==='edition') return Object.entries(editions);
   if (key==='book') return books;
@@ -1315,6 +1392,7 @@ function recordsScreen() {
     '<div class="record-shortcuts">'+[
       ['calendar','calendar','달력','묵상 달력'],
       ['prayers','prayer','기도','기도 기록'],
+      ['thoughts','note','생각 노트','생각 기록'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
@@ -1325,7 +1403,7 @@ function recordsScreen() {
       'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
     '<div class="section-head"><h2>말씀 기록</h2></div><div class="filters">'+Object.entries(recordFilters).map(([id,label])=>'<button class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
     '<div class="record-filters">'+pickers+'</div>'+
-    '<label class="field spaced">기록 검색<input type="search" id="record-search" value="'+esc(keyword)+'" placeholder="구절, 본문, 메모 검색"></label><div id="record-list" class="spaced">'+recordList(rows)+'</div>';
+    '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
 function settingsScreen() {
   return heading('MY NOTEBOOK','저장과 설정','묵상 노트는 이 기기에 저장돼요.')+
@@ -1397,8 +1475,14 @@ function render() {
   main.classList.toggle('today-view',view==='today');
   main.classList.toggle('records-view',view==='records');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
-  readerSearchForm.hidden = view!=='bible' || !state.reader.edition;
-  if (readerSearchForm.hidden && !readerSearchInput.hidden) closeReaderSearch();
+  readerSearchForm.hidden = !(view==='records' || (view==='bible' && state.reader.edition));
+  if ((changed || readerSearchForm.hidden) && !readerSearchInput.hidden) closeReaderSearch();
+  const personal = view==='records';
+  readerSearchForm.setAttribute('aria-label',personal?'내 기록 검색':'성경 검색');
+  readerSearchInput.setAttribute('aria-label',personal?'기록 제목이나 문구':'단어, 문장, 성경책 이름 또는 구절 주소');
+  readerSearchInput.placeholder = personal?'기록 제목이나 문구':'단어, 창세기, 창 12:3';
+  readerSearchClose.setAttribute('aria-label',personal?'기록 검색 닫기':'성경 검색 닫기');
+  if (readerSearchInput.hidden) readerSearchButton.setAttribute('aria-label',personal?'기록 검색 열기':'성경 검색 열기');
   document.querySelector('.bottom').hidden = view==='journal' || view==='prayer-edit';
   applyDisplay();
   if (view==='today' || view==='calendar') {
@@ -1415,7 +1499,7 @@ function render() {
   }
   const writing = main.querySelector('[data-journal-field="reflection"]');
   if (writing) resizeWriting(writing);
-  const navView = ['calendar','prayers','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['calendar','prayers','thoughts','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -1677,6 +1761,8 @@ let pendingImport, pendingComparison = [], pendingMenuOrder = [];
 const actions = {
   'close-bible-search'() { closeReaderSearch(true); },
   'pick-search-scope':showSearchScopePicker,
+  'personal-search-type'() { showPersonalSearchFilter('type'); },
+  'personal-search-year'() { showPersonalSearchFilter('year'); },
   'view-search-selection':showSelectedSearchVerses,
   'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
@@ -1882,6 +1968,8 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (target.personalFilter) return choosePersonalSearchFilter(target.personalFilter);
+  if ('personalHit' in target) closeReaderSearch();
   if (target.action==='save-verse-bundle') return saveVerseBundle(button);
   if (target.copyBundle) return copyVerseBundle(target.copyBundle);
   if (target.openVerseBundle) {
@@ -2041,12 +2129,13 @@ main.addEventListener('input',event => {
     document.getElementById('reading-goal-value').textContent = field.value+'장';
     field.setAttribute('aria-valuetext',field.value+'장');
   }
-  if (field.id==='record-search') {
-    keyword = field.value;
-    document.querySelector('#record-list').innerHTML = recordList();
-  }
 });
-readerSearchInput.addEventListener('input',clearReaderSearchResults);
+readerSearchInput.addEventListener('input',()=>{
+  if (view==='records') {
+    personalSearchSubmitted = false;
+    renderPersonalSearch();
+  } else clearReaderSearchResults();
+});
 readerSearchPanel.addEventListener('change',event=>{
   const field = event.target;
   const key = field.dataset.searchSelect;
@@ -2061,6 +2150,10 @@ readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
   if (readerSearchInput.hidden) return showReaderSearch();
   readerSearchInput.blur();
+  if (view==='records') {
+    personalSearchSubmitted = true;
+    return renderPersonalSearch();
+  }
   submitReaderSearch();
 });
 window.addEventListener('resize',()=>{
@@ -2446,13 +2539,12 @@ function thoughtsScreen() {
     (list || '<p class="empty">아직 남긴 생각이 없어요.</p>')+'</div>';
 }
 function prayersScreen() {
-  const groups = {open:[],answered:[],thought:[]};
-  for (const item of state.prayers) groups[item.kind==='thought'?'thought':item.done?'answered':'open'].push(item);
-  const labels = {open:'기도 중',answered:'응답받음',thought:'생각 노트'};
-  const thought = prayerFilter==='thought';
+  const groups = {open:[],answered:[]};
+  for (const item of state.prayers) if (item.kind!=='thought') groups[item.done?'answered':'open'].push(item);
+  const labels = {open:'기도 중',answered:'응답받음'};
   return heading('PRAYER JOURNAL','기도 노트','기도 제목과 응답을 남겨보세요.')+
     '<div class="filters">'+Object.entries(labels).map(([key,label])=>'<button class="pill" data-prayer-filter="'+key+'" aria-pressed="'+(prayerFilter===key)+'">'+label+' '+groups[key].length+'</button>').join('')+'</div>'+
-    '<button class="btn primary block" data-action="add-prayer">＋ '+(thought?'생각 기록 추가':'기도제목 추가')+'</button><div class="spaced">'+
+    '<button class="btn primary block" data-action="add-prayer">＋ 기도제목 추가</button><div class="spaced">'+
     (groups[prayerFilter].map(prayerCard).join('') || '<p class="empty">이곳에 남긴 기록이 아직 없어요.</p>')+'</div>';
 }
 function prayerCard(item) {
@@ -2524,7 +2616,7 @@ async function saveThought(form) {
   notify('생각 노트에 저장했어요.');
 }
 function showPrayerEditor(item) {
-  if (item?.kind==='thought' || (!item && prayerFilter==='thought')) return showThoughtEditor(item);
+  if (item?.kind==='thought') return showThoughtEditor(item);
   navigate('prayer-edit/'+(item?.id ?? 'new'),view==='calendar'?{returnFromEditor:true}:undefined);
 }
 function prayerEditorScreen(id) {

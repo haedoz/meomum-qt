@@ -717,8 +717,8 @@ body { min-height: 100vh; min-height: 100dvh; }
   position: absolute; inset: calc(100% + 6px) 0 auto auto; width: min(100%, 40rem);
   max-height: min(76vh, 660px); max-height: min(76dvh, 660px);
   display: flex; flex-direction: column; overflow: hidden;
-  font-family: var(--sans); background: var(--card); border: 1px solid var(--line); border-radius: 22px;
-  box-shadow: 0 16px 42px var(--glass-shadow), inset 0 1px var(--glass-shine);
+  font-family: var(--sans); background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 12px 30px var(--glass-shadow);
 }
 @media (max-width: 739px) {
   .top-inner.frame.search-open {
@@ -760,22 +760,6 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
   flex: none; display: flex; align-items: center; justify-content: center; gap: 14px;
   padding: 4px 10px; border-top: 1px solid var(--line); background: var(--soft);
 }
-@supports ((-webkit-backdrop-filter: blur(24px)) or (backdrop-filter: blur(24px))) {
-  .reader-search-results {
-    background: color-mix(in srgb, var(--card) 86%, transparent);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    backdrop-filter: blur(24px) saturate(150%);
-  }
-  .reader-search-toolbar, .reader-search-pages {
-    background: color-mix(in srgb, var(--soft) 68%, transparent);
-  }
-  .reader-search-toolbar .btn:not(.primary) { background: color-mix(in srgb, var(--card) 78%, transparent); }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .reader-search-results { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .reader-search-toolbar, .reader-search-pages { background: var(--soft); }
-  .reader-search-toolbar .btn:not(.primary) { background: var(--card); }
-}
 .search-page-arrow {
   display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
   border-radius: 50%; color: var(--accent-ink); background: var(--accent-soft);
@@ -793,8 +777,17 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
 .reader-search-group .search-result > strong {
   line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.search-result-check { display: grid; place-items: center; min-width: 44px; min-height: 44px; cursor: pointer; }
-.search-result-check input { width: 18px; height: 18px; accent-color: var(--accent-ink); }
+.search-result-check { position: relative; display: grid; place-items: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.search-result-check input {
+  appearance: none; -webkit-appearance: none; width: 21px; height: 21px; margin: 0;
+  border: 2px solid var(--muted); border-radius: 6px; background: var(--card); cursor: pointer;
+}
+.search-result-check input:checked { border-color: var(--accent-ink); background: var(--accent-ink); }
+.search-result-check:has(input:checked)::after {
+  content: ""; position: absolute; inset: 50% auto auto 50%; width: 6px; height: 10px;
+  border: solid var(--on-primary); border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg); pointer-events: none;
+}
 .search-selected-verse + .search-selected-verse { border-top: 1px solid var(--line); padding-top: 10px; }
 .search-selected-verse h3 { color: var(--accent-ink); }
 .search-selected-verse p { white-space: pre-wrap; overflow-wrap: anywhere; }
