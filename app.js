@@ -41,7 +41,8 @@ const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
 const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
-let bibleSearchTimer;
+let bibleSearchTimer, bibleSearchScope = 'all';
+const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
 const localLanguages = {};
 let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
@@ -576,6 +577,7 @@ function availableChapters(edition) {
 const searchAliases = '창 출 레 민 신 수 삿 룻 삼상 삼하 왕상 왕하 대상 대하 스 느 에 욥 시 잠 전 아 사 렘 애 겔 단 호 욜 암 옵 욘 미 나 합 습 학 슥 말 마 막 눅 요 행 롬 고전 고후 갈 엡 빌 골 살전 살후 딤전 딤후 딛 몬 히 약 벧전 벧후 요일 요이 요삼 유 계'.split(' ');
 const searchBooks = Object.fromEntries(books.flatMap(([code,title],index)=>[[title,code],[searchAliases[index],code],[code.toLowerCase(),code]]));
 const searchText = text => text.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+const searchPageSize = 20;
 function parseChapterVerse(query) {
   const match = query.match(/^(\d+)(?:(?:\s*:\s*|\s+|\s*장\s*:?\s*)(\d+)\s*절?|\s*장)?$/);
   if (!match) return;
@@ -583,6 +585,8 @@ function parseChapterVerse(query) {
 }
 function parseBibleReference(query) {
   const normalized = query.normalize('NFKC').trim();
+  const bookName = normalized.toLowerCase();
+  if (Object.hasOwn(searchBooks,bookName)) return {book:searchBooks[bookName]};
   const position = parseChapterVerse(normalized);
   if (position) return position;
   const match = normalized.match(/^(.+?)\s*(\d.*)$/);
@@ -591,21 +595,29 @@ function parseBibleReference(query) {
   const namedPosition = parseChapterVerse(match[2]);
   if (namedPosition) return {...namedPosition,book:searchBooks[alias]};
 }
-function searchBible(edition,query) {
+function searchBible(edition,query,page = 0) {
   const source = data[edition] ?? {};
   const position = parseBibleReference(query);
   if (position) {
-    const {book = state.reader.book,chapter} = position;
-    const verses = source[book]?.[chapter] ?? {};
+    const {book = state.reader.book} = position;
+    const chapters = source[book] ?? {};
+    const chapter = position.chapter ?? Object.keys(chapters).find(number=>Object.values(chapters[number]).some(Boolean));
+    const verses = chapters[chapter] ?? {};
     const verse = position.verse ?? (verses[1]?1:Object.keys(verses).find(number=>verses[number]));
-    return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],limited:false};
+    return {keys:verses[verse]?[[edition,book,chapter,verse].join('/')]:[],limited:false,reference:true};
   }
   const needle = searchText(query), keys = [];
+  let skip = page*searchPageSize;
   if (needle) for (const [book] of books) {
+    if (bibleSearchScope!=='all' && bibleSearchScope!==book && bibleSearchScope!==testamentByBook[book]) continue;
     for (const [chapter,verses] of Object.entries(source[book] ?? {})) {
       for (const [verse,body] of Object.entries(verses)) {
         if (!searchText(body).includes(needle)) continue;
-        if (keys.length===20) return {keys,limited:true};
+        if (skip>0) {
+          skip--;
+          continue;
+        }
+        if (keys.length===searchPageSize) return {keys,limited:true};
         keys.push([edition,book,chapter,verse].join('/'));
       }
     }
@@ -623,6 +635,9 @@ function showReaderSearch() {
 }
 function closeReaderSearch(restoreFocus = false) {
   clearTimeout(bibleSearchTimer);
+  bibleSearchTimer = undefined;
+  bibleSearchScope = 'all';
+  if (modal.open && modal.firstElementChild?.name==='search-scope') modal.close();
   topBar.classList.remove('search-open');
   readerSearchInput.value = '';
   readerSearchInput.hidden = true;
@@ -633,22 +648,52 @@ function closeReaderSearch(restoreFocus = false) {
   readerSearchButton.setAttribute('aria-label','성경 검색 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
-function readerSearchResults(edition) {
+function readerSearchResults(edition,page = 0) {
   const query = readerSearchInput.value.trim();
   if (!query) return '';
-  const {keys,limited} = searchBible(edition,query);
-  return '<section class="reader-search-group"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
-    (limited?'처음 20개':keys.length+'개')+'</span></h3>'+
+  const {keys,limited,reference:isReference} = searchBible(edition,query,page);
+  const offset = page*searchPageSize;
+  const count = keys.length && (page || limited) ? (offset+1)+'–'+(offset+keys.length)+'번째' : keys.length+'개';
+  const pager = page || limited ? '<div class="reader-search-pages" role="group" aria-label="검색 결과 페이지">'+
+    '<button type="button" class="btn" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>이전</button>'+
+    '<button type="button" class="btn" data-search-page="'+(page+1)+'" data-search-direction="next" '+(!limited?'disabled':'')+'>다음</button></div>' : '';
+  const scope = isReference?'':'<button type="button" class="btn" data-action="pick-search-scope" aria-haspopup="dialog">범위 · '+
+    esc(searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope])+'</button>';
+  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>'+esc(editionLabel(edition))+' <span class="muted">'+
+    count+'</span></h3>'+scope+'</div>'+pager+
     (keys.map(key=>'<button type="button" class="record-open search-result" data-search-visit="'+key+'"><strong>'+esc(reference(key))+'</strong><span>'+esc(verseText(key))+'</span></button>').join('') ||
       '<p class="muted">검색 결과가 없어요.</p>')+'</section>';
 }
-function updateReaderSearch() {
+function updateReaderSearch(page = 0) {
   clearTimeout(bibleSearchTimer);
+  bibleSearchTimer = undefined;
   if (readerSearchInput.hidden || readerSearchForm.hidden) return;
-  const results = readerSearchResults(state.reader.edition);
+  const results = readerSearchResults(state.reader.edition,page);
   readerSearchPanel.innerHTML = results;
   readerSearchPanel.hidden = !results;
   readerSearchPanel.scrollTop = 0;
+}
+function changeSearchPage(button) {
+  if (bibleSearchTimer!==undefined) return updateReaderSearch();
+  const page = Number(button.dataset.searchPage);
+  if (!Number.isInteger(page) || page<0) return;
+  updateReaderSearch(page);
+  const direction = button.dataset.searchDirection;
+  (readerSearchPanel.querySelector('[data-search-direction="'+direction+'"]:not(:disabled)') ??
+    readerSearchPanel.querySelector('[data-search-page]:not(:disabled)'))?.focus({preventScroll:true});
+}
+function showSearchScopePicker() {
+  const source = data[state.reader.edition];
+  const attribute = 'data-search-scope';
+  dialog('검색 범위','<div class="search-scope-presets">'+
+    pickerOptions(Object.entries(searchScopeLabels),bibleSearchScope,attribute)+'</div>'+
+    bookPickerSections(books.filter(([book])=>source?.[book]),bibleSearchScope,attribute),'search-scope');
+}
+function chooseSearchScope(scope) {
+  bibleSearchScope = scope;
+  modal.close();
+  updateReaderSearch();
+  readerSearchPanel.querySelector('[data-action="pick-search-scope"]')?.focus({preventScroll:true});
 }
 function visitSearchResult(key) {
   closeReaderSearch();
@@ -1534,6 +1579,7 @@ function validatedBackup(payload) {
 let pendingImport, pendingComparison = [], pendingMenuOrder = [];
 const actions = {
   'close-bible-search'() { closeReaderSearch(true); },
+  'pick-search-scope':showSearchScopePicker,
   'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
@@ -1767,6 +1813,8 @@ document.addEventListener('click',event => {
     return navigate('bible');
   }
   if (target.searchVisit) return visitSearchResult(target.searchVisit);
+  if (target.searchScope) return chooseSearchScope(target.searchScope);
+  if ('searchPage' in target) return changeSearchPage(button);
   if (target.visit) return visit(target.visit);
   if (target.action) return actions[target.action]?.();
   if (target.openChapter) return openChapter(target.openChapter);
@@ -1869,9 +1917,9 @@ main.addEventListener('input',event => {
 });
 readerSearchInput.addEventListener('input',event=>{
   clearTimeout(bibleSearchTimer);
-  if (!event.isComposing) bibleSearchTimer = setTimeout(updateReaderSearch,180);
+  bibleSearchTimer = event.isComposing ? undefined : setTimeout(updateReaderSearch,180);
 });
-readerSearchInput.addEventListener('compositionend',updateReaderSearch);
+readerSearchInput.addEventListener('compositionend',()=>updateReaderSearch());
 readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
   if (readerSearchInput.hidden) return showReaderSearch();
@@ -1879,7 +1927,7 @@ readerSearchForm.addEventListener('submit',event=>{
   readerSearchInput.blur();
 });
 document.addEventListener('pointerdown',event=>{
-  if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target)) closeReaderSearch();
+  if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
 });
 document.addEventListener('keydown',event=>{
   if (event.key!=='Escape' || readerSearchInput.hidden || modal.open) return;
