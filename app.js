@@ -36,6 +36,11 @@ const readerSearchPanel = readerSearchForm.querySelector('#reader-search-results
 const topBar = document.querySelector('.top-inner');
 const menuBar = document.querySelector('.bottom .nav-inner');
 const menuItems = new Map([...menuBar.querySelectorAll('[data-nav]')].map(button=>[button.dataset.nav,button]));
+const settingsSections = {
+  display:['화면',displaySettings],menu:['메뉴',menuOrderSettings],
+  library:['성경 자료',importPanel],backup:['백업',backupSettings],
+};
+let settingsSection = 'display';
 const titles = Object.fromEntries(books);
 const testamentByBook = Object.fromEntries(books.map(([book],index)=>[book,index<39?'old':'new']));
 const retiredEditions = {krv:'개역한글',web:'WEB (영어)'};
@@ -515,7 +520,7 @@ function todayScreen() {
   return '<div class="welcome"><div class="eyebrow"><span></span> 나의 QT 노트</div><h1>오늘의 QT</h1><p class="date-tag">'+icon('calendar')+longDate(today)+'</p></div>'+
     (key?'<section class="hero tappable-card">'+cardHit('오늘의 말씀 본문 읽기',verseText(key)?'data-visit="'+key+'"':'data-action="open-today-note"')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+esc(quote)+'</blockquote><p class="ref">'+esc(reference(key))+' · '+esc(label)+'</p><div class="hero-actions">'+
       '<span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>':
-      '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings"')+'<div class="kicker"><span aria-hidden="true">✦</span> 내 성경</div><blockquote>사용할 성경 번역본 파일을 추가해 주세요.</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
+      '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 내 성경</div><blockquote>사용할 성경 번역본 파일을 추가해 주세요.</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
     '<div class="today-links">'+(reader.edition?'<div class="card row continue tappable-card'+(read?' is-done':'')+'">'+cardHit('이어서 읽기','data-nav="bible"')+
       '<div class="continue-label"><span class="tile-icon">'+icon('book')+'</span><div><div class="eyebrow">이어서 읽기</div><h3>'+titles[reader.book]+' '+reader.chapter+'장</h3>'+(read?badge('오늘 읽음'):'')+'</div></div><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span></div>':'')+
     '<section class="card row today-journal tappable-card'+(journal?.done?' is-done':'')+'">'+cardHit('오늘의 묵상 열기','data-nav="journal/'+today+'"')+
@@ -545,7 +550,7 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
 }
 function readerScreen() {
   const {edition,book,chapter} = state.reader;
-  if (!edition) return '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings">성경 번역본 추가</button></section>';
+  if (!edition) return '<section class="card stack spaced"><p>사용할 성경 번역본 파일을 추가해 주세요.</p><button class="btn primary" data-nav="settings" data-import-link>성경 번역본 추가</button></section>';
   const chapters = data[edition]?.[book] ?? {};
   const verses = chapters[chapter] ?? {};
   const comparison = state.comparison;
@@ -1413,23 +1418,35 @@ function recordsScreen() {
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
 function settingsScreen() {
+  const tabs = Object.entries(settingsSections).map(([id,[label]])=>
+    '<button type="button" data-settings-section="'+id+'" aria-pressed="'+(id===settingsSection)+'">'+label+'</button>').join('');
   return heading('MY NOTEBOOK','저장과 설정','묵상 노트는 이 기기에 저장돼요.')+
-    menuOrderSettings()+displaySettings()+importPanel()+
-    '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시와 구절 모음, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>';
+    '<nav class="settings-tabs" aria-label="설정 분류">'+tabs+'</nav>'+settingsSections[settingsSection][1]();
+}
+function backupSettings() {
+  return '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시와 구절 모음, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>';
+}
+function menuOrderItem(route) {
+  const item = menuItems.get(route);
+  const symbol = item.querySelector('[data-icon]')?.dataset.icon;
+  return '<span class="menu-order-icon">'+(symbol?icon(symbol):'')+'</span><span>'+esc(item.textContent.trim())+'</span>';
 }
 function menuOrderSettings() {
-  const order = state.menuOrder.map(route=>esc(menuItems.get(route).textContent.trim())).join(' · ');
-  return '<div class="section-head"><h2>메뉴 순서</h2></div><section class="card stack">'+
-    '<p class="muted">현재 순서</p><p>'+order+'</p>'+
-    '<button type="button" class="btn" data-action="choose-menu-order" aria-haspopup="dialog">순서 바꾸기</button></section>';
+  const order = state.menuOrder.map(route=>'<li>'+menuOrderItem(route)+'</li>').join('');
+  const first = esc(menuItems.get(state.menuOrder[0]).textContent.trim());
+  return '<section class="card menu-order-card" aria-labelledby="menu-order-heading">'+
+    '<div class="row menu-order-heading"><div><h2 id="menu-order-heading">메뉴 순서</h2><p class="muted">메뉴바 미리보기</p></div>'+
+    '<button type="button" class="menu-order-edit" data-action="choose-menu-order" aria-haspopup="dialog">순서 바꾸기 '+icon('right')+'</button></div>'+
+    '<ol class="menu-order-preview" role="list" aria-label="현재 메뉴 순서">'+order+'</ol>'+
+    '<p class="menu-order-caption">첫 화면 <strong>'+first+'</strong></p></section>';
 }
 function showMenuOrderPicker() {
   pendingMenuOrder = [];
   const choices = state.menuOrder.map(route=>
-    '<button type="button" class="btn" data-menu-choice="'+route+'" aria-pressed="false">'+
-    esc(menuItems.get(route).textContent.trim())+'<span class="menu-order-position"></span></button>').join('');
-  dialog('메뉴 순서 바꾸기','<p class="muted">원하는 순서대로 메뉴를 눌러 주세요. 모두 고르면 자동으로 저장돼요.</p>'+
-    '<div class="stack menu-order-choices" role="group" aria-label="메뉴 순서">'+choices+'</div>');
+    '<button type="button" class="menu-order-option" data-menu-choice="'+route+'" aria-pressed="false">'+
+    menuOrderItem(route)+'<span class="menu-order-position"></span></button>').join('');
+  dialog('메뉴 순서 바꾸기','<p class="muted">원하는 순서대로 누르면 번호가 붙어요. 모두 고르면 자동으로 저장돼요.</p>'+
+    '<div class="menu-order-choices" role="group" aria-label="메뉴 순서">'+choices+'</div>');
 }
 function chooseMenuOrderItem(route) {
   const index = pendingMenuOrder.indexOf(route);
@@ -1977,6 +1994,12 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (target.settingsSection && Object.hasOwn(settingsSections,target.settingsSection)) {
+    settingsSection = target.settingsSection;
+    render();
+    main.querySelector('[data-settings-section="'+settingsSection+'"]')?.focus({preventScroll:true});
+    return;
+  }
   if (target.personalFilter) return choosePersonalSearchFilter(target.personalFilter);
   if ('personalHit' in target) closeReaderSearch();
   if (target.action==='save-verse-bundle') return saveVerseBundle(button);
@@ -1997,6 +2020,7 @@ document.addEventListener('click',event => {
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
   if (target.nav) {
     if (modal.contains(button)) modal.close();
+    if (target.nav==='settings' && 'importLink' in target) settingsSection = 'library';
     navigate(target.nav);
     if (target.nav==='bible') refreshLocalEditions();
     if ('importLink' in target) {
