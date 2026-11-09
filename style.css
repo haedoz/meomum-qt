@@ -52,7 +52,6 @@ h2 { font-size: clamp(1rem, calc(4.2vw + var(--ui-size-offset, 0px)), 1.25rem); 
 .entry textarea, dialog textarea, input[type=search], select { font-size: 1rem; }
 .entry textarea { background: #f9f7f0; line-height: 1.65; }
 .reader-controls { grid-template-columns: 1.08fr 1.16fr .62fr; }
-.reader-controls select { min-height: 46px; padding: 6px; font-size: 1rem; letter-spacing: -.05em; }
 .reading { padding: 11px 10px; }
 .verse { font: 400 1.0625rem/1.85 var(--sans); min-height: 46px; grid-template-columns: 23px minmax(0,1fr) auto; gap: 6px; padding: 8px 7px; }
 .verse .number, .verse .mark { line-height: 2.4; }
@@ -411,8 +410,8 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
 }
 
 /* Keep the touch targets while making select and toggle text more compact. */
-select, .reader-controls select, .filters .pill, .reader-options .btn { font-size: 0.875rem; }
-.reader-controls select, .reader-options .btn { letter-spacing: -.025em; }
+select, .filters .pill, .reader-options .btn { font-size: 0.875rem; }
+.reader-options .btn { letter-spacing: -.025em; }
 .record-shortcuts { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .chapter-check { margin-top: 15px; }
 .chapter-check h3 { font-size: 0.9375rem; }
@@ -590,6 +589,8 @@ body {
 .top-inner { height: 60px; }
 .brand-icon { background: var(--accent-soft); border-radius: 13px; }
 .top-start { gap: 7px; }
+.top-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.top-actions [hidden] { display: none; }
 .top .settings, .top .back-button {
   width: 44px; height: 44px; min-height: 44px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--soft); margin: 0;
@@ -712,9 +713,11 @@ html { background: var(--paper); scrollbar-gutter: stable; }
 body { min-height: 100vh; min-height: 100dvh; }
 .reader-view .passage-heading { border-bottom: 0; }
 .reader-view .verse-pair { border-bottom: 0; }
-.reader-search { display: grid; gap: 4px; margin-block: 13px; }
-.reader-search input { font-size: max(16px,1rem); }
+.reader-search { display: grid; gap: 6px; }
+.reader-search-input { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: center; }
+.reader-search input, form[name="chapter-jump"] input { font-size: max(16px,1rem); }
 .reader-search .muted { font-size: .75rem; }
+[data-chapter-error]:empty, #reader-search-results:empty { display: none; }
 .reader-search-group { margin-block: 8px 14px; }
 .reader-search-group h3 { color: var(--accent-ink); }
 .reader-search-group .search-result { overflow-wrap: anywhere; }
@@ -723,17 +726,26 @@ body { min-height: 100vh; min-height: 100dvh; }
 
 :root { --page-gutter: 20px; }
 #main.frame { width: min(calc(100% - 2 * var(--page-gutter)), 660px); }
-.reader-search { margin-block: 10px 14px; }
-.reader-search input { min-height: 40px; padding: 6px 9px; font-size: .875rem; }
-.reader-search + #reader-search-results + .reader-controls { margin-top: 10px; }
-.book-picker-trigger {
-  display: flex; align-items: center; justify-content: space-between; gap: 4px;
-  width: 100%; min-height: 46px; padding: 6px 9px; text-align: left;
-  border: 1px solid var(--line); border-radius: 9px; background: var(--card);
-  font-size: .875rem; font-weight: 400;
+.reader-controls > .field {
+  --control-height: max(46px, 2.875rem);
+  position: relative;
+  align-content: start;
 }
-.book-picker-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.book-picker-trigger svg { flex: 0 0 14px; width: 14px; height: 14px; }
+.reader-controls select, .book-picker-trigger, .chapter-picker-trigger {
+  appearance: none; -webkit-appearance: none;
+  width: 100%; height: var(--control-height); min-width: 0;
+  padding: 6px 28px 6px 9px; text-align: left;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--card);
+  font: 700 .875rem/1.25 var(--sans); letter-spacing: -.025em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.reader-controls > .field::after {
+  content: ""; position: absolute; right: 13px;
+  bottom: calc((var(--control-height) - 7px) / 2 + 2px);
+  width: 7px; height: 7px; border: solid var(--ink); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg); pointer-events: none;
+}
+.book-picker-trigger span { display: block; overflow: hidden; text-overflow: ellipsis; }
 .book-picker, .book-picker-books { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .book-picker { gap: 12px; }
 .book-picker-section h3 { color: var(--accent-ink); margin-bottom: 7px; }
@@ -743,9 +755,6 @@ body { min-height: 100vh; min-height: 100dvh; }
   font-size: .8125rem; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere;
 }
 .book-picker-books [aria-current="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-ink); }
-@media (hover: none) {
-  .reader-search input:focus { font-size: max(16px,.875rem); }
-}
 .journal-editor .post-meta { flex-wrap: wrap; gap: 6px 12px; }
 .journal-editor-fields { display: grid; gap: 18px; margin-block: 18px 8px; }
 .journal-editor textarea { min-height: 160px; resize: vertical; }
