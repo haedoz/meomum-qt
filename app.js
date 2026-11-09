@@ -11,6 +11,7 @@ const icons = {
   marker:'<path d="m7 13 7-8a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-8 7m-4-4 4 4m-4-4-3 4 3 3 4-3M3 21h7"/>',
   compare:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
+  filter:'<path d="M4 7h16M7 12h10m-7 5h4"/>',
   comment:'<path d="M20 11a7 7 0 0 1-7 7H7l-4 3v-9a7 7 0 0 1 7-7h3a7 7 0 0 1 7 6Z"/><path d="M8 11h7m-7 3h4"/>',
   note:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6m-6 4h5"/>',
   copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 4H6a2 2 0 0 0-2 2v10"/>',
@@ -665,6 +666,14 @@ function searchResultRow(key,canSelect) {
   return '<div class="search-result-row"><button type="button" class="record-open search-result" data-search-visit="'+key+'">'+
     '<strong>'+title+'</strong><span>'+esc(verseText(key))+'</span></button>'+checkbox+'</div>';
 }
+function searchToolbar(title,actions) {
+  return '<div class="reader-search-toolbar"><div class="search-panel-heading"><span class="search-panel-symbol">'+
+    icon('search')+'</span><h3>'+title+'</h3></div><div class="reader-search-actions">'+actions+'</div></div>';
+}
+function searchTool(action,label,glyph,attributes = '') {
+  return '<button type="button" class="search-tool" data-action="'+action+'" aria-haspopup="dialog" '+attributes+
+    '><span class="search-tool-pill">'+icon(glyph)+'<span>'+esc(label)+'</span></span></button>';
+}
 function readerSearchResults(page = 0,pageSize = bibleSearchPageSize) {
   if (!bibleSearchResults) return '';
   const {keys,bookStart,reference:isReference} = bibleSearchResults;
@@ -675,15 +684,14 @@ function readerSearchResults(page = 0,pageSize = bibleSearchPageSize) {
     '<button type="button" class="search-page-arrow" aria-label="이전 페이지" data-search-page="'+(page-1)+'" data-search-direction="previous" '+(!page?'disabled':'')+'>'+icon('left')+'</button>'+
     '<span class="search-page-number" aria-label="'+(page+1)+'페이지, 전체 '+pages+'페이지">'+(page+1)+' / '+pages+'</span>'+
     '<button type="button" class="search-page-arrow" aria-label="다음 페이지" data-search-page="'+(page+1)+'" data-search-direction="next" '+(page+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>' : '';
-  const scope = isReference?'':'<button type="button" class="btn" data-action="pick-search-scope" aria-haspopup="dialog">범위 · '+
-    esc(searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope])+'</button>';
+  const scopeLabel = searchScopeLabels[bibleSearchScope] ?? titles[bibleSearchScope];
+  const scope = isReference?'':searchTool('pick-search-scope',scopeLabel,'filter','aria-label="범위 · '+esc(scopeLabel)+'"');
   const selectedCount = selectedSearchVerses.size;
-  const collect = !isReference && (keys.length || selectedCount)?'<button type="button" class="btn" data-action="view-search-selection" '+
-    'aria-haspopup="dialog" '+(selectedCount?'':'disabled')+'>모아 보기 ('+selectedCount+')</button>':'';
-  const bookLink = bookStart?'<div class="reader-search-book-start"><button type="button" class="btn" data-search-book-start="'+
-    bookStart+'">'+esc(titles[readRef(bookStart).book])+' 책 열기 '+icon('arrow')+'</button></div>':'';
-  return '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>검색 결과'+
-    '</h3><div class="reader-search-actions">'+scope+collect+'</div></div>'+bookLink+'<div class="reader-search-list">'+
+  const collect = !isReference && (keys.length || selectedCount)?searchTool('view-search-selection',
+    selectedCount?'모아 보기 ('+selectedCount+')':'모아 보기','copy',selectedCount?'':'disabled'):'';
+  const bookLink = bookStart?'<div class="reader-search-book-start"><button type="button" class="search-book-link" data-search-book-start="'+
+    bookStart+'"><span class="search-book-symbol">'+icon('book')+'</span><span>'+esc(titles[readRef(bookStart).book])+' 책 열기</span>'+icon('right')+'</button></div>':'';
+  return '<section class="reader-search-group">'+searchToolbar('검색 결과',scope+collect)+bookLink+'<div class="reader-search-list">'+
     (visible.map(key=>searchResultRow(key,!isReference)).join('') ||
       '<p class="muted">'+(bookStart?'본문에 일치하는 구절이 없어요.':'검색 결과가 없어요.')+'</p>')+'</div>'+pager+'</section>';
 }
@@ -698,7 +706,7 @@ function fitReaderSearchPage() {
   const maxHeight = parseFloat(getComputedStyle(readerSearchPanel).maxHeight);
   const panelHeight = Number.isFinite(maxHeight) ? maxHeight : Math.min(window.innerHeight*.76,660);
   const available = panelHeight-heightOf('.reader-search-toolbar')-heightOf('.reader-search-book-start')-2;
-  if (count*rowHeight<=available) return count;
+  if (count*rowHeight+7<=available) return count;
   return Math.max(1,Math.floor((available-heightOf('.reader-search-pages'))/rowHeight));
 }
 function submitReaderSearch() {
@@ -1352,10 +1360,9 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     '<strong>'+esc(title)+'</strong><span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
-  readerSearchPanel.innerHTML = '<section class="reader-search-group"><div class="reader-search-toolbar"><h3>내 기록 검색</h3>'+
-    '<div class="reader-search-actions"><button type="button" class="btn" data-action="personal-search-type" aria-haspopup="dialog">'+
-    esc(personalSearchTypes[type])+'</button><button type="button" class="btn" data-action="personal-search-year" aria-haspopup="dialog">'+
-    esc(personalYearLabel(year))+'</button></div></div><div class="reader-search-list">'+(rows ||
+  readerSearchPanel.innerHTML = '<section class="reader-search-group">'+searchToolbar('내 기록 검색',
+    searchTool('personal-search-type',personalSearchTypes[type],'filter')+
+    searchTool('personal-search-year',personalYearLabel(year),'calendar'))+'<div class="reader-search-list">'+(rows ||
     '<p class="muted">'+(personalSearchSubmitted?'조건에 맞는 기록이 없어요.':'문구를 입력해 검색하거나 종류·연도를 선택해 주세요.')+'</p>')+'</div></section>';
   readerSearchPanel.hidden = false;
 }
@@ -1555,8 +1562,10 @@ function showVerseArrival(id) {
 
 function dialog(title,body,formName) {
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
+  const titleFocus = formName==='chapter-jump'?'':' autofocus';
   modal.innerHTML = '<form method="dialog" class="stack"'+(formName?' name="'+formName+'"':'')+
-    '><div class="row"><h2>'+title+'</h2><button class="btn" '+close+'>닫기</button></div>'+body+'</form>';
+    '><div class="row"><h2 id="active-dialog-title" tabindex="-1"'+titleFocus+'>'+title+
+    '</h2><button class="btn dialog-close" '+close+'>닫기</button></div>'+body+'</form>';
   if (!modal.open) modal.showModal();
 }
 function updateMark(key,property,value) {
@@ -2144,7 +2153,7 @@ readerSearchPanel.addEventListener('change',event=>{
   else selectedSearchVerses.delete(key);
   const button = readerSearchPanel.querySelector('[data-action="view-search-selection"]');
   button.disabled = !selectedSearchVerses.size;
-  button.textContent = '모아 보기 ('+selectedSearchVerses.size+')';
+  button.querySelector('.search-tool-pill > span').textContent = selectedSearchVerses.size?'모아 보기 ('+selectedSearchVerses.size+')':'모아 보기';
 });
 readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
