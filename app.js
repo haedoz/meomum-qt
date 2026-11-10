@@ -317,6 +317,16 @@ function loadLocal(key) {
     request.onerror = () => reject(request.error);
   });
 }
+let ghAutoBackupTimer;
+function triggerGhAutoBackup() {
+  const token = localStorage.getItem('logbible-gh-token');
+  const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
+  if (!token || !auto) return;
+  clearTimeout(ghAutoBackupTimer);
+  ghAutoBackupTimer = setTimeout(() => {
+    actions['gh-backup']?.(true);
+  }, 2500);
+}
 async function save() {
   const status = document.querySelector('#save-status');
   if (status) status.textContent = '저장 중…';
@@ -325,6 +335,7 @@ async function save() {
     await storeLocal('journal',state);
     writeError = false;
     if (status?.isConnected) status.textContent = '기기에 자동 저장';
+    triggerGhAutoBackup();
     return true;
   } catch {
     writeError = true;
@@ -1698,21 +1709,24 @@ function backupSettings() {
   const ghRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
   const ghUser = localStorage.getItem('logbible-gh-user') || 'haedo';
   const ghLastSync = localStorage.getItem('logbible-gh-last-sync') || '';
+  const ghAuto = localStorage.getItem('logbible-gh-auto') !== 'false';
+  const isConnected = Boolean(ghToken && ghRepo);
 
   return '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시와 구절 모음, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>'+
-    '<div class="section-head"><h2>GitHub 클라우드 자동 동기화</h2></div>'+
-    '<section class="card stack">'+
-    '<p>비공개(Private) 저장소에 묵상 기록을 안전하게 자동 백업하고, 아이폰·아이패드 간에 실시간으로 동기화해요.</p>'+
-    '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
-    '<div class="field"><span>저장소 (owner/repo)</span><input id="gh-repo-input" type="text" placeholder="haedoz/logbible-data" value="'+esc(ghRepo)+'" autocomplete="off" spellcheck="false"></div>'+
-    '<div class="field"><span>사용자 파일명</span><input id="gh-user-input" type="text" placeholder="haedo" value="'+esc(ghUser)+'" autocomplete="off" spellcheck="false"><p class="muted">예: haedo 입력 시 haedo.json에 저장돼요. 아버지는 dad로 지정하세요.</p></div>'+
-    '<div class="row"><button type="button" class="btn" data-action="gh-save-config">설정 저장</button></div>'+
-    (ghLastSync ? '<p class="muted">마지막 깃허브 동기화 · '+esc(ghLastSync)+'</p>' : '')+
-    '<div class="row">'+
-    '<button type="button" class="btn primary" data-action="gh-backup">☁️ 깃허브에 지금 백업</button>'+
-    '<button type="button" class="btn" data-action="gh-restore">🔄 깃허브에서 가져오기</button>'+
+    '<div class="section-head"><h2>클라우드 자동 동기화</h2></div>'+
+    '<section class="gh-card">'+
+    '<div class="gh-header"><div><h3>GitHub 비공개 클라우드</h3><p class="muted">아이폰·아이패드 실시간 자동 연동</p></div>'+
+    '<span class="gh-badge '+(isConnected?'':'off')+'">'+(isConnected?'● 자동 동기화 활성':'○ 토큰 미입력')+'</span></div>'+
+    '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input class="gh-input" id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
+    '<div class="field"><span>저장소 (owner/repo)</span><input class="gh-input" id="gh-repo-input" type="text" placeholder="haedoz/logbible-data" value="'+esc(ghRepo)+'" autocomplete="off" spellcheck="false"></div>'+
+    '<div class="field"><span>사용자 파일명</span><input class="gh-input" id="gh-user-input" type="text" placeholder="사용하실 이름 영문 입력" value="'+esc(ghUser)+'" autocomplete="off" spellcheck="false"><p class="muted">기록 구분을 위한 영문 이름을 입력하세요. 같은 이름을 쓰는 기기끼리 자동으로 이어져요.</p></div>'+
+    '<label class="gh-switch"><input type="checkbox" id="gh-auto-toggle" '+(ghAuto?'checked':'')+' data-action="gh-toggle-auto"><span>묵상 저장 시 자동 백업 & 앱 열 때 자동 동기화</span></label>'+
+    (ghLastSync ? '<p class="muted">마지막 동기화 · '+esc(ghLastSync)+'</p>' : '')+
+    '<div class="gh-actions">'+
+    '<button type="button" class="btn primary" data-action="gh-backup">☁️ 지금 백업</button>'+
+    '<button type="button" class="btn" data-action="gh-restore">🔄 지금 동기화</button>'+
     '</div>'+
-    '<p class="muted">토큰은 외부 서버를 거치지 않고 내 기기 브라우저에만 암호처럼 안전하게 보관돼요.</p>'+
+    '<p class="muted">입력한 내용은 기기에 즉시 자동 저장되며, 비밀 토큰은 내 기기 브라우저에만 암호처럼 안전하게 보관돼요.</p>'+
     '</section>';
 }
 function menuOrderItem(route) {
@@ -2380,23 +2394,29 @@ const actions = {
     else state = previous;
     render();
   },
-  'gh-save-config'() {
-    const token = document.querySelector('#gh-token-input')?.value.trim();
-    const repo = document.querySelector('#gh-repo-input')?.value.trim();
-    const user = document.querySelector('#gh-user-input')?.value.trim();
-    if (token !== undefined) localStorage.setItem('logbible-gh-token', token);
-    if (repo) localStorage.setItem('logbible-gh-repo', repo);
-    if (user) localStorage.setItem('logbible-gh-user', user);
-    notify('동기화 설정을 저장했어요.');
+  'gh-toggle-auto'() {
+    const checked = document.querySelector('#gh-auto-toggle')?.checked ?? true;
+    localStorage.setItem('logbible-gh-auto', checked ? 'true' : 'false');
+    notify(checked ? '클라우드 자동 동기화를 켰어요.' : '클라우드 자동 동기화를 껐어요.');
     render();
   },
-  async 'gh-backup'() {
-    const token = localStorage.getItem('logbible-gh-token') || document.querySelector('#gh-token-input')?.value.trim();
-    const repo = localStorage.getItem('logbible-gh-repo') || document.querySelector('#gh-repo-input')?.value.trim() || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user') || document.querySelector('#gh-user-input')?.value.trim() || 'haedo';
-    if (!token) return notify('깃허브 토큰을 먼저 입력하고 설정 저장을 눌러주세요.');
+  async 'gh-backup'(silent = false) {
+    const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
+    if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
+    const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
+    if (repoInput) localStorage.setItem('logbible-gh-repo', repoInput);
+    const userInput = document.querySelector('#gh-user-input')?.value.trim();
+    if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
-    notify('깃허브에 백업 중이에요…');
+    const token = localStorage.getItem('logbible-gh-token');
+    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    if (!token) {
+      if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
+      return;
+    }
+
+    if (!silent) notify('깃허브에 백업 중이에요…');
     try {
       const timestamp = new Date().toISOString();
       const editionLabels = {...state.editionLabels,...Object.fromEntries(Object.entries(editions).filter(([id])=>localEditionId(id)))};
@@ -2445,20 +2465,30 @@ const actions = {
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
       state.backup = timestamp;
-      await save();
-      notify('깃허브에 안전하게 백업했어요!');
+      await storeLocal('journal', state);
+      if (!silent) notify('깃허브에 안전하게 백업했어요!');
       render();
     } catch (e) {
-      notify('백업 실패: ' + e.message);
+      if (!silent) notify('백업 실패: ' + e.message);
     }
   },
-  async 'gh-restore'() {
-    const token = localStorage.getItem('logbible-gh-token') || document.querySelector('#gh-token-input')?.value.trim();
-    const repo = localStorage.getItem('logbible-gh-repo') || document.querySelector('#gh-repo-input')?.value.trim() || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user') || document.querySelector('#gh-user-input')?.value.trim() || 'haedo';
-    if (!token) return notify('깃허브 토큰을 먼저 입력하고 설정 저장을 눌러주세요.');
+  async 'gh-restore'(silent = false) {
+    const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
+    if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
+    const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
+    if (repoInput) localStorage.setItem('logbible-gh-repo', repoInput);
+    const userInput = document.querySelector('#gh-user-input')?.value.trim();
+    if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
-    notify('깃허브에서 기록을 가져오는 중이에요…');
+    const token = localStorage.getItem('logbible-gh-token');
+    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    if (!token) {
+      if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
+      return;
+    }
+
+    if (!silent) notify('깃허브에서 기록을 가져오는 중이에요…');
     try {
       const filePath = `${user}.json`;
       const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
@@ -2469,7 +2499,7 @@ const actions = {
         }
       });
       if (!res.ok) {
-        if (res.status === 404) throw new Error('저장소에 백업 파일(' + filePath + ')이 아직 없어요. 먼저 백업을 진행해 주세요.');
+        if (res.status === 404) throw new Error('저장소에 백업 파일(' + filePath + ')이 아직 없어요. 먼저 [지금 백업]을 눌러주세요.');
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || res.statusText);
       }
@@ -2486,11 +2516,11 @@ const actions = {
       pendingImport = undefined;
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
-      await save();
-      notify('깃허브에서 최신 기록을 성공적으로 복원했어요!');
+      await storeLocal('journal', state);
+      if (!silent) notify('깃허브에서 최신 기록을 성공적으로 복원했어요!');
       render();
     } catch (e) {
-      notify('복원 실패: ' + e.message);
+      if (!silent) notify('동기화 실패: ' + e.message);
     }
   },
 };
@@ -3751,6 +3781,7 @@ document.addEventListener('visibilitychange',()=>{
   if (document.hidden) return flushReadingBookmark();
   if ((view==='today' || view==='calendar') && renderedDailyDate!==dateKey()) render();
   refreshLocalEditions();
+  checkGhAutoSync();
 });
 document.querySelector('.brand').addEventListener('click',event => {
   event.preventDefault();
@@ -3781,3 +3812,51 @@ try {
 resetRestoredAndroidSettings();
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(() => {});
+checkGhAutoSync();
+
+let lastGhCheckTime = 0;
+async function checkGhAutoSync() {
+  const token = localStorage.getItem('logbible-gh-token');
+  const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
+  if (!token || !auto) return;
+  if (Date.now() - lastGhCheckTime < 15000) return;
+  lastGhCheckTime = Date.now();
+  try {
+    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    const filePath = `${user}.json`;
+    const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!res.ok) return;
+    const fileData = await res.json();
+    const binary = atob(fileData.content.replace(/\s/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const jsonStr = new TextDecoder().decode(bytes);
+    const payload = JSON.parse(jsonStr);
+    const remoteTime = payload?.data?.backup || '';
+    const localTime = state?.backup || '';
+    if (remoteTime && (!localTime || remoteTime > localTime)) {
+      const imported = validatedBackup(payload);
+      state = imported;
+      lastMarkerEdit = undefined;
+      pendingImport = undefined;
+      const nowStr = new Date().toLocaleString('ko-KR');
+      localStorage.setItem('logbible-gh-last-sync', nowStr);
+      await storeLocal('journal', state);
+      notify('GitHub에서 최신 묵상 기록을 자동 동기화했어요.');
+      render();
+    }
+  } catch {
+    /* Silent background check */
+  }
+}
+
+main.addEventListener('input', event => {
+  const target = event.target;
+  if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim());
+  if (target.id === 'gh-repo-input') localStorage.setItem('logbible-gh-repo', target.value.trim());
+  if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim());
+});

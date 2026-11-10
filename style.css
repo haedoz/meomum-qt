@@ -1537,3 +1537,55 @@ button, a, select, .palette-option, .compare-choice { -webkit-tap-highlight-colo
 }
 
 textarea { --input-line-gap: var(--verse-gap, 0px); }
+
+/* GitHub Cloud Sync Card */
+.gh-card { border: 1px solid var(--line); border-radius: 17px; background: var(--card); padding: 22px; margin-top: 10px; display: grid; gap: 14px; }
+.gh-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gh-badge { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: var(--light); color: var(--green); border: 1px solid #c2d5c4; display: inline-flex; align-items: center; gap: 4px; }
+.gh-badge.off { background: #f0f0eb; color: var(--muted); border-color: var(--line); }
+.gh-input { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 11px; background: #faf8f0; font-size: 0.875rem; color: var(--ink); font-family: inherit; }
+.gh-input:focus { outline: 2px solid var(--green); outline-offset: 1px; background: #fffdf7; }
+.gh-switch { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #faf8f0; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+.gh-switch input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; margin: 0; }
+.gh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+
+/* Settings Page Font & Spacing Preferences */
+.settings-tabs,
+.settings-tabs button,
+.appearance-settings,
+.reading-settings,
+.verse-arrival-settings,
+.menu-order-card,
+.import-panel,
+.gh-card,
+.card.stack {
+  font-family: var(--sans);
+  letter-spacing: var(--reading-tracking, 0px);
+}
+
+#main:has(.settings-tabs) h1,
+#main:has(.settings-tabs) h2,
+#main:has(.settings-tabs) h3,
+#main:has(.settings-tabs) p,
+#main:has(.settings-tabs) button,
+#main:has(.settings-tabs) label,
+#main:has(.settings-tabs) input,
+#main:has(.settings-tabs) select,
+#main:has(.settings-tabs) .kicker,
+#main:has(.settings-tabs) .eyebrow,
+#main:has(.settings-tabs) span {
+  font-family: var(--sans) !important;
+  letter-spacing: var(--reading-tracking, 0px);
+}
+
+#main:has(.settings-tabs) p,
+#main:has(.settings-tabs) .muted,
+#main:has(.settings-tabs) label,
+#main:has(.settings-tabs) span {
+  line-height: var(--reading-leading, 1.6);
+}
+
+#main:has(.settings-tabs) .card.stack,
+#main:has(.settings-tabs) .gh-card {
+  gap: max(12px, var(--verse-gap, 14px));
+}
