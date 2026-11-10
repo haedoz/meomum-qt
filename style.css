@@ -861,7 +861,7 @@ dialog .dialog-close.btn:not(.primary) {
 .commentary-verse { padding-block: 9px 12px; border-top: 1px solid var(--line); }
 .commentary-verse:first-of-type {
   border-top: none;
-  padding-top: 3px;
+  padding-top: 2px;
 }
 .commentary-verse h3 { color: var(--accent-ink); }
 .commentary-page .commentary-verse p {
