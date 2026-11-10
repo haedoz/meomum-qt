@@ -520,19 +520,16 @@ async function saveDailyNote(form) {
 function cardHit(label,attributes) {
   return '<button type="button" class="card-hit" aria-label="'+esc(label)+'" '+attributes+'></button>';
 }
-function todaySummary(day,journal,canOpenNote) {
+function todaySummary(day,journal) {
   const checked = checkedChaptersOn(day);
   const read = state.readingRange?planChapters(canonChapters(),state.readingRange).filter(key=>checked.has(key)).length:checked.size;
   const prayers = state.prayers.filter(item=>item.day===day);
   const thoughts = prayers.filter(item=>item.kind==='thought').length;
-  const marks = recordRows().filter(item=>item.day===day).length;
   const entries = [
     ['comment','오늘의 QT',journal?.done?'완료':journal && hasJournalContent(journal)?'작성 중':'시작 전','data-nav="journal/'+day+'"'],
     ['check','묵상 체크',read+' / '+state.readingGoal+'장','data-nav="reading"'],
-    ['note','말씀 묵상',state.dailyNotes[day]?'작성 완료':'미작성',canOpenNote?'data-action="open-today-note"':'data-action="open-today-calendar"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
     ['note','생각 노트',thoughts+'건','data-nav="thoughts"'],
-    ['marker','말씀 기록',marks+'건','data-nav="records"'],
   ];
   return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
     '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action" data-action="open-today-calendar">묵상 달력 '+icon('arrow')+'</button></div>'+
@@ -558,7 +555,7 @@ function todayScreen() {
       '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+
       (reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+
       '</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
-    todaySummary(today,journal,Boolean(noteButton))+
+    todaySummary(today,journal)+
     (reader.edition?'<button type="button" class="card row today-resume" data-nav="bible">'+
       '<span class="tile-icon">'+icon('book')+'</span><span><span class="eyebrow">이어서 읽기</span><strong>'+
       titles[reader.book]+' '+reader.chapter+'장</strong></span>'+icon('arrow')+'</button>':'');
