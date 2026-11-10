@@ -635,6 +635,12 @@ select, .filters .pill { font-size: 0.875rem; }
 .post-response[open] .check-field { margin: 8px 0; }
 .post-editor footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; }
 .post-editor footer .primary { min-width: 85px; }
+.draft-notice:not([hidden]) {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px;
+  padding-inline: 9px; border-radius: var(--control-radius); background: var(--accent-soft);
+  color: var(--accent-ink); font-size: .76rem;
+}
+.draft-notice .text-action { color: inherit; }
 .post-content [data-journal-field="title"] { font-size: 0.8125rem; }
 .post-content [data-journal-field="reflection"] { font-size: 0.75rem; }
 .journal-view .post-header h1 { font-size: 1rem; }

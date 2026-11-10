@@ -50,6 +50,10 @@ const editions = {};
 const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
 let readingArrival;
+let readingBookmark = '', renderedBible = '', readingBookmarkTimer, lastBibleScrollTop;
+const readingBookmarkKey = 'm-bible-reading-bookmark';
+const draftEditors = new WeakMap();
+const sessionDrafts = new Map();
 let bibleSearchScope = 'all';
 let bibleSearchResults, bibleSearchPage = 0, bibleSearchPageSize = 1;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
@@ -359,6 +363,7 @@ function setReader(key) {
   const {edition,book,chapter} = readRef(key);
   swapComparison(edition);
   state.reader = {edition,book,chapter};
+  setReadingBookmark(key);
   chosen.clear();
   save();
 }
@@ -466,7 +471,7 @@ function dailyVerseQuote(key) {
 }
 function dailyNoteFields(day, note, compact = false) {
   return editorField('묵상 내용','body',note?.body,'textarea','rows="'+(compact?3:7)+'" maxlength="'+dailyNoteLimit+
-    '" required placeholder="마음에 남은 생각을 적어보세요."')+
+    '" required placeholder="마음에 남은 생각을 적어보세요."')+draftNotice()+
     '<div class="row daily-note-actions"><span class="muted">'+(note?'✓ 묵상 달력에 기록됨':'저장하면 묵상 달력에 표시돼요.')+'</span>'+
     (note?'<button type="button" class="text-action destructive" data-delete-daily-note="'+day+'">삭제</button>':'')+
     '<button class="btn primary" type="submit">'+(note?'수정 저장':'저장')+'</button></div>';
@@ -495,6 +500,7 @@ function showDailyNote(day = dateKey()) {
   form.classList.add('note-editor-dialog');
   form.dataset.dailyNote = day;
   form.dataset.ref = key;
+  prepareDraft(form,'daily/'+day+'/'+key,['body']);
   resizeWriting(form.elements.body);
 }
 async function saveDailyNote(form) {
@@ -502,6 +508,7 @@ async function saveDailyNote(form) {
   const field = form.elements.body, body = field.value.trim();
   if (!body) return notify('묵상을 적어 주세요.');
   if (!validDay(day) || !validRef(ref)) return;
+  const draft = draftSnapshot(form);
   const previous = state.dailyNotes[day];
   const entry = {ref,body};
   state.dailyNotes[day] = entry;
@@ -509,6 +516,7 @@ async function saveDailyNote(form) {
   submit.disabled = true;
   field.readOnly = true;
   if (await save()) {
+    finishDraft(form,draft);
     const inDialog = modal.contains(form);
     if (inDialog) modal.close();
     if (form.isConnected) {
@@ -561,6 +569,7 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'본문 보기':key?'묵상 열기':'번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':key?'data-action="open-today-note"':'data-nav="settings" data-import-link';
+  const resume = bibleResumeRef();
   return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1>오늘의 QT</h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
@@ -568,9 +577,9 @@ function todayScreen() {
       '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '<div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+heroLink+' '+icon('arrow')+'</span>'+noteButton+'</div></section>'+
-    (reader.edition?'<button type="button" class="card row today-resume" data-nav="bible">'+
+    (reader.edition?'<button type="button" class="card row today-resume" data-action="resume-bible">'+
       '<span class="tile-icon">'+icon('book')+'</span><span class="today-resume-copy"><span>이어서 읽기</span><strong>'+
-      titles[reader.book]+' '+reader.chapter+'장</strong></span>'+icon('right')+'</button>':'')+
+      titles[reader.book]+' '+reader.chapter+'장'+(resume?' '+verseNumber(resume)+'절':'')+'</strong></span>'+icon('right')+'</button>':'')+
     todaySummary(today,state.journal[today]);
 }
 function options(items,active) {
@@ -1724,6 +1733,27 @@ function chooseMenuOrderItem(route) {
 function readingLocation(screen) {
   return screen==='bible'?(state.reader.edition?state.reader:undefined):studySelection[screen]?.location;
 }
+function readerAddress() {
+  const {edition,book,chapter} = state.reader;
+  return edition?[edition,book,chapter].join('/'):'';
+}
+function bibleResumeRef() {
+  const address = readerAddress();
+  return address && readingBookmark.startsWith(address+'/') && verseText(readingBookmark)?readingBookmark:'';
+}
+function setReadingBookmark(ref) {
+  if (ref===readingBookmark || !verseText(ref)) return;
+  readingBookmark = ref;
+  try { localStorage.setItem(readingBookmarkKey,ref); } catch { /* Keep this session's place. */ }
+}
+function flushReadingBookmark() {
+  if (readingBookmarkTimer===undefined) return;
+  clearTimeout(readingBookmarkTimer);
+  readingBookmarkTimer = undefined;
+  if (view!=='bible' || jumpTo || !renderedBible || renderedBible!==readerAddress()) return;
+  const {verse} = currentReadingPosition() ?? {};
+  if (verse!==undefined) setReadingBookmark(renderedBible+'/'+verse);
+}
 function readingTop(screen) {
   const headerBottom = document.querySelector('.top').getBoundingClientRect().bottom;
   const controlsBottom = screen==='bible' || studySelection[screen]?main.querySelector('.reader-controls')?.getBoundingClientRect().bottom:0;
@@ -1763,9 +1793,14 @@ function rememberReadingArrival(verse) {
   if (location) {
     const {book,chapter} = location;
     readingArrival = {book,chapter,verse,scrollTop:document.scrollingElement.scrollTop};
+    if (view==='bible') {
+      lastBibleScrollTop = readingArrival.scrollTop;
+      setReadingBookmark(readerAddress()+'/'+verse);
+    }
   }
 }
 function render(studyFromSelection = false) {
+  flushReadingBookmark();
   const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
@@ -1823,6 +1858,13 @@ function render(studyFromSelection = false) {
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
   main.innerHTML = screens[view](prayerId || editorId);
+  renderedBible = view==='bible'?readerAddress():'';
+  const thoughtForm = main.querySelector('form[data-thought-editor]');
+  const prayerForm = main.querySelector('form[data-prayer-editor]');
+  const dailyForm = main.querySelector('form[data-daily-note]');
+  if (thoughtForm) prepareDraft(thoughtForm,'thought/'+thoughtForm.dataset.thoughtEditor,['day','body']);
+  if (prayerForm) prepareDraft(prayerForm,'prayer/'+prayerForm.dataset.prayerEditor,['title','day','body','answer','done']);
+  if (dailyForm) prepareDraft(dailyForm,'daily/'+dailyForm.dataset.dailyNote+'/'+dailyForm.dataset.ref,['body']);
   if (openSections.length) {
     for (const summary of main.querySelectorAll('.day-detail > summary')) {
       if (openSections.includes(summary.firstElementChild.textContent)) summary.parentElement.open = true;
@@ -1852,6 +1894,7 @@ function render(studyFromSelection = false) {
       if (studySource(view)) notify('해당 절의 자료가 없어요.');
     }
   }
+  if (view==='bible') lastBibleScrollTop = document.scrollingElement.scrollTop;
 }
 function verseScrollTop(verse) {
   return Math.max(0,verse.getBoundingClientRect().top+document.scrollingElement.scrollTop-readingTop(view)-12);
@@ -1979,17 +2022,20 @@ function showVerseNote(key,verses = noteVerseNumbers(key,state.marks[key])) {
   dialog('구절 메모','<div class="verse-note-body">'+
     noteEditorContext(selectionReference(key,verses),key,quote,quote.length>400)+
     editorField('나의 메모','note',mark?.note,'textarea','id="verse-note" rows="3" placeholder="마음에 남은 생각을 적어보세요."')+
-    '</div><footer class="row verse-note-actions">'+
+    draftNotice()+'</div><footer class="row verse-note-actions">'+
     (mark?.note?'<button type="button" class="text-action destructive" data-delete-note="'+key+'">메모 삭제</button>':
       '<span class="muted">기록함에 저장돼요</span>')+
     '<button type="button" class="btn primary" data-action="save-note">'+icon('check')+' 저장</button></footer>','verse-note-editor');
   const form = modal.querySelector('form');
   form.classList.add('note-editor-dialog');
+  prepareDraft(form,'verse/'+key+'/'+verses.join(','),['note']);
   resizeWriting(form.elements.note);
 }
 async function saveVerseNote() {
+  const form = modal.querySelector('form');
   const value = modal.querySelector('#verse-note').value.trim();
   if (!value) return notify('메모 내용을 입력해 주세요.');
+  const draft = draftSnapshot(form);
   const {key,verses} = editingVerseNote;
   const previous = state.marks[key];
   state.marks[key] = {...previous,note:value,noteEnd:verses.at(-1),noteVerses:verses,noteDay:previous?.noteDay ?? dateKey()};
@@ -2002,9 +2048,12 @@ async function saveVerseNote() {
     return;
   }
   if (lastMarkerEdit?.some(([ref])=>ref===key)) lastMarkerEdit = undefined;
-  chosen.clear();
-  modal.close();
-  render();
+  finishDraft(form,draft);
+  if (modal.open && modal.contains(form)) {
+    chosen.clear();
+    modal.close();
+    render();
+  }
   notify('구절 메모를 저장했어요.');
 }
 function isObject(value) {
@@ -2123,6 +2172,11 @@ function validatedBackup(payload) {
 }
 let pendingImport, pendingComparison = [], pendingMenuOrder = [];
 const actions = {
+  'resume-bible'() {
+    const ref = bibleResumeRef();
+    if (ref) visit(ref);
+    else navigate('bible');
+  },
   'close-bible-search'() { closeReaderSearch(true); },
   'pick-search-scope':showSearchScopePicker,
   'personal-search-type'() { showPersonalSearchFilter('type'); },
@@ -2279,6 +2333,8 @@ function stepChapter(offset) {
   const [book,chapter] = next.split('/');
   reader.book = book;
   reader.chapter = Number(chapter);
+  const first = Object.keys(source[book][chapter]).find(verse=>source[book][chapter][verse]);
+  if (first!==undefined) setReadingBookmark(readerAddress()+'/'+first);
   chosen.clear();
   save();
   render();
@@ -2434,6 +2490,7 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (target.action==='discard-draft') return discardDraft(button.form);
   if (target.settingsSection && Object.hasOwn(settingsSections,target.settingsSection)) {
     settingsSection = target.settingsSection;
     render();
@@ -2626,6 +2683,7 @@ function resizeEditorWriting() {
 }
 modal.addEventListener('input',event=>{
   const field = event.target;
+  updateDraft(field.form);
   if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.classList?.contains('note-editor-dialog'))) resizeWriting(field);
   if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
   updateEditorDate(field);
@@ -2638,6 +2696,7 @@ modal.addEventListener('keydown',event=>{
 });
 main.addEventListener('input',event => {
   const field = event.target;
+  updateDraft(field.form);
   updateEditorDate(field);
   if (field.tagName==='TEXTAREA' && (field.form?.dataset.thoughtEditor || field.form?.dataset.prayerEditor)) resizeWriting(field);
   if (field.dataset.journalField) {
@@ -2692,6 +2751,14 @@ window.addEventListener('resize',()=>{
   bibleSearchPageSize = fitReaderSearchPage();
   updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
+window.addEventListener('scroll',()=>{
+  if (view!=='bible' || !renderedBible) return;
+  const scrollTop = document.scrollingElement.scrollTop;
+  if (scrollTop===lastBibleScrollTop) return;
+  lastBibleScrollTop = scrollTop;
+  if (readingBookmarkTimer===undefined) readingBookmarkTimer = setTimeout(flushReadingBookmark,160);
+},{passive:true});
+window.addEventListener('pagehide',flushReadingBookmark);
 document.fonts?.addEventListener('loadingdone',()=>updateVerseScrollRoom());
 function keepScrollInOverlay(event,delta) {
   const overlay = modal.open ? modal : readerSearchPanel.hidden ? null : readerSearchPanel;
@@ -2769,6 +2836,7 @@ main.addEventListener('submit',event => {
 });
 main.addEventListener('change',async event => {
   const field = event.target;
+  updateDraft(field.form);
   updateEditorDate(field);
   if (field.id==='align-verse-at-top') {
     state.alignVerseAtTop = field.checked;
@@ -3125,6 +3193,88 @@ function editorField(label,name,value='',type='text',extra='') {
     : '<input type="'+type+'" name="'+name+'" value="'+esc(value)+'" '+extra+'>';
   return '<label class="field">'+label+field+'</label>';
 }
+function draftNotice() {
+  return '<div class="draft-notice" hidden><span data-draft-status role="status"></span>'+
+    '<button type="button" class="text-action" data-action="discard-draft">임시 글 지우기</button></div>';
+}
+function readDraft(key) {
+  if (sessionDrafts.has(key)) return sessionDrafts.get(key);
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function storeDraft(key,value) {
+  try {
+    if (value===null) localStorage.removeItem(key);
+    else localStorage.setItem(key,value);
+    sessionDrafts.delete(key);
+    return true;
+  } catch {
+    sessionDrafts.set(key,value);
+    return false;
+  }
+}
+function draftSnapshot(form) {
+  const editor = draftEditors.get(form);
+  return editor?JSON.stringify(editor.fields.map(field=>field.type==='checkbox'?field.checked:field.value)):null;
+}
+function applyDraftValues(editor,values) {
+  editor.fields.forEach((field,index)=>{
+    const value = values[index];
+    if (field.type==='checkbox' && typeof value==='boolean') field.checked = value;
+    else if (typeof value==='string') field.value = value;
+    updateEditorDate(field);
+    if (field.tagName==='TEXTAREA') resizeWriting(field);
+  });
+}
+function showDraftStatus(editor,message) {
+  if (!editor.status) return;
+  editor.status.parentElement.hidden = !message;
+  if (editor.status.textContent!==message) editor.status.textContent = message;
+}
+function prepareDraft(form,key,names) {
+  const editor = {key:'m-bible-draft/'+key,fields:names.map(name=>form.elements[name]).filter(Boolean),
+    status:form.querySelector('[data-draft-status]')};
+  draftEditors.set(form,editor);
+  editor.baseline = draftSnapshot(form);
+  const saved = editor.lastDraft = readDraft(editor.key);
+  if (!saved) return;
+  try {
+    const values = JSON.parse(saved);
+    if (!Array.isArray(values) || values.length!==editor.fields.length) return;
+    applyDraftValues(editor,values);
+    const answer = form.elements.answer;
+    if (answer && (answer.value || form.elements.done.checked)) {
+      form.querySelector('.post-response').open = true;
+      resizeWriting(answer);
+    }
+    showDraftStatus(editor,sessionDrafts.has(editor.key)?'앱을 닫기 전까지만 임시 보관 중':'임시 글을 불러왔어요');
+  } catch { /* Ignore a damaged draft. */ }
+}
+function updateDraft(form) {
+  const editor = draftEditors.get(form);
+  if (!editor) return;
+  const value = draftSnapshot(form);
+  if (value===editor.baseline) {
+    if (readDraft(editor.key)===editor.lastDraft) storeDraft(editor.key,null);
+    editor.lastDraft = null;
+    showDraftStatus(editor,'');
+  } else {
+    editor.lastDraft = value;
+    showDraftStatus(editor,storeDraft(editor.key,value)?'기기에 임시 저장됨':'앱을 닫기 전까지만 임시 보관 중');
+  }
+}
+function discardDraft(form) {
+  const editor = draftEditors.get(form);
+  if (!editor) return;
+  applyDraftValues(editor,JSON.parse(editor.baseline));
+  if (readDraft(editor.key)===editor.lastDraft) storeDraft(editor.key,null);
+  editor.lastDraft = null;
+  showDraftStatus(editor,'');
+  editor.fields[0]?.focus({preventScroll:true});
+}
+function finishDraft(form,snapshot) {
+  const editor = draftEditors.get(form);
+  if (editor && readDraft(editor.key)===snapshot) storeDraft(editor.key,null);
+}
 function editorActions(kind,item) {
   return '<div class="row">'+(item?'<button type="button" class="btn" data-delete="'+kind+'">삭제</button>':'')+
     '<button class="btn primary'+(item?'':' block')+'" type="button" data-action="save-'+kind+'">저장</button></div>';
@@ -3153,6 +3303,7 @@ async function saveThought(form) {
   const id = form.dataset.thoughtEditor;
   const existing = previous.find(item=>item.id===id && item.kind==='thought');
   if (id!=='thought' && !existing) return;
+  const draft = draftSnapshot(form);
   const item = {id:existing?.id ?? newId(),kind:'thought',title:'',body,answer:'',done:false};
   const day = form.elements.day.value;
   if (validDay(day)) item.day = day;
@@ -3166,6 +3317,7 @@ async function saveThought(form) {
     field.readOnly = false;
     return;
   }
+  finishDraft(form,draft);
   if (form.isConnected) {
     if (history.state?.qtPrevious) history.back();
     else {
@@ -3187,7 +3339,7 @@ function prayerEditorScreen(id) {
       '<form data-thought-editor="'+id+'"><div class="writing-panel">'+
       editorDateField(item?item.day ?? '':dateKey())+
       editorField('생각','body',item?thoughtText(item):'','textarea','rows="5" required placeholder="지금 떠오른 생각을 적어보세요."')+
-      '</div><footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
+      '</div>'+draftNotice()+'<footer><button class="btn" type="button" data-action="back">나가기</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
   }
   return '<div class="post-editor prayer-editor">'+writingHeader('prayer','기도 노트',item?'기도제목 편집':'새 기도제목')+
     '<form data-prayer-editor="'+id+'"><div class="writing-panel">'+
@@ -3197,12 +3349,13 @@ function prayerEditorScreen(id) {
     '</div><details class="post-response" '+(item?.answer || item?.done?'open':'')+'><summary><span>'+icon('check')+'응답 기록</span>'+icon('down')+'</summary>'+
       editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+
       '<label class="check-field"><input name="done" type="checkbox" '+(item?.done?'checked':'')+'> 응답받았어요</label></details>'+
-    '<footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
+    draftNotice()+'<footer><button class="btn" type="button" data-action="back">나가기</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
 }
 async function savePrayer(form) {
   const values = new FormData(form);
   const title = values.get('title').trim();
   if (!title) return notify('제목을 입력해 주세요.');
+  const draft = draftSnapshot(form);
   const id = form.dataset.prayerEditor;
   const item = {id:id==='new'?newId():id,title,body:values.get('body').trim(),answer:values.get('answer').trim(),done:values.has('done')};
   const day = values.get('day');
@@ -3216,11 +3369,14 @@ async function savePrayer(form) {
     button.disabled = false;
     return;
   }
+  finishDraft(form,draft);
   prayerFilter = item.done?'answered':'open';
-  if (history.state?.returnFromEditor) history.back();
-  else {
-    history.replaceState(history.state,'','#prayers');
-    render();
+  if (form.isConnected) {
+    if (history.state?.returnFromEditor) history.back();
+    else {
+      history.replaceState(history.state,'','#prayers');
+      render();
+    }
   }
   notify('기록을 저장했어요.');
 }
@@ -3418,7 +3574,7 @@ function resetRestoredAndroidSettings() {
 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyDisplay);
 document.addEventListener('visibilitychange',()=>{
-  if (document.hidden) return;
+  if (document.hidden) return flushReadingBookmark();
   if ((view==='today' || view==='calendar') && renderedDailyDate!==dateKey()) render();
   refreshLocalEditions();
 });
@@ -3433,6 +3589,7 @@ window.addEventListener('popstate',() => {
   if (activeRoute!==location.hash.slice(1)) render();
 });
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+try { readingBookmark = localStorage.getItem(readingBookmarkKey) ?? ''; } catch { /* Use the current chapter. */ }
 try {
   db = await openDB();
   const [saved,imported,font] = await Promise.all([
