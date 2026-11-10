@@ -856,7 +856,7 @@ dialog .dialog-close.btn:not(.primary) {
 .verse-arrival-switch input:focus-visible + span { outline: 1px solid var(--accent-ink); outline-offset: 3px; }
 .commentary-page { 
   padding: clamp(12px, 4vw, 20px); 
-  padding-top: 3px;
+  padding-top: 8px;
 }
 .commentary-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .commentary-heading { padding: 2px 0 12px; }
