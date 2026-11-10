@@ -1,6 +1,6 @@
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
-import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=37';
+import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
 
 const icons = {
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
@@ -84,6 +84,7 @@ let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
 let recordPage = 0;
+let oldestRecordsFirst = false;
 const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
@@ -614,7 +615,7 @@ function readerScreen() {
       bookPickerField(book,'')+readerPickerField('',chapter+'장','jump-chapter','장·절 이동')+'</div>'+
     '<article class="reading bible-passage'+(comparison.length?' comparing':'')+'"><header class="passage-heading passage-navigation">'+
     '<button class="btn chapter-arrow" data-step="-1" aria-label="위쪽 이전 장" '+(atStart?'disabled':'')+'>'+icon('left')+'</button>'+
-    '<div class="passage-title"><strong>'+titles[book]+' '+chapter+'장</strong><span>'+[edition,...comparison].map(editionLabel).map(esc).join(' · ')+'</span></div>'+
+    '<div class="passage-title"><strong>'+titles[book]+' '+chapter+'장</strong></div>'+
     '<button class="btn chapter-arrow" data-step="1" aria-label="위쪽 다음 장" '+(atEnd?'disabled':'')+'>'+icon('right')+'</button></header>'+
     (rows || '<p>본문을 불러올 수 없어요. 연결을 확인한 뒤 다시 열어주세요.</p>')+'</article>'+verseActions()+
     (rows?chapterCheckControl(book,chapter):'')+
@@ -1046,7 +1047,8 @@ function commentaryParagraphs(body) {
     });
 }
 function studySource(mode) {
-  return mode==='original'?Object.values(originals).find(item=>editionName(item.label)==='원전분해'):mannaCommentary();
+  if (mode==='original') return Object.values(originals).find(item=>editionName(item.label)==='원전분해');
+  return commentaries[state.commentaryEdition] ?? mannaCommentary() ?? Object.values(commentaries)[0];
 }
 function studyBookChapters(mode,book) {
   const analysis = studySource(mode)?.verses[book];
@@ -1062,12 +1064,9 @@ function studyChapterVerses(mode,book,chapter) {
 }
 function studyScreen(mode) {
   const original = mode==='original';
-  const headingHtml = original?
-    heading('ORIGINAL LANGUAGES','원전분해','히브리어와 헬라어의 단어별 뜻과 문법을 살펴봐요.'):
-    heading('BIBLE COMMENTARY','만나주석','책과 장을 선택하거나 원하는 절로 바로 이동하세요.');
   const source = studySource(mode);
   if (!source && !original) {
-    return headingHtml+'<section class="card stack spaced"><p>만나주석.cdb 파일을 가져오면 여기서 볼 수 있어요.</p>'+
+    return '<section class="card stack"><p>주석 파일(.cdb)을 가져오면 여기서 볼 수 있어요.</p>'+
       '<button class="btn primary" data-nav="settings" data-import-link>주석 파일 가져오기</button></section>';
   }
   const selection = studySelection[mode];
@@ -1077,9 +1076,9 @@ function studyScreen(mode) {
     : {book:firstBook ?? state.reader.book,chapter:Number(Object.keys(studyBookChapters(mode,firstBook) ?? {})[0] ?? 1)});
   const entries = source?.verses[book]?.[chapter] ?? {};
   selection.location = {book,chapter,verse};
-  return headingHtml+
-    '<div class="reader-controls commentary-controls">'+bookPickerField(book)+
-      readerPickerField('장·절',chapter+'장'+(verse?' '+verse+'절':''),'jump-chapter','장·절 이동')+'</div>'+
+  return '<div class="reader-controls commentary-controls'+(original?'':' with-commentary-source')+'">'+
+      (original?'':readerPickerField('',source.label,'pick-commentary','주석 선택'))+
+      bookPickerField(book,'')+readerPickerField('',chapter+'장'+(verse?' '+verse+'절':''),'jump-chapter','장·절 이동')+'</div>'+
     (original && !source?'<div class="original-source-note"><p>단어별 풀이를 보려면 원전분해.sdb 파일을 추가해 주세요.</p>'+
       '<button type="button" class="text-action" data-nav="settings" data-import-link>원어 파일 가져오기 '+icon('arrow')+'</button></div>':'')+
     '<article class="card commentary-page">'+studyPassage(mode,book,chapter,entries)+'</article>';
@@ -1089,8 +1088,7 @@ function studyPassage(mode,book,chapter,entries) {
   const source = original?originalPassageSource(book,chapter):undefined;
   const verseNumbers = [...new Set([entries,source?.chapters?.[chapter]].flatMap(chapterVerses=>
     Object.entries(chapterVerses ?? {}).filter(([verse,text])=>Number(verse)>0 && text).map(([verse])=>verse)))].sort((a,b)=>a-b);
-  return '<header class="commentary-heading"><div><h2>'+esc(titles[book])+' '+chapter+'장</h2>'+
-    '<p class="muted">'+(original?'원문과 단어별 풀이':'절별 주석')+'</p></div></header>'+
+  return '<header class="commentary-heading"><h2>'+esc(titles[book])+' '+chapter+'장</h2></header>'+
     (verseNumbers.map(verse=>'<section class="commentary-verse"'+
       (Number(verse)<=500?' data-reading-verse="'+verse+'"':'')+'><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
       (Number(verse)>500?'참고 항목 '+verse:verse+'절')+'</h3>'+
@@ -1463,7 +1461,7 @@ function calendarDaySummary(day,items,records) {
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
     (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
-const recordFilters = {all:'전체',highlight:'형광펜',note:'메모'};
+const recordFilters = {all:'전체',highlight:'형광펜',underline:'밑줄',note:'메모'};
 function markKinds(mark) {
   return [mark.color || mark.highlight?'highlight':'',mark.underline?'underline':'',mark.note?'note':''].filter(Boolean);
 }
@@ -1511,12 +1509,13 @@ function recordPassage(key,verses) {
 function recordList(rows = recordRows()) {
   const matching = rows.filter(({key,day,mark}) => {
     const {edition,book} = readRef(key);
-    const matchesFilter = filter==='all' || (filter==='highlight' && verseMark(mark)) || (filter==='note' && mark.note);
+    const matchesFilter = filter==='all' || markKinds(mark).includes(filter);
     return matchesFilter &&
       (!recordSelection.edition || edition===recordSelection.edition) &&
       (!recordSelection.book || book===recordSelection.book) &&
       (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year);
   });
+  if (oldestRecordsFirst) matching.sort((a,b)=>(a.day ?? '9999').localeCompare(b.day ?? '9999'));
   const pageSize = 8;
   const pages = Math.max(1,Math.ceil(matching.length/pageSize));
   recordPage = Math.min(recordPage,pages-1);
@@ -1527,8 +1526,10 @@ function recordList(rows = recordRows()) {
     '<span>'+String(recordPage+1)+' / '+pages+'</span>'+
     '<button type="button" class="btn" data-record-page="'+(recordPage+1)+'" aria-label="다음 페이지" '+(recordPage+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>':'';
   let previousYear;
-  return '<p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건'+
-    (pages>1?' · '+(start+1)+'–'+(start+visible.length)+'번째':'')+'</p>'+
+  return '<div class="row record-list-tools"><p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건'+
+    (pages>1?' · '+(recordPage+1)+' / '+pages+'페이지':'')+'</p>'+
+    '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
+    (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button></div>'+
     (visible.map(({key,verses,day,mark,noteKey}) => {
       const year = day?.slice(0,4) ?? '';
       const title = year===previousYear?'':'<h3 class="record-year">'+(year?year+'년':'날짜 미기록')+'</h3>';
@@ -1624,17 +1625,25 @@ function choosePersonalSearchFilter(choice) {
   readerSearchPanel.querySelector('[data-action="personal-search-'+key+'"]')?.focus({preventScroll:true});
 }
 function recordPickerItems(key,rows) {
-  if (key==='edition') return Object.entries(editions);
-  if (key==='book') return books;
+  if (key==='edition') return [...new Set(rows.map(({key})=>readRef(key).edition))].map(id=>[id,editionLabel(id)]);
+  if (key==='book') {
+    const savedBooks = new Set(rows.map(({key})=>readRef(key).book));
+    return books.filter(([book])=>savedBooks.has(book));
+  }
   const years = [...new Set(rows.map(({day})=>day?.slice(0,4) ?? 'undated'))];
   return years.map(year=>[year,year==='undated'?'날짜 미기록':year+'년']);
 }
 function recordsScreen() {
   const rows = recordRows();
+  for (const key of Object.keys(recordSelection)) {
+    if (recordSelection[key] && !recordPickerItems(key,rows).some(([id])=>id===recordSelection[key])) recordSelection[key] = '';
+  }
   const prayers = state.prayers.filter(item=>item.kind!=='thought');
   const answered = prayers.filter(item=>item.done).length;
   const thoughts = state.prayers.length-prayers.length;
-  const counts = {all:rows.length,highlight:rows.filter(({mark})=>verseMark(mark)).length,note:rows.filter(({mark})=>mark.note).length};
+  const counts = {all:rows.length,highlight:0,underline:0,note:0};
+  for (const {mark} of rows) for (const kind of markKinds(mark)) counts[kind]++;
+  const activeFilters = Object.values(recordSelection).filter(Boolean).length;
   const pickers = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
     return readerPickerField(label,selected?.[1] ?? all,'pick-record-'+key,label+' 선택');
@@ -1653,8 +1662,9 @@ function recordsScreen() {
       '<strong>'+esc(reference(bundle.verses[0].ref))+' · '+bundle.verses.length+'구절</strong>'+
       '<span class="muted">'+esc(bundle.day)+'</span></button><button type="button" class="text-action destructive" '+
       'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
-    '<div class="section-head"><h2>말씀 기록</h2></div><div class="filters">'+Object.entries(recordFilters).map(([id,label])=>'<button class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
-    '<div class="record-filters">'+pickers+'</div>'+
+    '<div class="section-head"><h2>말씀 기록</h2></div><div class="record-toolbar"><div class="filters record-type-tabs" role="group" aria-label="기록 종류">'+Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
+    '<details class="record-filter-panel" '+(activeFilters?'open':'')+'><summary>'+icon('filter')+'<span>번역본·성경·연도'+(activeFilters?' · '+activeFilters+'개 적용':'')+'</span>'+icon('down')+'</summary>'+
+    '<div class="record-filters">'+pickers+'</div>'+(activeFilters?'<button type="button" class="text-action" data-action="clear-record-filters">필터 초기화</button>':'')+'</details></div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
 function settingsScreen() {
@@ -1711,7 +1721,7 @@ function readingLocation(screen) {
 }
 function readingTop(screen) {
   const headerBottom = document.querySelector('.top').getBoundingClientRect().bottom;
-  const controlsBottom = screen==='bible'?main.querySelector('.reader-controls')?.getBoundingClientRect().bottom:0;
+  const controlsBottom = screen==='bible' || studySelection[screen]?main.querySelector('.reader-controls')?.getBoundingClientRect().bottom:0;
   return Math.max(headerBottom,controlsBottom ?? 0);
 }
 function currentReadingPosition(useSelection = false) {
@@ -2080,6 +2090,7 @@ function validatedBackup(payload) {
     }
   }
   result.readingGoal = input.readingGoal;
+  result.commentaryEdition = input.commentaryEdition;
   result.display = input.display;
   result.theme = input.theme;
   result.palette = input.palette;
@@ -2101,6 +2112,19 @@ const actions = {
   'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
+  'pick-commentary':() => showCommentaryPicker(),
+  'sort-records'() {
+    oldestRecordsFirst = !oldestRecordsFirst;
+    recordPage = 0;
+    render();
+    main.querySelector('[data-action="sort-records"]')?.focus({preventScroll:true});
+  },
+  'clear-record-filters'() {
+    for (const key of Object.keys(recordSelection)) recordSelection[key] = '';
+    recordPage = 0;
+    render();
+    main.querySelector('.record-filter-panel > summary')?.focus({preventScroll:true});
+  },
   'pick-tracker-year'() { showTrackerPicker('year'); },
   'pick-tracker-book'() { showTrackerPicker('book'); },
   'tracker-overview'() {
@@ -2292,6 +2316,37 @@ function showEditionPicker() {
   if (view!=='bible' || !state.reader.edition) return;
   dialog('번역본 선택',pickerOptions(Object.entries(editions),state.reader.edition,'data-pick-edition'));
 }
+function showCommentaryPicker(page) {
+  if (view!=='commentary') return;
+  const items = Object.values(commentaries).map(({id,label})=>[id,label]);
+  const active = studySource('commentary')?.id;
+  if (!items.length) return;
+  const pageSize = window.innerHeight<520?4:8;
+  const pages = Math.ceil(items.length/pageSize);
+  const current = Math.max(0,Math.min(page ?? Math.floor(items.findIndex(([id])=>id===active)/pageSize),pages-1));
+  const pager = pages>1?'<nav class="row tracker-picker-pages" aria-label="주석 목록 페이지">'+
+    '<button type="button" class="btn" data-commentary-page="'+(current-1)+'" aria-label="이전 페이지" '+(current===0?'disabled':'')+'>'+icon('left')+'</button>'+
+    '<span>'+(current+1)+' / '+pages+'</span>'+
+    '<button type="button" class="btn" data-commentary-page="'+(current+1)+'" aria-label="다음 페이지" '+(current+1===pages?'disabled':'')+'>'+icon('right')+'</button></nav>':'';
+  dialog('주석 선택',pickerOptions(items.slice(current*pageSize,(current+1)*pageSize),active,'data-pick-commentary')+pager);
+}
+function chooseCommentary(id) {
+  if (view!=='commentary' || !Object.hasOwn(commentaries,id)) return;
+  const position = currentReadingPosition();
+  const previous = studySource('commentary')?.id;
+  modal.close();
+  if (id!==previous) {
+    state.commentaryEdition = id;
+    studySelection.commentary.location = position;
+    readingArrival = undefined;
+    save();
+    render();
+    if (position?.verse && studyChapterVerses('commentary',position.book,position.chapter)[position.verse]) {
+      showVerseArrival('study-v-'+position.verse);
+    } else window.scrollTo(0,0);
+  }
+  main.querySelector('[data-action="pick-commentary"]')?.focus({preventScroll:true});
+}
 function chooseEdition(edition) {
   if (!Object.hasOwn(editions,edition)) return;
   const reader = state.reader;
@@ -2380,6 +2435,8 @@ document.addEventListener('click',event => {
   if ('recordOption' in target) return chooseRecordOption(button);
   if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
   if (target.pickEdition) return chooseEdition(target.pickEdition);
+  if (target.pickCommentary) return chooseCommentary(target.pickCommentary);
+  if ('commentaryPage' in target) return showCommentaryPicker(Number(target.commentaryPage));
   if (target.pickBook) return chooseBook(target.pickBook);
   if (target.trackerTestament) return showTrackerPicker('book',target.trackerTestament,0);
   if ('trackerPage' in target) return showTrackerPicker(target.trackerKind,target.trackerSection,Number(target.trackerPage));
@@ -2738,6 +2795,7 @@ function displayValue(key,value) {
 }
 function migrate(input) {
   const result = {...blank(),...input};
+  result.commentaryEdition = localEditionId(input.commentaryEdition)?input.commentaryEdition:'';
   const oldSize = {regular:17,large:20,largest:23};
   const oldFont = Object.hasOwn(oldSize,input.readingSize) ? oldSize[input.readingSize] : undefined;
   result.display = {};

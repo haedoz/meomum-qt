@@ -32,9 +32,10 @@ export function editionName(label) {
 }
 export function editionKind(label,declared = 'bible') {
   const name = editionName(label);
+  if (declared==='commentary' || /\.cdb\s*(?:\(\d+\))?$/i.test(label.trim())) return 'commentary';
   if (/^(?:BHSStp|LXXStp|한국어직역)$/i.test(name)) return 'bible';
   if (['원전분해','개역개정S','개역한글S','KJV_S'].includes(name)) return 'original';
-  if (['만나주석','매튜헨리','랑게렌스키'].includes(name)) return 'commentary';
+  if (['만나주석','매튜헨리','랑게렌스키'].includes(name) || /(?:주석|commentar(?:y|ies))$/i.test(name)) return 'commentary';
   if (['쉬운성경','바른성경','개역개정','ESV','NIV1984','NIV2011'].includes(name)) return 'bible';
   return declared;
 }
@@ -111,7 +112,7 @@ export async function readBdb(bytes,name,canonical,openDatabase) {
     const ext = name.trim().replace(/\s*\(\d+\)$/,'').toLowerCase().slice(-4);
     const samples = rows.slice(0,40).map(([, , ,text])=>typeof text==='string'?text:'');
     const hasOriginalCodes = samples.filter(text=>(text.match(/<W[HG]\s*\d+[A-Za-z]?\s*>/gi)?.length ?? 0)>=2).length>=2;
-    const kind = editionKind(name,hasOriginalCodes || ext==='.sdb'?'original':ext==='.cdb'?'commentary':'bible');
+    const kind = editionKind(name,ext==='.cdb'?'commentary':hasOriginalCodes || ext==='.sdb'?'original':'bible');
     const commentary = kind==='commentary', original = kind==='original';
     // Some Bible editions include a verse numbered 0 (for example, LXXStp at Daniel 5:0).
     const firstVerse = original ? 1 : 0;
