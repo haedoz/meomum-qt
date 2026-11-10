@@ -1280,6 +1280,7 @@ function setReadingRange(range) {
   render();
 }
 modal.addEventListener('change',event=>{
+  updateYearEditorDate(event.target);
   const field = event.target;
   if (field.name==='compare-edition') {
     pendingComparison = pendingComparison.filter(id=>id!==field.value);
@@ -2463,6 +2464,7 @@ function resizeEditorWriting() {
 modal.addEventListener('input',event=>{
   const field = event.target;
   if (field.tagName==='TEXTAREA' && field.form?.name==='year-editor') resizeWriting(field);
+  updateYearEditorDate(field);
 });
 main.addEventListener('input',event => {
   const field = event.target;
@@ -3048,14 +3050,27 @@ function newYearCard(item) {
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
 let yearRefs = [];
+function yearEditorDateLabel(day) {
+  if (!day) return '날짜 선택';
+  const [year,month,number] = day.split('-').map(Number);
+  return year+'. '+month+'. '+number+'.';
+}
+function updateYearEditorDate(field) {
+  if (field.form?.name!=='year-editor' || field.name!=='day') return;
+  const label = field.parentElement.querySelector('[data-year-date-value]');
+  label.textContent = yearEditorDateLabel(field.value);
+}
 function showYearEditor(item,refs = []) {
   editId = item?.id;
   yearRefs = item?.refs ?? refs;
   const firstRef = yearRefs[0];
+  const day = item?item.day ?? '':dateKey();
   dialog(item?'새해 말씀 편집':'새해 말씀 추가',
     '<div class="year-editor-dates">'+
     editorField('연도','year',item?.year ?? new Date().getFullYear(),'number','min="1900" max="9999" required')+
-    editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+'</div>'+
+    '<label class="field">기록 날짜<span class="year-editor-date-control">'+
+    '<span data-year-date-value aria-hidden="true">'+yearEditorDateLabel(day)+'</span>'+icon('calendar')+
+    '<input type="date" name="day" value="'+esc(day)+'"></span></label></div>'+
     editorField('말씀 제목 또는 구절','title',item?.title ?? (firstRef?reference(firstRef):''),'textarea',
       'rows="2" required placeholder="말씀 제목이나 구절을 적어보세요."')+
     (firstRef?'<p class="muted year-editor-refs">'+yearRefs.map(reference).map(esc).join(' · ')+'</p>':'')+
