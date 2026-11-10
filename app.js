@@ -342,7 +342,7 @@ function journalDate(hash) {
 function validDay(day) {
   return typeof day==='string' && /^\d{4}-\d{2}-\d{2}$/.test(day) && dateKey(new Date(day+'T12:00:00'))===day;
 }
-const heading = (label,title,sub) => '<div class="eyebrow">'+label+'</div><h1>'+title+'</h1><p class="lead">'+sub+'</p>';
+const heading = (label,title,sub) => '<header class="page-heading"><p class="eyebrow">'+label+'</p><h1>'+title+'</h1><p class="lead">'+sub+'</p></header>';
 function readRef(key) {
   const [edition,book,chapter,verse] = key.split('/');
   return {edition,book,chapter:Number(chapter),verse:Number(verse)};
