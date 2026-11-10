@@ -1822,7 +1822,6 @@ function render(studyFromSelection = false) {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
-  main.style.removeProperty('--verse-arrival-room');
   main.innerHTML = screens[view](prayerId || editorId);
   if (openSections.length) {
     for (const summary of main.querySelectorAll('.day-detail > summary')) {
@@ -1830,6 +1829,7 @@ function render(studyFromSelection = false) {
     }
   }
   resizeEditorWriting();
+  updateVerseScrollRoom();
   const navView = ['calendar','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
@@ -1853,16 +1853,30 @@ function render(studyFromSelection = false) {
     }
   }
 }
+function verseScrollTop(verse) {
+  return Math.max(0,verse.getBoundingClientRect().top+document.scrollingElement.scrollTop-readingTop(view)-12);
+}
+function updateVerseScrollRoom(arrival) {
+  const extended = Boolean(state.alignVerseAtTop && (view==='bible' || studySelection[view]));
+  main.classList.toggle('verse-scroll-extended',extended);
+  if (!extended) {
+    main.style.removeProperty('--verse-arrival-room');
+    return;
+  }
+  const last = Array.from(main.querySelectorAll('[data-reading-verse]')).at(-1);
+  const lastVerse = last && studySelection[view]?document.getElementById('study-v-'+last.dataset.readingVerse) ?? last:last;
+  const top = Math.max(lastVerse?verseScrollTop(lastVerse):0,arrival?verseScrollTop(arrival):0);
+  const page = document.scrollingElement;
+  const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
+  const naturalEnd = main.getBoundingClientRect().bottom+page.scrollTop-existing;
+  const room = top>0?Math.ceil(top+page.clientHeight-naturalEnd):0;
+  if (room>0) main.style.setProperty('--verse-arrival-room',room+'px');
+  else main.style.removeProperty('--verse-arrival-room');
+}
 function alignVerseArrival(verse) {
   const page = document.scrollingElement;
-  const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-readingTop(view)-12);
-  if (state.alignVerseAtTop) {
-    const room = Math.ceil(top+page.clientHeight-page.scrollHeight);
-    if (room>0) {
-      const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
-      main.style.setProperty('--verse-arrival-room',(existing+room)+'px');
-    }
-  }
+  updateVerseScrollRoom(verse);
+  const top = verseScrollTop(verse);
   const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
   window.scrollTo(0,Math.min(top,maxScroll));
   rememberReadingArrival(Number(verse.id.split('-').at(-1)));
@@ -2671,12 +2685,14 @@ readerSearchForm.addEventListener('submit',event=>{
 });
 window.addEventListener('resize',()=>{
   resizeEditorWriting();
+  updateVerseScrollRoom();
   if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea, .note-editor-dialog textarea').forEach(resizeWriting);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
   updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
+document.fonts?.addEventListener('loadingdone',()=>updateVerseScrollRoom());
 function keepScrollInOverlay(event,delta) {
   const overlay = modal.open ? modal : readerSearchPanel.hidden ? null : readerSearchPanel;
   if (!overlay || !event.cancelable) return;
@@ -2933,7 +2949,7 @@ function displaySettings() {
     '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>'+
     '<div class="section-head"><h2>구절 이동</h2></div><section class="card verse-arrival-settings">'+
     '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+
-    '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 장 끝의 구절도 위에 오도록 아래 여백을 추가해요.</span></span>'+
+    '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 검색하거나 직접 스크롤할 때 마지막 절도 상단 선택 줄 바로 아래까지 올릴 수 있어요.</span></span>'+
     '<span class="verse-arrival-switch"><input type="checkbox" role="switch" id="align-verse-at-top" aria-labelledby="verse-arrival-label" '+
     'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
 }
