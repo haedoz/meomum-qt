@@ -1938,10 +1938,13 @@ function showVerseNote(key,verses = noteVerseNumbers(key,state.marks[key])) {
   editingVerseNote = {key,verses};
   const passage = recordPassage(key,verses);
   const quote = passage.map(([number,body])=>verses.length>1?number+'절 '+body:body).join('\n');
-  dialog('구절 메모',noteEditorContext(selectionReference(key,verses),key,quote,quote.length>400)+
+  dialog('구절 메모','<div class="verse-note-body">'+
+    noteEditorContext(selectionReference(key,verses),key,quote,quote.length>400)+
     editorField('나의 메모','note',mark?.note,'textarea','id="verse-note" rows="3" placeholder="마음에 남은 생각을 적어보세요."')+
-    '<div class="row verse-note-actions">'+(mark?.note?'<button type="button" class="text-action destructive" data-delete-note="'+key+'">메모 삭제</button>':'')+
-    '<button type="button" class="btn primary" data-action="save-note">메모 저장</button></div>');
+    '</div><footer class="row verse-note-actions">'+
+    (mark?.note?'<button type="button" class="text-action destructive" data-delete-note="'+key+'">메모 삭제</button>':
+      '<span class="muted">기록함에 저장돼요</span>')+
+    '<button type="button" class="btn primary" data-action="save-note">'+icon('check')+' 저장</button></footer>','verse-note-editor');
   const form = modal.querySelector('form');
   form.classList.add('note-editor-dialog');
   resizeWriting(form.elements.note);

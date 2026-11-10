@@ -1036,6 +1036,20 @@ dialog:has(.note-editor-dialog) { padding: clamp(14px,4vw,21px); }
 .note-editor-context blockquote { margin: 5px 0 0; white-space: pre-wrap; }
 .note-editor-context summary { min-height: 36px; padding-block: 7px; cursor: pointer; color: var(--accent-ink); font-size: .78rem; }
 .note-editor-dialog :is(.daily-note-actions,.verse-note-actions) { padding-top: 7px; border-top: 1px solid var(--line); }
+dialog:has(form[name="verse-note-editor"]) { padding: 0; }
+form[name="verse-note-editor"] { --verse-note-gutter: clamp(14px,4vw,22px); gap: 0; }
+form[name="verse-note-editor"] > .row:first-child { padding: 8px var(--verse-note-gutter); }
+form[name="verse-note-editor"] #active-dialog-title { font-weight: 720; }
+.verse-note-body { display: grid; gap: 14px; min-width: 0; padding: 12px var(--verse-note-gutter); }
+.verse-note-body .note-editor-context {
+  background: var(--accent-soft); border-radius: 10px; border-inline-start: 3px solid var(--accent-ink);
+}
+.verse-note-body .note-editor-context .ref { color: var(--accent-ink); font-weight: 650; }
+.verse-note-body .field { gap: 5px; }
+.verse-note-body textarea { background: var(--soft); }
+.note-editor-dialog .verse-note-actions { padding: 8px var(--verse-note-gutter); background: var(--soft); }
+.verse-note-actions .muted { font-size: .75rem; }
+.verse-note-actions svg { width: 15px; height: 15px; }
 .dictionary-detail h3 { margin: 0 0 5px; color: var(--accent-ink); font-size: .8rem; }
 .dictionary-detail { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 dialog:has(form[name="dictionary"]) {
