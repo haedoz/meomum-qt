@@ -1821,7 +1821,7 @@ function render(studyFromSelection = false) {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
-  main.style.removeProperty('--study-arrival-room');
+  main.style.removeProperty('--verse-arrival-room');
   main.innerHTML = screens[view](prayerId || editorId);
   if (openSections.length) {
     for (const summary of main.querySelectorAll('.day-detail > summary')) {
@@ -1855,12 +1855,11 @@ function render(studyFromSelection = false) {
 function alignVerseArrival(verse) {
   const page = document.scrollingElement;
   const top = Math.max(0,verse.getBoundingClientRect().top+page.scrollTop-readingTop(view)-12);
-  if (studySelection[view]) {
-    const mainEnd = main.getBoundingClientRect().bottom+page.scrollTop;
-    const room = Math.max(0,Math.ceil(top+page.clientHeight-Math.min(mainEnd,page.scrollHeight)));
-    if (room) {
-      const existing = Number.parseFloat(main.style.getPropertyValue('--study-arrival-room')) || 0;
-      main.style.setProperty('--study-arrival-room',(existing+room)+'px');
+  if (state.alignVerseAtTop) {
+    const room = Math.ceil(top+page.clientHeight-page.scrollHeight);
+    if (room>0) {
+      const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
+      main.style.setProperty('--verse-arrival-room',(existing+room)+'px');
     }
   }
   const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
@@ -2095,6 +2094,7 @@ function validatedBackup(payload) {
   }
   result.readingGoal = input.readingGoal;
   result.commentaryEdition = input.commentaryEdition;
+  result.alignVerseAtTop = input.alignVerseAtTop;
   result.display = input.display;
   result.theme = input.theme;
   result.palette = input.palette;
@@ -2753,6 +2753,10 @@ main.addEventListener('submit',event => {
 main.addEventListener('change',async event => {
   const field = event.target;
   updateEditorDate(field);
+  if (field.id==='align-verse-at-top') {
+    state.alignVerseAtTop = field.checked;
+    return save();
+  }
   if (field.id==='reading-goal') {
     state.readingGoal = Number(field.value);
     const focused = document.activeElement===field;
@@ -2800,6 +2804,7 @@ function displayValue(key,value) {
 function migrate(input) {
   const result = {...blank(),...input};
   result.commentaryEdition = localEditionId(input.commentaryEdition)?input.commentaryEdition:'';
+  result.alignVerseAtTop = input.alignVerseAtTop===true;
   const oldSize = {regular:17,large:20,largest:23};
   const oldFont = Object.hasOwn(oldSize,input.readingSize) ? oldSize[input.readingSize] : undefined;
   result.display = {};
@@ -2924,7 +2929,12 @@ function displaySettings() {
     '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
     '<p class="muted">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요. 글꼴 파일은 백업에 포함되지 않아요.</p>'+
     '<p class="muted">글자 크기는 성경과 앱 전체에 적용돼요. 줄 간격과 구절 간격은 아래에서 바로 비교해 보세요.</p>'+displayFields()+readingPreview()+
-    '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>';
+    '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>'+
+    '<div class="section-head"><h2>구절 이동</h2></div><section class="card verse-arrival-settings">'+
+    '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+
+    '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 장 끝의 구절도 위에 오도록 아래 여백을 추가해요.</span></span>'+
+    '<span class="verse-arrival-switch"><input type="checkbox" role="switch" id="align-verse-at-top" aria-labelledby="verse-arrival-label" '+
+    'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
 }
 function validColor(color) {
   return typeof color==='string' && /^#[a-f0-9]{6}$/i.test(color);

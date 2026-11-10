@@ -814,7 +814,26 @@ dialog .dialog-close.btn:not(.primary) {
 .commentary-controls { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
 .commentary-controls.with-commentary-source { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .82fr); }
 #main.study-view { min-height: 0; }
-#main.study-view::after { content: ""; display: block; height: var(--study-arrival-room, 0px); }
+#main:is(.reader-view,.study-view)::after { content: ""; display: block; height: var(--verse-arrival-room, 0px); }
+.verse-arrival-settings { padding: 12px; }
+.verse-arrival-setting {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 44px; cursor: pointer;
+}
+.verse-arrival-setting strong, .verse-arrival-setting .muted { display: block; overflow-wrap: anywhere; }
+.verse-arrival-setting .muted { margin-top: 3px; }
+.verse-arrival-switch { position: relative; width: 46px; height: 28px; flex: none; }
+.verse-arrival-switch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.verse-arrival-switch > span {
+  display: block; height: 100%; border: 1px solid var(--line); border-radius: 999px; background: var(--soft);
+}
+.verse-arrival-switch > span::before {
+  content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--card); box-shadow: 0 1px 4px var(--glass-shadow);
+}
+.verse-arrival-switch input:checked + span { background: var(--accent-ink); border-color: transparent; }
+.verse-arrival-switch input:checked + span::before { transform: translateX(18px); }
+.verse-arrival-switch input:focus-visible + span { outline: 1px solid var(--accent-ink); outline-offset: 3px; }
 .commentary-page { padding: clamp(12px, 4vw, 20px); }
 .commentary-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .commentary-heading { padding: 2px 0 12px; }
