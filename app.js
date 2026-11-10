@@ -1814,22 +1814,47 @@ function render(studyFromSelection = false) {
   const changed = activeRoute!==route;
   let studyJump;
   if (changed) {
-    if (modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
-    if (Object.hasOwn(studySelection,next) || (next==='bible' && !jumpTo)) {
-      const position = currentReadingPosition(studyFromSelection);
-      if (next==='bible') {
-        if (position) syncBiblePosition(position);
-        else {
-          const ref = bibleResumeRef();
-          if (ref) jumpTo = 'v-'+verseNumber(ref);
-        }
-      } else if (position) {
-        const {book,chapter,verse} = position;
-        studySelection[next].location = {book,chapter,verse};
+    if (modal.open &&
+        modal.firstElementChild?.name === 'chapter-jump') {
+      modal.close();
+    }
+    // 떠나기 전에 현재 읽던 위치 저장
+    if (view === 'commentary' || view === 'original') {
+      const position = currentReadingPosition();
+      if (position) {
+        studySelection[view].location = {
+          book: position.book,
+          chapter: position.chapter,
+          verse: position.verse
+        };
       }
-      if (Object.hasOwn(studySelection,next)) studyJump = studySelection[next].location?.verse;
-    } else if (studySelection[view]) {
-      studySelection[view].location = currentReadingPosition();
+    }
+    // 성경 화면으로 돌아올 때
+    if (next === 'bible') {
+      if (studyFromSelection) {
+        const position = currentReadingPosition(true);
+        if (position) syncBiblePosition(position);
+      } else if (!jumpTo) {
+        const ref = bibleResumeRef();
+        if (ref) jumpTo = 'v-' + verseNumber(ref);
+      }
+    }
+    // 주석 또는 원전분해 화면으로 돌아올 때
+    if (next === 'commentary' || next === 'original') {
+      const selection = studySelection[next];
+      if (studyFromSelection || !selection.location) {
+        const position = currentReadingPosition(
+          studyFromSelection
+        );
+        if (position) {
+          selection.location = {
+            book: position.book,
+            chapter: position.chapter,
+            verse: position.verse
+          };
+        }
+      }
+      studyJump = selection.location?.verse;
     }
     readingArrival = undefined;
     chosen.clear();
