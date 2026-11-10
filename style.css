@@ -8,6 +8,20 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: Paperlogy;
+  src: url("./fonts/Paperlogy-4Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: NotoSansKR;
+  src: url("./fonts/NotoSansKR-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --paper: #f6f3eb;
   --card: #fffdf8;
@@ -659,9 +673,21 @@ select, .filters .pill { font-size: 0.875rem; }
 .daily-note-history blockquote { margin: 8px 0; font-size: 0.9375rem; white-space: pre-line; }
 .daily-note-history .ref { margin-bottom: 6px; color: var(--muted); font-size: 0.75rem; }
 #daily-note-heading { scroll-margin-top: calc(72px + env(safe-area-inset-top)); }
+:root[data-font="system"] {
+  --preferred-font: system-ui;
+}
 
-:root[data-font="system"] { --preferred-font: system-ui; }
-:root[data-font="custom"] { --preferred-font: WordJournalCustom; }
+:root[data-font="custom"] {
+  --preferred-font: WordJournalCustom;
+}
+
+:root[data-font="paperlogy"] {
+  --preferred-font: Paperlogy;
+}
+
+:root[data-font="notosanskr"] {
+  --preferred-font: NotoSansKR;
+}
 :root {
   --paper: #f5f7fa; --card: #fff; --soft: #f0f3f8; --line: #e4e9f0;
   --ink: #202733; --muted: #596372;

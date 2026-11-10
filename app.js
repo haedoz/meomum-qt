@@ -76,7 +76,13 @@ const settings = {
 };
 const themes = {system:'시스템 설정',light:'라이트',dark:'다크'};
 const palettes = {slate:'미스트 블루',lavender:'모브 그레이',oat:'오트 베이지',gray:'라이트 그레이'};
-const fontChoices = {pretendard:'프리텐다드',system:'기기 기본 글꼴',custom:'가져온 글꼴'};
+const fontChoices = {
+  pretendard: '프리텐다드',
+  paperlogy: '페이퍼로지',
+  notosanskr: '노토 산스 KR',
+  system: '기기 기본 글꼴',
+  custom: '가져온 글꼴'
+};
 let customFont, importingFont = false;
 const markStyles = {fill:'형광펜',solid:'실선',wavy:'물결선',dashed:'점선'};
 const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',evening:'밤에 다시 돌아보기',question:'아직 남은 질문'};
@@ -3040,7 +3046,10 @@ function displaySettings() {
     '<label class="field">화면 모드<select id="appearance">'+options(Object.entries(themes),state.theme)+'</select></label></section>'+
     '<div class="section-head"><h2>글꼴과 읽기</h2></div><section class="card stack reading-settings">'+
     '<label class="field">앱 글꼴<select id="font-choice">'+options([
-      ['pretendard',fontChoices.pretendard],['system',fontChoices.system],
+      ['pretendard',fontChoices.pretendard],
+      ['paperlogy',fontChoices.paperlogy],
+      ['notosanskr',fontChoices.notosanskr],
+      ['system',fontChoices.system],
       ...(customFont?[['custom',customFont.name]]:[]),
     ],state.fontChoice==='custom' && !customFont?'pretendard':state.fontChoice)+'</select></label>'+
     '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
