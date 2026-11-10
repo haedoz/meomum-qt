@@ -456,8 +456,9 @@ function dailyVerseQuote(key) {
     '<p class="ref">'+esc(reference(key))+' · '+esc(editionLabel(readRef(key).edition))+'</p>'+
     (quote?'<button type="button" class="btn" data-visit="'+key+'">본문에서 읽기 '+icon('arrow')+'</button>':'');
 }
-function dailyNoteFields(day, note) {
-  return editorField('묵상 내용','body',note?.body,'textarea','rows="7" maxlength="'+dailyNoteLimit+'" required placeholder="말씀을 읽고 마음에 남은 생각을 적어보세요."')+
+function dailyNoteFields(day, note, compact = false) {
+  return editorField('묵상 내용','body',note?.body,'textarea','rows="'+(compact?3:7)+'" maxlength="'+dailyNoteLimit+
+    '" required placeholder="마음에 남은 생각을 적어보세요."')+
     '<div class="row daily-note-actions"><span class="muted">'+(note?'✓ 묵상 달력에 기록됨':'저장하면 묵상 달력에 표시돼요.')+'</span>'+
     (note?'<button type="button" class="text-action destructive" data-delete-daily-note="'+day+'">삭제</button>':'')+
     '<button class="btn primary" type="submit">'+(note?'수정 저장':'저장')+'</button></div>';
@@ -476,12 +477,13 @@ function showDailyNote(day = dateKey()) {
   if (!key) return;
   const quote = saved?.ref===key?saved.body:verseText(key);
   dialog('말씀 묵상 노트','<div class="daily-note-context">'+
-    '<p class="ref">'+esc(reference(key))+' · '+esc(editionLabel(readRef(key).edition))+'</p>'+
-    (quote?'<blockquote>'+esc(quote)+'</blockquote>':'')+'</div>'+dailyNoteFields(day,note));
+    '<p class="ref">'+icon('book')+'<span>'+esc(reference(key))+' · '+esc(editionLabel(readRef(key).edition))+'</span></p>'+
+    (quote?'<blockquote>'+esc(quote)+'</blockquote>':'')+'</div>'+dailyNoteFields(day,note,true));
   const form = modal.querySelector('form');
   form.classList.add('daily-note-dialog');
   form.dataset.dailyNote = day;
   form.dataset.ref = key;
+  resizeWriting(form.elements.body);
 }
 async function saveDailyNote(form) {
   const day = form.dataset.dailyNote, ref = form.dataset.ref;
@@ -2529,7 +2531,7 @@ function resizeEditorWriting() {
 }
 modal.addEventListener('input',event=>{
   const field = event.target;
-  if (field.tagName==='TEXTAREA' && field.form?.name==='year-editor') resizeWriting(field);
+  if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.dataset.dailyNote)) resizeWriting(field);
   if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
   updateYearEditorDate(field);
 });
@@ -2587,7 +2589,7 @@ readerSearchForm.addEventListener('submit',event=>{
 });
 window.addEventListener('resize',()=>{
   resizeEditorWriting();
-  if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea').forEach(resizeWriting);
+  if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea, .daily-note-dialog textarea').forEach(resizeWriting);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
