@@ -1403,12 +1403,14 @@ function calendarScreen() {
     (undated.length?'<details class="undated-prayers"><summary>날짜 미기록 기도·생각 '+undated.length+'건</summary>'+
       undated.map(prayer=>calendarPrayer(prayer)).join('')+'</details>':'')+'</div></div>';
 }
-function calendarDetail(label,meta,content) {
-  return '<details class="day-detail"><summary><span>'+label+'</span><span class="day-detail-meta">'+esc(meta)+'</span></summary>'+
+function calendarDetail(symbol,label,meta,content) {
+  return '<details class="day-detail"><summary><span class="day-detail-label"><span class="day-detail-icon">'+icon(symbol)+'</span>'+label+'</span>'+
+    (meta?'<span class="day-detail-meta">'+esc(meta)+'</span>':'')+'</summary>'+
     '<div class="day-detail-body">'+content+'</div></details>';
 }
 function calendarText(value) {
-  return value?'<p class="day-detail-text">'+esc(value)+'</p>':'';
+  return value?'<div class="day-detail-copy">'+value.split(/\r?\n[ \t]*(?:\r?\n)+/)
+    .map(paragraph=>'<p class="day-detail-text">'+esc(paragraph)+'</p>').join('')+'</div>':'';
 }
 function calendarItemActions(edit,remove) {
   return '<div class="item-actions card-actions">'+(edit?'<button type="button" class="text-action" '+edit+'>수정</button>':'')+
@@ -1434,29 +1436,32 @@ function calendarDaySummary(day,items,records) {
     ? '<div class="tappable-card">'+(verseText(ref)?cardHit('본문에서 읽기','data-visit="'+ref+'"'):'')+
       '<p class="muted">'+esc(saved?.label ?? editionLabel(readRef(ref).edition))+'</p>'+calendarText(saved?.body ?? savedVerseText(ref))+'</div>'
     : '<p class="muted">'+(day>dateKey()?'아직 오지 않은 날이에요.':'이날 저장된 말씀 구절이 없어요.')+'</p>';
-  const recordDetails = (items,isNote) => items.map(({key,verses,mark,noteKey})=>
-    '<article class="day-detail-item tappable-card">'+(verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
-    '<strong>'+esc(selectionReference(key,verses))+'</strong><p class="muted">'+esc(editionLabel(readRef(key).edition))+'</p>'+
-    (isNote?calendarText(mark.note):
-      '<p class="day-detail-text">'+markedText(recordPassage(key,verses).map(([,body])=>body).join(' ') || savedVerseText(key),mark)+'</p>')+
-    (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(key)+'</div>')+'</article>').join('');
+  const recordDetails = (items,isNote) => items.map(({key,verses,mark,noteKey})=>{
+    const passage = recordPassage(key,verses);
+    const bodies = passage.length?passage.map(([,body])=>body):[savedVerseText(key)].filter(Boolean);
+    const content = isNote?calendarText(mark.note):'<div class="day-detail-copy">'+
+      bodies.map(body=>'<p class="day-detail-text">'+markedText(body,mark)+'</p>').join('')+'</div>';
+    return '<article class="day-detail-item tappable-card">'+(verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
+      '<strong>'+esc(selectionReference(key,verses))+'</strong><p class="muted">'+esc(editionLabel(readRef(key).edition))+'</p>'+content+
+      (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(key)+'</div>')+'</article>';
+  }).join('');
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
-    '<header class="day-summary-title"><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></header>'+
-    calendarDetail('오늘의 말씀',ref?reference(ref):'',verseContent)+
-    (note?calendarDetail('말씀 묵상',reference(note.ref),'<div class="tappable-card">'+
+    '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
+    calendarDetail('sun','오늘의 말씀',ref?reference(ref):'',verseContent)+
+    (note?calendarDetail('comment','말씀 묵상',reference(note.ref),'<div class="tappable-card">'+
       cardHit('말씀 묵상 열기','data-edit-daily-note="'+day+'"')+calendarText(note.body)+
       calendarItemActions('data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"')+'</div>'):'')+
-    (journal && hasJournalContent(journal)?calendarDetail('묵상 노트','',
+    (journal && hasJournalContent(journal)?calendarDetail('note','묵상 노트','',
       '<div class="tappable-card">'+cardHit('묵상 노트 열기',journalLink)+
       (journal.title?'<strong>'+esc(journal.title)+'</strong>':'')+calendarText(journal.reflection)+
       calendarItemActions(journalLink,'data-delete-journal="'+day+'"')+'</div>'):
-      '<div class="day-summary-write"><button type="button" class="btn" '+journalLink+'>묵상 노트 열기 '+icon('arrow')+'</button></div>')+
-    (prayers.length?calendarDetail('기도',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
-    (thoughts.length?calendarDetail('생각 노트',thoughts.length+'건',thoughts.map(calendarPrayer).join('')):'')+
-    (chapters.length?calendarDetail('묵상 체크',chapters.length+'장',chapters.map(key=>
-      '<button class="reading-suggestion" data-open-chapter="'+key+'">'+esc(chapterLabel(key))+' '+icon('arrow')+'</button>').join('')):'')+
-    (notes.length?calendarDetail('구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
-    (highlights.length?calendarDetail('형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
+      '<div class="day-summary-write"><button type="button" class="reading-suggestion" '+journalLink+'><span class="day-detail-label"><span class="day-detail-icon">'+icon('note')+'</span>묵상 노트 열기</span>'+icon('arrow')+'</button></div>')+
+    (prayers.length?calendarDetail('prayer','기도',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
+    (thoughts.length?calendarDetail('note','생각 노트',thoughts.length+'건',thoughts.map(calendarPrayer).join('')):'')+
+    (chapters.length?calendarDetail('check','묵상 체크',chapters.length+'장','<div class="day-detail-copy">'+chapters.map(key=>
+      '<button class="reading-suggestion" data-open-chapter="'+key+'"><span>'+esc(chapterLabel(key))+'</span>'+icon('arrow')+'</button>').join('')+'</div>'):'')+
+    (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
+    (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
 const recordFilters = {all:'전체',highlight:'형광펜',note:'메모'};
 function markKinds(mark) {

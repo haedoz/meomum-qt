@@ -302,19 +302,48 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 .day-summary { margin-top: 20px; }
 .day-summary .section-head { margin-bottom: 8px; }
 .undated-prayers { margin: 12px 0; }
-.day-detail { margin-bottom: 7px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-.day-detail > summary { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 7px 12px; cursor: pointer; font-size: .875rem; font-weight: 650; }
+.day-detail { background: var(--card); border: 1px solid var(--line); border-radius: 15px; }
+.day-detail > summary {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px 9px; min-height: 48px;
+  padding: 7px 10px; cursor: pointer; font-weight: 650; list-style: none; border-radius: inherit;
+}
 .day-detail > summary::-webkit-details-marker { display: none; }
-.day-detail > summary::after { content: ''; width: 7px; height: 7px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin: 0 2px 3px; }
-.day-detail[open] > summary::after { transform: rotate(225deg); margin-bottom: -3px; }
-.day-detail-meta { margin-inline-start: auto; color: var(--muted); font-size: .75rem; font-weight: 500; text-align: end; }
-.day-detail-body { display: grid; gap: 7px; padding: 0 12px 12px; }
-.day-detail-item + .day-detail-item { border-top: 1px solid var(--line); padding-top: 10px; }
-.day-detail-item .muted { font-size: .75rem; }
-.day-detail-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 3px; }
-.day-summary .btn, .undated-prayers .btn { justify-self: start; margin-top: 3px; }
-.day-summary .btn svg, .undated-prayers .btn svg { width: 15px; }
-.day-summary-write { margin-block: 4px 10px; }
+.day-detail > summary:focus-visible { outline: 1px solid var(--accent-ink); outline-offset: -2px; }
+.day-detail > summary::after {
+  content: ''; width: 7px; height: 7px; flex: none; border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin: 0 3px 4px auto;
+}
+.day-detail[open] > summary::after { transform: rotate(225deg); margin-bottom: -4px; }
+.day-detail-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.day-detail-icon {
+  width: 32px; height: 32px; display: grid; place-items: center; flex: none;
+  border-radius: 10px; color: var(--accent-ink); background: var(--accent-soft);
+}
+.day-detail-icon svg { width: 16px; height: 16px; }
+.day-detail-meta {
+  padding: 2px 7px; border-radius: 8px; background: var(--soft); color: var(--muted);
+  font-size: .8em; font-weight: 500; max-width: 100%;
+}
+.day-detail-body {
+  display: grid; min-width: 0; gap: var(--verse-gap, 0px);
+  margin: 0 10px 10px; padding: 10px; border-radius: 11px; background: var(--soft);
+}
+.day-detail-item + .day-detail-item { border-top: 1px solid var(--line); padding-top: 7px; }
+.day-detail-copy, .thought-copy { display: grid; gap: var(--verse-gap, 0px); }
+.day-detail-text { margin: 0; white-space: pre-wrap; }
+.day-detail-body .muted { font-size: .8em; }
+.day-detail-body .day-detail-copy { margin-block: 3px; }
+.day-summary :is(.day-detail, .day-summary-write), .undated-prayers .day-detail-item, .thought-copy {
+  font-family: var(--sans); font-size: var(--reading-size, 15px);
+  line-height: var(--reading-leading, 1.25); letter-spacing: var(--reading-tracking, 0px);
+  overflow-wrap: anywhere;
+}
+.day-summary .reading-suggestion {
+  width: 100%; padding: 6px 9px; min-width: 0; border-radius: 10px;
+  font: inherit; letter-spacing: inherit; background: var(--card);
+}
+.day-summary .reading-suggestion > svg { flex: none; }
+.day-summary-write .reading-suggestion { border-radius: 15px; font-weight: 650; }
 .undated-prayers summary { cursor: pointer; color: var(--muted); padding: 9px 2px; }
 .record-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .filters .pill span { font-size: 0.6875rem; color: var(--muted); }
@@ -1139,7 +1168,6 @@ form[name="dictionary"] > .row:first-child {
 .thought-card-footer { margin-top: 2px; }
 .thought-card-footer .muted { font-size: .75rem; }
 .thought-card .card-actions { margin-inline-start: auto; }
-.thought-copy { display: grid; gap: .35em; font-size: var(--reading-size); line-height: 1.5; overflow-wrap: anywhere; }
 .thought-copy p { margin: 0; white-space: pre-wrap; }
 .prayer-overview { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 16px 0; }
 .prayer-overview button {
@@ -1267,7 +1295,11 @@ form[name="year-editor"] :is(input,textarea):focus {
   margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .72rem;
 }
 .calendar-legend span:last-child { margin-inline-start: auto; }
-.day-summary-title { margin: 0 0 8px; padding: 9px 12px; border-radius: 12px; background: var(--accent-soft); }
+.day-summary { display: grid; gap: 6px; min-width: 0; }
+.day-summary-title {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 15px; background: var(--card); border: 1px solid var(--line);
+}
 .day-summary-title h2 { font-size: 1rem; }
 
 @media (min-width: 740px) {
