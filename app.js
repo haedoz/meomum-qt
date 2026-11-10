@@ -352,7 +352,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journals:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -480,6 +480,35 @@ function journalComments(day,comments) {
       '<div class="item-actions"><button class="text-action" data-comment-day="'+day+'" data-comment-id="'+item.id+'">편집</button><button class="text-action destructive" data-delete-comment="'+item.id+'" data-date="'+day+'">삭제</button></div></div>'+
       '<p class="record-text">'+esc(item.body)+'</p></article>').join(''):'<p class="muted comment-empty">아직 댓글이 없어요.</p>')+
     '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment','','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<button class="btn primary" type="submit">등록</button></form></section>';
+}
+function journalsScreen() {
+  const entries = Object.entries(state.journal)
+    .filter(([_, entry]) => hasJournalContent(entry))
+    .sort(([dayA], [dayB]) => dayB.localeCompare(dayA));
+
+  const count = entries.length;
+  const cards = entries.map(([day, entry]) => {
+    const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
+    const refs = (entry.verses || []).map(ref =>
+      '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'
+    ).join(' ');
+
+    return '<article class="card stack journal-feed-card" style="gap:10px">'+
+      '<div class="row"><time datetime="'+day+'" class="kicker">'+esc(date)+'</time>'+
+      (entry.done ? '<span class="pill" style="font-size:0.75rem;min-height:28px;padding:2px 10px;background:var(--light);color:var(--green)">✓ QT 완료</span>' : '')+
+      '</div>'+
+      (entry.title ? '<h2 style="font-size:1.1875rem;margin:2px 0">'+esc(entry.title)+'</h2>' : '')+
+      (refs ? '<div class="post-quote" style="margin:2px 0">'+refs+'</div>' : '')+
+      (entry.reflection ? '<div class="record-text" style="white-space:pre-wrap;margin:4px 0;line-height:var(--reading-leading, 1.65)">'+esc(entry.reflection)+'</div>' : '')+
+      '<div class="row" style="margin-top:6px;justify-content:flex-end">'+
+      '<button type="button" class="btn" data-nav="journal/'+day+'">묵상 열기 '+icon('right')+'</button>'+
+      '</div>'+
+      '</article>';
+  }).join('');
+
+  return heading('MY DEVOTIONS','묵상 노트 모아보기','작성하신 모든 묵상 노트를 한곳에서 모아보세요.')+
+    '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2></div>'+
+    '<div class="journal-feed stack">'+(cards || '<p class="empty">아직 작성된 묵상 노트가 없어요. 달력이나 오늘 화면에서 묵상을 기록해 보세요.</p>')+'</div>';
 }
 function dailyVerseQuote(key) {
   const quote = verseText(key);
@@ -1434,7 +1463,7 @@ function calendarScreen() {
       undated.map(prayer=>calendarPrayer(prayer)).join('')+'</details>':'')+'</div></div>';
 }
 function calendarDetail(symbol,label,meta,content) {
-  return '<details class="day-detail"><summary><span class="day-detail-label"><span class="day-detail-icon">'+icon(symbol)+'</span>'+label+'</span>'+
+  return '<details class="day-detail" open><summary><span class="day-detail-label"><span class="day-detail-icon">'+icon(symbol)+'</span>'+label+'</span>'+
     (meta?'<span class="day-detail-meta">'+esc(meta)+'</span>':'')+'</summary>'+
     '<div class="day-detail-body">'+content+'</div></details>';
 }
@@ -1670,6 +1699,7 @@ function recordsScreen() {
   for (const key of Object.keys(recordSelection)) {
     if (recordSelection[key] && !recordPickerItems(key,rows).some(([id])=>id===recordSelection[key])) recordSelection[key] = '';
   }
+  const journalCount = Object.values(state.journal).filter(hasJournalContent).length;
   const prayers = state.prayers.filter(item=>item.kind!=='thought');
   const answered = prayers.filter(item=>item.done).length;
   const thoughts = state.prayers.length-prayers.length;
@@ -1682,6 +1712,7 @@ function recordsScreen() {
   }).join('');
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
+      ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
       ['calendar','calendar','달력','묵상 달력'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
@@ -1844,7 +1875,7 @@ function rememberReadingArrival(verse) {
 }
 function render(studyFromSelection = false) {
   flushReadingBookmark();
-  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
@@ -1945,7 +1976,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = ['calendar','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['calendar','journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
