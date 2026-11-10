@@ -53,7 +53,7 @@ let bibleSearchScope = 'all';
 let bibleSearchResults, bibleSearchPage = 0, bibleSearchPageSize = 1;
 const searchScopeLabels = {all:'전체 성경',old:'구약',new:'신약'};
 const personalSearchTypes = {all:'모든 종류',journal:'QT 묵상',daily:'말씀 묵상',thought:'생각 노트',
-  prayer:'기도',yearly:'새해 말씀',mark:'구절 메모·표시',bundle:'구절 모음',reading:'묵상 체크'};
+  prayer:'기도',yearly:'새해 말씀',mark:'구절 메모·표시',bundle:'구절 모음'};
 const personalSearchFilters = {type:'all',year:'all'};
 let personalSearchSubmitted = false;
 const selectedSearchVerses = new Set();
@@ -470,17 +470,21 @@ function dailyNoteCard(day) {
     dailyVerseQuote(note.ref)+'<form class="daily-note-form" data-daily-note="'+day+'" data-ref="'+note.ref+'">'+
     dailyNoteFields(day,note)+'</form></section>';
 }
+function noteEditorContext(refLabel,key,quote,collapsed = false) {
+  const body = quote?'<blockquote>'+esc(quote)+'</blockquote>':'';
+  return '<div class="note-editor-context"><p class="ref">'+icon('book')+'<span>'+
+    esc(refLabel)+' · '+esc(editionLabel(readRef(key).edition))+'</span></p>'+
+    (collapsed?'<details><summary>선택한 말씀 펼치기</summary>'+body+'</details>':body)+'</div>';
+}
 function showDailyNote(day = dateKey()) {
   const note = state.dailyNotes[day];
   const saved = state.dailyVerses[day];
   const key = note?.ref ?? saved?.ref;
   if (!key) return;
   const quote = saved?.ref===key?saved.body:verseText(key);
-  dialog('말씀 묵상 노트','<div class="daily-note-context">'+
-    '<p class="ref">'+icon('book')+'<span>'+esc(reference(key))+' · '+esc(editionLabel(readRef(key).edition))+'</span></p>'+
-    (quote?'<blockquote>'+esc(quote)+'</blockquote>':'')+'</div>'+dailyNoteFields(day,note,true));
+  dialog('말씀 묵상 노트',noteEditorContext(reference(key),key,quote)+dailyNoteFields(day,note,true));
   const form = modal.querySelector('form');
-  form.classList.add('daily-note-dialog');
+  form.classList.add('note-editor-dialog');
   form.dataset.dailyNote = day;
   form.dataset.ref = key;
   resizeWriting(form.elements.body);
@@ -1571,9 +1575,6 @@ function personalSearchEntries() {
     add('bundle',bundle.day,reference(bundle.verses[0].ref)+' 외 '+bundle.verses.length+'구절',
       bundle.verses.map(verse=>reference(verse.ref)+' '+verse.body).join('\n'),'data-open-verse-bundle',bundle.id);
   }
-  for (const [day,chapters] of Object.entries(state.chapterLog)) {
-    if (chapters.length) add('reading',day,'묵상 체크',chapters.map(chapterLabel).join(' · '),'data-nav','reading');
-  }
   return entries.sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
 }
 function personalYearLabel(year) {
@@ -1935,10 +1936,15 @@ function showVerseNote(key,verses = noteVerseNumbers(key,state.marks[key])) {
   if (!key) return;
   const mark = state.marks[key];
   editingVerseNote = {key,verses};
-  dialog('구절 메모','<p class="muted">'+esc(selectionReference(key,verses))+' · '+esc(editionLabel(readRef(key).edition))+'</p>'+
-    editorField('나의 메모','note',mark?.note,'textarea','id="verse-note" placeholder="이 구절에서 마음에 남은 것을 적어보세요."')+
-    '<div class="row verse-note-actions">'+(mark?.note?'<button type="button" class="btn danger" data-delete-note="'+key+'">메모 삭제</button>':'')+
+  const passage = recordPassage(key,verses);
+  const quote = passage.map(([number,body])=>verses.length>1?number+'절 '+body:body).join('\n');
+  dialog('구절 메모',noteEditorContext(selectionReference(key,verses),key,quote,quote.length>400)+
+    editorField('나의 메모','note',mark?.note,'textarea','id="verse-note" rows="3" placeholder="마음에 남은 생각을 적어보세요."')+
+    '<div class="row verse-note-actions">'+(mark?.note?'<button type="button" class="text-action destructive" data-delete-note="'+key+'">메모 삭제</button>':'')+
     '<button type="button" class="btn primary" data-action="save-note">메모 저장</button></div>');
+  const form = modal.querySelector('form');
+  form.classList.add('note-editor-dialog');
+  resizeWriting(form.elements.note);
 }
 async function saveVerseNote() {
   const value = modal.querySelector('#verse-note').value.trim();
@@ -2531,7 +2537,7 @@ function resizeEditorWriting() {
 }
 modal.addEventListener('input',event=>{
   const field = event.target;
-  if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.dataset.dailyNote)) resizeWriting(field);
+  if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.classList?.contains('note-editor-dialog'))) resizeWriting(field);
   if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
   updateYearEditorDate(field);
 });
@@ -2589,7 +2595,7 @@ readerSearchForm.addEventListener('submit',event=>{
 });
 window.addEventListener('resize',()=>{
   resizeEditorWriting();
-  if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea, .daily-note-dialog textarea').forEach(resizeWriting);
+  if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea, .note-editor-dialog textarea').forEach(resizeWriting);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
