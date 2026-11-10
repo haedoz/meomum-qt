@@ -859,6 +859,9 @@ dialog .dialog-close.btn:not(.primary) {
 .commentary-heading { padding: 2px 0 12px; }
 .commentary-heading .btn { min-width: 44px; }
 .commentary-verse { padding-block: 9px 12px; border-top: 1px solid var(--line); }
+.commentary-verse:first-of-type {
+  border-top: none;
+}
 .commentary-verse h3 { color: var(--accent-ink); }
 .commentary-page .commentary-verse p {
   margin: 4px 2px 14px; white-space: pre-wrap; overflow-wrap: anywhere;
