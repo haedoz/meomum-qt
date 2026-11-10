@@ -1747,10 +1747,13 @@ function setReadingBookmark(ref) {
   try { localStorage.setItem(readingBookmarkKey,ref); } catch { /* Keep this session's place. */ }
 }
 function flushReadingBookmark() {
-  if (readingBookmarkTimer===undefined) return;
-  clearTimeout(readingBookmarkTimer);
+  const pending = readingBookmarkTimer!==undefined;
+  if (pending) clearTimeout(readingBookmarkTimer);
   readingBookmarkTimer = undefined;
   if (view!=='bible' || jumpTo || !renderedBible || renderedBible!==readerAddress()) return;
+  const scrollTop = document.scrollingElement.scrollTop;
+  if (!pending && scrollTop===lastBibleScrollTop) return;
+  lastBibleScrollTop = scrollTop;
   const {verse} = currentReadingPosition() ?? {};
   if (verse!==undefined) setReadingBookmark(renderedBible+'/'+verse);
 }
@@ -1814,8 +1817,13 @@ function render(studyFromSelection = false) {
     if (modal.open && modal.firstElementChild?.name==='chapter-jump') modal.close();
     if (Object.hasOwn(studySelection,next) || (next==='bible' && !jumpTo)) {
       const position = currentReadingPosition(studyFromSelection);
-      if (position && next==='bible') syncBiblePosition(position);
-      else if (position) {
+      if (next==='bible') {
+        if (position) syncBiblePosition(position);
+        else {
+          const ref = bibleResumeRef();
+          if (ref) jumpTo = 'v-'+verseNumber(ref);
+        }
+      } else if (position) {
         const {book,chapter,verse} = position;
         studySelection[next].location = {book,chapter,verse};
       }
