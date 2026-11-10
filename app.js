@@ -320,8 +320,9 @@ function loadLocal(key) {
 let ghAutoBackupTimer;
 function triggerGhAutoBackup() {
   const token = localStorage.getItem('logbible-gh-token');
+  const user = localStorage.getItem('logbible-gh-user')?.trim();
   const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
-  if (!token || !auto) return;
+  if (!token || !user || !auto) return;
   clearTimeout(ghAutoBackupTimer);
   ghAutoBackupTimer = setTimeout(() => {
     actions['gh-backup']?.(true);
@@ -352,7 +353,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'records',journals:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journals:'records',bundles:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -1498,11 +1499,21 @@ function calendarDaySummary(day,items,records) {
   const recordDetails = (items,isNote) => items.map(({key,verses,mark,noteKey})=>{
     const passage = recordPassage(key,verses);
     const bodies = passage.length?passage.map(([,body])=>body):[savedVerseText(key)].filter(Boolean);
-    const content = isNote?calendarText(mark.note):'<div class="day-detail-copy">'+
-      bodies.map(body=>'<p class="day-detail-text">'+markedText(body,mark)+'</p>').join('')+'</div>';
-    return '<article class="day-detail-item tappable-card">'+(verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
-      '<strong>'+esc(selectionReference(key,verses))+'</strong><p class="muted">'+esc(editionLabel(readRef(key).edition))+'</p>'+content+
-      (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(key)+'</div>')+'</article>';
+    const markKind = mark.color || mark.highlight ? '형광펜' : mark.underline ? '밑줄' : '메모';
+    const kindClass = mark.color || mark.highlight ? 'highlight' : mark.underline ? 'underline' : 'note';
+    const content = isNote ? calendarText(mark.note) :
+      '<blockquote class="calendar-quote-body">'+bodies.map(body=>'<p>'+markedText(body,mark)+'</p>').join('')+'</blockquote>';
+    return '<article class="calendar-mark-card tappable-card '+kindClass+'">'+
+      (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
+      '<div class="row calendar-mark-header">'+
+      '<span class="reading-badge">'+esc(selectionReference(key,verses))+' · '+esc(editionLabel(readRef(key).edition))+'</span>'+
+      '<span class="mark-kind-pill '+kindClass+'">'+markKind+'</span>'+
+      '</div>'+
+      content+
+      '<div class="row calendar-mark-footer">'+
+      '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
+      (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(key)+'</div>')+
+      '</div></article>';
   }).join('');
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
     '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
@@ -1714,17 +1725,21 @@ function recordsScreen() {
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
       ['calendar','calendar','달력','묵상 달력'],
-      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
+      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
-      ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
       ['book-checks','book','성경책별 체크','연도별 장 기록'],
-    ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
-    (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
-      '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
-      '<strong>'+esc(reference(bundle.verses[0].ref))+' · '+bundle.verses.length+'구절</strong>'+
-      '<span class="muted">'+esc(bundle.day)+'</span></button><button type="button" class="text-action destructive" '+
-      'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
+      ['newyear','book','새해 말씀',state.newYear.length+'건'],
+      ['bundles','bookmark','구절 모음',state.verseBundles.length+'건']
+    ].map(([route,symbol,label,detail])=>
+      '<button class="record-shortcut" data-nav="'+route+'">'+
+      '<div class="record-shortcut-top">'+
+      '<span class="record-shortcut-icon">'+icon(symbol)+'</span>'+
+      '<span class="record-shortcut-badge">'+detail+'</span>'+
+      '</div>'+
+      '<strong>'+label+'</strong>'+
+      '</button>'
+    ).join('')+'</div>'+
     '<div class="section-head"><h2>말씀 기록</h2></div><div class="record-toolbar"><div class="filters record-type-tabs" role="group" aria-label="기록 종류">'+Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
     '<details class="record-filter-panel" '+(activeFilters?'open':'')+'><summary>'+icon('filter')+'<span>번역본·성경·연도'+(activeFilters?' · '+activeFilters+'개 적용':'')+'</span>'+icon('down')+'</summary>'+
     '<div class="record-filters">'+pickers+'</div>'+(activeFilters?'<button type="button" class="text-action" data-action="clear-record-filters">필터 초기화</button>':'')+'</details></div>'+
@@ -1739,7 +1754,7 @@ function settingsScreen() {
 function backupSettings() {
   const ghToken = localStorage.getItem('logbible-gh-token') || '';
   const ghRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-  const ghUser = localStorage.getItem('logbible-gh-user') || 'haedo';
+  const ghUser = localStorage.getItem('logbible-gh-user') || '';
   const ghLastSync = localStorage.getItem('logbible-gh-last-sync') || '';
   const ghAuto = localStorage.getItem('logbible-gh-auto') !== 'false';
   const isConnected = Boolean(ghToken && ghRepo);
@@ -1873,9 +1888,26 @@ function rememberReadingArrival(verse) {
     }
   }
 }
+function bundlesScreen() {
+  const bundles = state.verseBundles || [];
+  return heading('VERSE BUNDLES','구절 모음','함께 묵상하고 은혜받았던 구절들을 모아보세요.')+
+    (bundles.length ? '<div class="stack" style="gap:10px">'+bundles.map(bundle =>
+      '<article class="card stack" style="gap:8px;"><div class="row" style="justify-content:space-between; align-items:center;">'+
+      '<div><strong style="font-size:1rem;">'+esc(reference(bundle.verses[0]?.ref || ''))+' 외 '+(bundle.verses.length-1)+'구절</strong>'+
+      '<p class="muted" style="margin:2px 0; font-size:0.8125rem;">'+esc(bundle.day || '')+'</p></div>'+
+      '<div class="row" style="gap:6px;">'+
+      '<button type="button" class="btn small" data-open-verse-bundle="'+bundle.id+'">본문 보기</button>'+
+      '<button type="button" class="text-action destructive" data-remove-verse-bundle="'+bundle.id+'">삭제</button>'+
+      '</div></div>'+
+      '<div class="post-quote" style="margin:0; font-size:0.875rem;">'+
+      bundle.verses.map(v => '<span>'+esc(reference(v.ref))+'</span>').join(' · ')+
+      '</div>'+
+      '</article>'
+    ).join('')+'</div>' : '<p class="empty">아직 저장된 구절 모음이 없어요.<br><small class="muted">성경 본문에서 구절을 선택한 뒤 구절 모음으로 저장할 수 있어요.</small></p>');
+}
 function render(studyFromSelection = false) {
   flushReadingBookmark();
-  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
@@ -2442,9 +2474,13 @@ const actions = {
 
     const token = localStorage.getItem('logbible-gh-token');
     const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    const user = localStorage.getItem('logbible-gh-user')?.trim();
     if (!token) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
+      return;
+    }
+    if (!user) {
+      if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
       return;
     }
 
@@ -2544,9 +2580,13 @@ const actions = {
 
     const token = localStorage.getItem('logbible-gh-token');
     const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    const user = localStorage.getItem('logbible-gh-user')?.trim();
     if (!token) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
+      return;
+    }
+    if (!user) {
+      if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
       return;
     }
 
@@ -3890,7 +3930,8 @@ async function checkGhAutoSync() {
   isGhSyncing = true;
   try {
     const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user') || 'haedo';
+    const user = localStorage.getItem('logbible-gh-user')?.trim();
+    if (!user) return;
     const filePath = `${user}.json`;
     const url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
     const res = await fetch(url, {
