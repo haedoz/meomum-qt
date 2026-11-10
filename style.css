@@ -576,9 +576,9 @@ select, .filters .pill { font-size: 0.875rem; }
 }
 .post-editor .field { min-width: 0; color: var(--muted); font-weight: 550; }
 .post-editor :is(input[type="text"],textarea) {
-  display: block; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-radius: 9px;
+  display: block; width: 100%; min-width: 0; padding: 8px 14px; border: 0; border-radius: 9px;
   background: var(--soft); color: var(--ink);
-  font: 400 max(16px,var(--reading-size,1rem))/1.55 var(--sans);
+  font: 400 var(--reading-size,1rem)/1.55 var(--sans);
   letter-spacing: var(--reading-tracking); box-shadow: inset 0 0 0 1px var(--line);
 }
 .post-editor input[type="text"] { min-height: 44px; }
@@ -828,11 +828,11 @@ body { min-height: 100vh; min-height: 100dvh; }
 .reader-search { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .search-open .reader-search { flex: 1; }
 .top-actions .settings { flex: 0 0 auto; }
-.reader-search input, form[name="chapter-jump"] input { min-width: 0; font-family: var(--sans); font-size: max(16px,1rem); }
+.reader-search input, form[name="chapter-jump"] input { min-width: 0; font-family: var(--sans); }
 .reader-search input {
   appearance: none; -webkit-appearance: none;
-  font-size: clamp(16px, .95rem, 18px); font-weight: 500;
-  border-radius: 999px; padding: 7px 13px; background: var(--soft);
+  font-weight: 500;
+  border-radius: 999px; padding: 7px 15px; background: var(--soft);
   box-shadow: inset 0 1px var(--glass-shine);
 }
 .top .search-open .bible-search-button {
@@ -1046,7 +1046,7 @@ dialog:has(.note-editor-dialog) { padding: clamp(14px,4vw,21px); }
 }
 .note-editor-dialog textarea {
   min-height: 0; max-height: none; resize: none; overflow: hidden;
-  padding: 9px 11px; border: 0; border-radius: 10px; background: var(--card);
+  padding: 9px 14px; border: 0; border-radius: 10px; background: var(--card);
   box-shadow: inset 0 0 0 1px var(--line); color: var(--ink);
 }
 .note-editor-dialog textarea:focus { outline: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line)); }
@@ -1194,7 +1194,7 @@ form[name="year-editor"] .btn { font-weight: 400; }
 form[name="year-editor"] .field { color: var(--muted); font-weight: 400; }
 form[name="year-editor"] :is(input,textarea), .editor-date-control {
   display: block; box-sizing: border-box; min-width: 0; width: 100%; max-width: 100%;
-  padding: 8px 10px; border: 0; border-radius: 9px; background: var(--soft); color: var(--ink);
+  padding: 8px 13px; border: 0; border-radius: 9px; background: var(--soft); color: var(--ink);
   font: 400 1rem/1.5 var(--sans); box-shadow: inset 0 0 0 1px var(--line);
 }
 form[name="year-editor"] input { min-height: 44px; }
@@ -1313,9 +1313,6 @@ form[name="year-editor"] :is(input,textarea):focus {
 
 button, a, select, .palette-option, .compare-choice { -webkit-tap-highlight-color: transparent; }
 
-@media (hover: none) and (pointer: coarse) {
-  :is(input:not([type="checkbox"],[type="radio"],[type="color"],[type="range"],[type="file"],[type="hidden"]),select) {
-    font-size: max(16px,1rem) !important;
-  }
-  textarea { font-size: max(16px,var(--reading-size,1rem)) !important; }
+:is(input:not([type="checkbox"],[type="radio"],[type="color"],[type="range"],[type="file"],[type="hidden"],[type="date"]),textarea) {
+  font-size: var(--reading-size,1rem) !important;
 }
