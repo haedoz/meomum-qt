@@ -19,7 +19,7 @@
   --sans: var(--preferred-font, Pretendard), Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --serif: var(--sans);
 }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
 body { background: radial-gradient(ellipse at 50% 0, #fbf8ed 0, var(--paper) 36rem); }
 .frame { width: min(100% - 36px, 660px); }
 .top { background: #f8f6ef; }
@@ -530,7 +530,7 @@ select, .filters .pill { font-size: 0.875rem; }
 
 .reader-view .bible-passage {
   border: 0; box-shadow: none; border-radius: 12px; background: var(--reading-surface, var(--card)); padding-inline: 8px;
-  touch-action: pan-y pinch-zoom;
+  touch-action: pan-y;
 }
 .record-filters { grid-template-columns: repeat(3,minmax(0,1fr)); }
 .record-year { margin: 20px 0 6px; font-size: 0.875rem; color: var(--accent-ink); }
@@ -562,23 +562,41 @@ select, .filters .pill { font-size: 0.875rem; }
 .record-pages svg { width: 16px; height: 16px; }
 .search-result { padding-block: 13px; border-bottom: 1px solid var(--line); }
 .search-result > strong { color: var(--accent-ink); }
-.post-editor { padding: 2px 1px 10px; }
-.post-editor h1 { font-size: 1.1875rem; }
-.post-editor form { display: grid; gap: 18px; margin-top: 16px; }
-.post-editor .field { min-width: 0; }
-.post-editor input:not([type="checkbox"]), .post-editor textarea {
-  background: transparent; border: 0; border-radius: 0; padding: 9px 0;
-  width: 100%; min-width: 0; font-size: 1rem; font-weight: 400;
+.post-editor { padding: 0 0 10px; }
+.writing-header { display: flex; align-items: center; gap: 11px; min-width: 0; margin-bottom: 14px; }
+.writing-icon {
+  width: 43px; height: 43px; flex: none; display: grid; place-items: center;
+  border-radius: 13px; color: var(--accent-ink); background: var(--accent-soft);
 }
-.post-editor input:not([type="checkbox"]) { border-bottom: 1px solid var(--line); }
-.post-editor input[type="date"] { appearance: none; -webkit-appearance: none; text-align: start; }
-.post-editor input[type="date"]::-webkit-date-and-time-value { text-align: start; margin: 0; }
-.post-editor textarea { line-height: 1.6; }
-[data-prayer-editor] textarea { max-height: none; overflow-y: hidden; resize: none; }
-.post-response { padding-block: 9px; border-top: 1px solid var(--line); }
-.post-response summary { color: var(--accent-ink); font-weight: 650; cursor: pointer; }
-.post-response[open] summary { margin-bottom: 12px; }
-.post-editor footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.writing-header h1 { margin: 3px 0 0; font-size: 1.24rem; }
+.post-editor form { display: grid; gap: 10px; }
+.writing-panel, .post-response {
+  display: grid; gap: 12px; padding: 13px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 15px;
+}
+.post-editor .field { min-width: 0; color: var(--muted); font-weight: 550; }
+.post-editor :is(input[type="text"],textarea) {
+  display: block; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-radius: 9px;
+  background: var(--soft); color: var(--ink);
+  font: 400 max(16px,var(--reading-size,1rem))/1.55 var(--sans);
+  letter-spacing: var(--reading-tracking); box-shadow: inset 0 0 0 1px var(--line);
+}
+.post-editor input[type="text"] { min-height: 44px; }
+.post-editor textarea { min-height: 0; max-height: none; overflow: hidden; resize: none; overflow-wrap: anywhere; }
+.post-editor :is(input[type="text"],textarea):focus {
+  outline: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line));
+}
+.writing-quotes { display: grid; gap: 5px; }
+.writing-quotes .post-quote { margin: 0; }
+.post-response { display: block; padding-block: 5px; }
+.post-response summary, .post-response summary > span { display: flex; align-items: center; gap: 6px; }
+.post-response summary { justify-content: space-between; min-height: 44px; color: var(--accent-ink); font-weight: 650; cursor: pointer; }
+.post-response summary::-webkit-details-marker { display: none; }
+.post-response summary svg { width: 16px; height: 16px; }
+.post-response[open] summary > svg { transform: rotate(180deg); }
+.post-response[open] .check-field { margin: 8px 0; }
+.post-editor footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; }
+.post-editor footer .primary { min-width: 85px; }
 .post-content [data-journal-field="title"] { font-size: 0.8125rem; }
 .post-content [data-journal-field="reflection"] { font-size: 0.75rem; }
 .journal-view .post-header h1 { font-size: 1rem; }
@@ -982,9 +1000,8 @@ form[name="tracker-picker"] .reader-picker-options { grid-template-columns: repe
 .tracker-picker-pages { color: var(--muted); font-size: .78rem; }
 .tracker-picker-pages .btn { width: 44px; padding: 0; }
 .tracker-picker-pages svg { width: 16px; height: 16px; }
-.journal-editor .post-meta { flex-wrap: wrap; gap: 6px 12px; }
-.journal-editor-fields { display: grid; gap: 18px; margin-block: 18px 8px; }
-.journal-editor textarea { min-height: 160px; resize: vertical; }
+.journal-editor .post-meta { display: flex; flex-wrap: wrap; gap: 3px 9px; }
+.journal-editor-fields { margin-block: 8px; }
 .journal-editor .post-actions { padding-inline: 0; align-items: center; }
 .journal-editor .post-actions .destructive { margin-inline-end: auto; }
 .bible-passage .verse.verse-arrival, .commentary-verse h3.verse-arrival { background: var(--accent-soft); }
@@ -1080,11 +1097,6 @@ form[name="dictionary"] > .row:first-child {
 }
 .dictionary-sense { color: var(--accent-ink); }
 .dictionary-copy .original-code { min-height: 24px; margin-inline: 2px; padding: 1px 5px; }
-.journal-editor textarea[data-journal-field="reflection"] {
-  min-height: clamp(15rem, 38dvh, 25rem); font-size: 1rem; line-height: 1.7;
-}
-
-
 .tappable-card { position: relative; isolation: isolate; }
 .tappable-card .card-hit {
   position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;
@@ -1110,11 +1122,6 @@ form[name="dictionary"] > .row:first-child {
 .today-resume { width: 100%; justify-content: flex-start; padding: 10px 12px; text-align: start; }
 .today-resume .eyebrow { display: block; }
 .today-resume > svg { margin-inline-start: auto; width: 17px; height: 17px; }
-.thought-editor textarea {
-  display: block; min-height: 10rem; max-height: none; overflow-y: hidden; resize: none;
-  font-family: var(--sans); font-size: var(--reading-size); font-weight: 400;
-  line-height: 1.5; letter-spacing: var(--reading-tracking);
-}
 .thought-list { display: grid; gap: 22px; margin-top: 18px; }
 .thought-group { display: grid; gap: 8px; min-width: 0; }
 .thought-group-header {
@@ -1185,25 +1192,25 @@ form[name="year-editor"] .dialog-close { flex-shrink: 0; }
 form[name="year-editor"] .btn { font-weight: 400; }
 .year-editor-dates { display: grid; grid-template-columns: minmax(0,.7fr) minmax(0,1.3fr); gap: 9px; }
 form[name="year-editor"] .field { color: var(--muted); font-weight: 400; }
-form[name="year-editor"] :is(input,textarea), .year-editor-date-control {
+form[name="year-editor"] :is(input,textarea), .editor-date-control {
   display: block; box-sizing: border-box; min-width: 0; width: 100%; max-width: 100%;
   padding: 8px 10px; border: 0; border-radius: 9px; background: var(--soft); color: var(--ink);
   font: 400 1rem/1.5 var(--sans); box-shadow: inset 0 0 0 1px var(--line);
 }
 form[name="year-editor"] input { min-height: 44px; }
-.year-editor-date-control {
+.editor-date-control {
   position: relative; display: flex; align-items: center; justify-content: space-between; gap: 5px;
   min-height: 44px; overflow: hidden;
 }
-.year-editor-date-control [data-year-date-value] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.year-editor-date-control svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
-form[name="year-editor"] .year-editor-date-control input {
+.editor-date-control [data-editor-date-value] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-date-control svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.editor-date-control input {
   position: absolute; inset: 0; height: 100%; padding: 0; opacity: 0; cursor: pointer;
 }
-.year-editor-date-control input::-webkit-calendar-picker-indicator {
+.editor-date-control input::-webkit-calendar-picker-indicator {
   position: absolute; inset: 0; width: auto; height: auto; padding: 0; cursor: pointer;
 }
-.year-editor-date-control:focus-within { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line)); }
+.editor-date-control:focus-within { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line)); }
 form[name="year-editor"] textarea { min-height: 0; max-height: none; overflow: hidden; resize: none; overflow-wrap: anywhere; }
 form[name="year-editor"] :is(input,textarea):focus {
   outline: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line));
@@ -1305,3 +1312,10 @@ form[name="year-editor"] :is(input,textarea):focus {
 .verse-note-actions .primary { margin-inline-start: auto; }
 
 button, a, select, .palette-option, .compare-choice { -webkit-tap-highlight-color: transparent; }
+
+@media (hover: none) and (pointer: coarse) {
+  :is(input:not([type="checkbox"],[type="radio"],[type="color"],[type="range"],[type="file"],[type="hidden"]),select) {
+    font-size: max(16px,1rem) !important;
+  }
+  textarea { font-size: max(16px,var(--reading-size,1rem)) !important; }
+}

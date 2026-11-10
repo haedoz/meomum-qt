@@ -427,17 +427,23 @@ function journalEntry(key) {
 function hasJournalContent(entry) {
   return Boolean(entry.done || entry.title?.trim() || entry.reflection?.trim() || entry.verses.length || entry.comments?.length);
 }
+function writingHeader(symbol,label,title,meta = '') {
+  return '<header class="writing-header"><span class="writing-icon">'+icon(symbol)+'</span><div>'+
+    '<p class="eyebrow">'+label+'</p><h1>'+title+'</h1>'+meta+'</div></header>';
+}
 function journalScreen() {
   const day = selectedDay;
   const entry = state.journal[day] ?? {verses:[]};
   const refs = entry.verses.map(ref => '<div class="post-quote"><div class="row"><button class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'+
     '<button class="text-action" data-remove="'+ref+'" data-date="'+day+'" aria-label="묵상에서 '+esc(reference(ref))+' 빼기">빼기</button></div><p>'+esc(savedVerseText(ref))+'</p></div>').join('');
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
-  return '<article class="post-editor journal-editor"><header><p class="eyebrow">QT JOURNAL</p><h1>나의 묵상</h1>'+
-    '<div class="row post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+(writeError?'저장 실패':'기기에 자동 저장')+'</span></div></header>'+
-    '<div class="journal-editor-fields">'+refs+
+  return '<article class="post-editor journal-editor">'+writingHeader('comment','묵상 노트','나의 묵상',
+    '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
+    (writeError?'저장 실패':'기기에 자동 저장')+'</span></div>')+
+    '<div class="journal-editor-fields writing-panel">'+
     editorField('제목','title',entry.title,'text','aria-label="묵상 제목" data-journal-field="title" maxlength="150" placeholder="제목을 입력하세요 (선택)"')+
-    editorField('묵상 내용','reflection',entry.reflection,'textarea','aria-label="묵상 본문" data-journal-field="reflection" rows="10" placeholder="마음에 남은 말씀과 생각을 적어보세요."')+
+    (refs?'<div class="writing-quotes">'+refs+'</div>':'')+
+    editorField('묵상 내용','reflection',entry.reflection,'textarea','aria-label="묵상 본문" data-journal-field="reflection" rows="5" placeholder="마음에 남은 말씀과 생각을 적어보세요."')+
     '</div><footer class="post-actions">'+
     '<button class="text-action destructive" data-delete-journal="'+day+'" '+(!hasJournalContent(entry)?'hidden':'')+'>묵상 삭제</button>'+
     '<button class="btn '+(entry.done?'':'primary')+'" data-done="'+day+'" aria-pressed="'+Boolean(entry.done)+'">'+(entry.done?'✓ QT 완료':'QT 마치기')+'</button>'+
@@ -1309,7 +1315,7 @@ function setReadingRange(range) {
   render();
 }
 modal.addEventListener('change',event=>{
-  updateYearEditorDate(event.target);
+  updateEditorDate(event.target);
   const field = event.target;
   if (field.name==='compare-edition') {
     pendingComparison = pendingComparison.filter(id=>id!==field.value);
@@ -2541,7 +2547,7 @@ modal.addEventListener('input',event=>{
   const field = event.target;
   if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.classList?.contains('note-editor-dialog'))) resizeWriting(field);
   if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
-  updateYearEditorDate(field);
+  updateEditorDate(field);
 });
 modal.addEventListener('keydown',event=>{
   const field = event.target;
@@ -2551,6 +2557,7 @@ modal.addEventListener('keydown',event=>{
 });
 main.addEventListener('input',event => {
   const field = event.target;
+  updateEditorDate(field);
   if (field.tagName==='TEXTAREA' && (field.form?.dataset.thoughtEditor || field.form?.dataset.prayerEditor)) resizeWriting(field);
   if (field.dataset.journalField) {
     const entry = journalEntry(selectedDay);
@@ -2615,11 +2622,20 @@ function keepScrollInOverlay(event,delta) {
   event.preventDefault();
 }
 let overlayTouchY;
-document.addEventListener('wheel',event=>keepScrollInOverlay(event,event.deltaY),{passive:false});
+function preventPageZoom(event) {
+  if (event.cancelable) event.preventDefault();
+}
+document.addEventListener('gesturestart',preventPageZoom,{passive:false});
+document.addEventListener('gesturechange',preventPageZoom,{passive:false});
+document.addEventListener('wheel',event=>{
+  if (event.ctrlKey) return preventPageZoom(event);
+  keepScrollInOverlay(event,event.deltaY);
+},{passive:false});
 document.addEventListener('touchstart',event=>{
   overlayTouchY = event.touches[0]?.clientY;
 },{passive:true});
 document.addEventListener('touchmove',event=>{
+  if (event.touches.length>1) return preventPageZoom(event);
   if (event.touches.length!==1) return;
   const y = event.touches[0].clientY;
   const delta = (overlayTouchY ?? y)-y;
@@ -2670,6 +2686,7 @@ main.addEventListener('submit',event => {
 });
 main.addEventListener('change',async event => {
   const field = event.target;
+  updateEditorDate(field);
   if (field.id==='reading-goal') {
     state.readingGoal = Number(field.value);
     const focused = document.activeElement===field;
@@ -3068,19 +3085,18 @@ function prayerEditorScreen(id) {
   const item = state.prayers.find(prayer=>prayer.id===id);
   if (!item && !['new','thought'].includes(id)) return '<p class="empty">이 기록을 찾을 수 없어요.</p>';
   if (id==='thought' || item?.kind==='thought') {
-    return '<div class="post-editor thought-editor"><p class="eyebrow">생각 노트</p>'+
-      '<h1>'+(item?'생각 노트 편집':'새 생각 노트')+'</h1><form data-thought-editor="'+id+'">'+
-      editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+
+    return '<div class="post-editor thought-editor">'+writingHeader('note','생각 노트',item?'생각 노트 편집':'새 생각 노트')+
+      '<form data-thought-editor="'+id+'"><div class="writing-panel">'+
+      editorDateField(item?item.day ?? '':dateKey())+
       editorField('생각','body',item?thoughtText(item):'','textarea','rows="5" required placeholder="지금 떠오른 생각을 적어보세요."')+
-      '<footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
+      '</div><footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
   }
-  return '<div class="post-editor"><p class="eyebrow">'+'기도 노트'+'</p>'+
-    '<h1>'+(item?'기도제목 편집':'새 기도제목')+'</h1>'+
-    '<form data-prayer-editor="'+id+'">'+
+  return '<div class="post-editor prayer-editor">'+writingHeader('prayer','기도 노트',item?'기도제목 편집':'새 기도제목')+
+    '<form data-prayer-editor="'+id+'"><div class="writing-panel">'+
     editorField('제목','title',item?.title,'text','required maxlength="150" placeholder="제목을 입력하세요"')+
-    editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+
+    editorDateField(item?item.day ?? '':dateKey())+
     editorField('기도 내용','body',item?.body,'textarea','rows="5" placeholder="편하게 적어보세요."')+
-    '<details class="post-response" '+(item?.answer || item?.done?'open':'')+'><summary>응답 기록</summary>'+
+    '</div><details class="post-response" '+(item?.answer || item?.done?'open':'')+'><summary><span>'+icon('check')+'응답 기록</span>'+icon('down')+'</summary>'+
       editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+
       '<label class="check-field"><input name="done" type="checkbox" '+(item?.done?'checked':'')+'> 응답받았어요</label></details>'+
     '<footer><button class="btn" type="button" data-action="back">취소</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
@@ -3173,15 +3189,20 @@ function addYearReference(form) {
   renderYearReferences(form);
   return true;
 }
-function yearEditorDateLabel(day) {
+function editorDateLabel(day) {
   if (!day) return '날짜 선택';
   const [year,month,number] = day.split('-').map(Number);
   return year+'. '+month+'. '+number+'.';
 }
-function updateYearEditorDate(field) {
-  if (field.form?.name!=='year-editor' || field.name!=='day') return;
-  const label = field.parentElement.querySelector('[data-year-date-value]');
-  label.textContent = yearEditorDateLabel(field.value);
+function editorDateField(day) {
+  return '<label class="field">기록 날짜<span class="editor-date-control">'+
+    '<span data-editor-date-value aria-hidden="true">'+editorDateLabel(day)+'</span>'+icon('calendar')+
+    '<input type="date" name="day" value="'+esc(day)+'"></span></label>';
+}
+function updateEditorDate(field) {
+  if (field.name!=='day') return;
+  const label = field.parentElement?.querySelector('[data-editor-date-value]');
+  if (label) label.textContent = editorDateLabel(field.value);
 }
 function showYearEditor(item,refs = []) {
   editId = item?.id;
@@ -3190,9 +3211,7 @@ function showYearEditor(item,refs = []) {
   dialog(item?'새해 말씀 편집':'새해 말씀 추가',
     '<div class="year-editor-dates">'+
     editorField('연도','year',item?.year ?? new Date().getFullYear(),'number','min="1900" max="9999" required')+
-    '<label class="field">기록 날짜<span class="year-editor-date-control">'+
-    '<span data-year-date-value aria-hidden="true">'+yearEditorDateLabel(day)+'</span>'+icon('calendar')+
-    '<input type="date" name="day" value="'+esc(day)+'"></span></label></div>'+
+    editorDateField(day)+'</div>'+
     '<div class="year-ref-fields"><div class="year-ref-input">'+
     editorField('말씀 구절','reference','','text','maxlength="120" autocomplete="off" enterkeyhint="go" placeholder="예: 시편 65:13"')+
     '<button type="button" class="btn" data-action="add-year-reference">불러오기</button></div>'+

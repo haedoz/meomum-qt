@@ -1,5 +1,5 @@
-const version = 'meomum-pages-v118';
-const paths = ['./','./app.js?v=114','./books.js','./daily-verse-refs.js?v=1','./bdb.js?v=37','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=102','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest?v=4','./icon-192.png','./icon-512.png'];
+const version = 'meomum-pages-v119';
+const paths = ['./','./app.js?v=115','./books.js','./daily-verse-refs.js?v=1','./bdb.js?v=37','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=103','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest?v=4','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(version);
