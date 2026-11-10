@@ -462,8 +462,24 @@ select, .filters .pill { font-size: 0.875rem; }
 .reading-book-progress { display: grid; gap: 7px; padding: 9px 11px; background: var(--soft); border-radius: 12px; }
 .reading-book-progress progress { height: 6px; }
 .reading-book-progress .eyebrow { letter-spacing: normal; }
+.reading-book-progress h2 { font-size: 1.12rem; }
+#book-checks-heading:focus { outline: none; }
 .reading-book-count { color: var(--muted); font-size: .81rem; white-space: nowrap; }
 .reading-book-count strong { color: var(--accent-ink); font-size: 1.3rem; }
+.book-checks-scopes { grid-template-columns: repeat(3,minmax(0,1fr)); margin-block: 0 10px; }
+.book-checks-back { display: inline-flex; align-items: center; gap: 5px; }
+.book-checks-back svg, .book-check-row svg { width: 15px; height: 15px; }
+.book-check-list { margin-block: 12px; padding: 8px 12px; }
+.book-check-list h3 { padding: 5px 4px; }
+.book-check-list h3 small { margin-inline-start: 4px; color: var(--muted); font-weight: 400; }
+.book-check-list ul { list-style: none; margin: 0; padding: 0; }
+.book-check-list li + li { border-top: 1px solid var(--line); }
+.book-check-row {
+  display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 7px;
+  width: 100%; min-height: 44px; padding: 6px 4px; text-align: start; font-size: .875rem;
+}
+.book-check-row-count, .book-check-row svg { color: var(--muted); }
+.book-check-row-count { font-size: .78rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .book-checks .chapter-grid { gap: 7px; }
 .book-checks .chapter-tile { border-radius: 11px; }
 .reading-suggestions { display: grid; gap: 5px; }

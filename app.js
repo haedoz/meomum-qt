@@ -87,6 +87,8 @@ const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse;
 let toastTimer, jumpTo, activeRoute, prayerFilter = 'open', editId, trackerBook, editingVerseNote;
 let trackerYear;
+const trackerScopes = {all:'전체 성경',old:'구약',new:'신약'};
+let trackerScope = 'all';
 
 function dateKey(date = new Date()) {
   return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
@@ -1180,11 +1182,43 @@ function selectedTrackerYear() {
   return dateKey().slice(0,4);
 }
 function bookChecksScreen() {
-  const book = trackerBook ?? state.reader.book;
-  const chapters = chapterNumbers(book);
   const year = selectedTrackerYear();
   const yearLabel = year?year+'년':'전체 연도';
   const {counts} = readingProgress([],year);
+  const bookLabel = trackerBook?titles[trackerBook]:'책 바로 선택';
+  return heading('READING RECORDS','성경책별 체크','연도별 묵상 기록을 확인하세요.')+
+    '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
+    readerPickerField('성경책',bookLabel,'pick-tracker-book','성경책 선택')+'</div>'+
+    (trackerBook?bookChecksDetail(trackerBook,yearLabel,counts):bookChecksOverview(yearLabel,counts));
+}
+function bookChecksProgress(label,yearLabel,visited,total) {
+  return '<div class="reading-book-progress"><div class="row">'+
+    '<div><span class="eyebrow">'+yearLabel+'</span><h2 id="book-checks-heading" tabindex="-1">'+label+'</h2></div>'+
+    '<span class="reading-book-count"><strong>'+visited+'</strong> / '+total+'장</span></div>'+
+    '<progress max="'+total+'" value="'+visited+'" aria-label="'+yearLabel+' '+label+' 묵상 진행률"></progress></div>';
+}
+function bookChecksOverview(yearLabel,counts) {
+  const tabs = '<div class="settings-tabs book-checks-scopes" role="group" aria-label="성경 범위">'+
+    Object.entries(trackerScopes).map(([key,label])=>'<button type="button" data-tracker-scope="'+key+
+      '" aria-pressed="'+(key===trackerScope)+'">'+label+'</button>').join('')+'</div>';
+  const groups = trackerScope==='all'?['old','new']:[trackerScope];
+  let visited = 0, total = 0;
+  const list = groups.map(scope=>{
+    const rows = books.filter(([book])=>testamentByBook[book]===scope).map(([book,title])=>{
+      const chapterTotal = chapterCounts[book];
+      const checked = chapterNumbers(book).filter(chapter=>counts.has(book+'/'+chapter)).length;
+      visited += checked;
+      total += chapterTotal;
+      return '<li><button type="button" class="book-check-row" data-book-check-detail="'+book+'"><span>'+title+'</span>'+
+        '<span class="book-check-row-count">'+checked+' / '+chapterTotal+'장</span>'+icon('right')+'</button></li>';
+    });
+    return '<section class="card book-check-list"><h3>'+trackerScopes[scope]+' <small>'+rows.length+'권</small></h3>'+
+      '<ul>'+rows.join('')+'</ul></section>';
+  }).join('');
+  return tabs+bookChecksProgress(trackerScopes[trackerScope],yearLabel,visited,total)+list;
+}
+function bookChecksDetail(book,yearLabel,counts) {
+  const chapters = chapterNumbers(book);
   const visited = chapters.filter(chapter=>counts.has(book+'/'+chapter)).length;
   const chapterButtons = chapters.map(chapter=>{
     const key = book+'/'+chapter, count = counts.get(key) ?? 0;
@@ -1192,13 +1226,8 @@ function bookChecksScreen() {
       titles[book]+' '+chapter+'장, '+(count?count+'회 묵상':'묵상 체크 없음')+'">'+
       '<strong>'+chapter+'장</strong><span>'+(count?'✓ '+count+'회':'—')+'</span></button>';
   }).join('');
-  return heading('READING RECORDS','성경책별 체크','연도와 성경책을 골라 장별 묵상 기록을 확인하세요.')+
-    '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
-    readerPickerField('성경책',titles[book],'pick-tracker-book','성경책 선택')+'</div>'+
-    '<section class="card reading-chapters book-checks"><div class="reading-book-progress"><div class="row">'+
-    '<div><span class="eyebrow">'+yearLabel+'</span><h2>'+titles[book]+'</h2></div>'+
-    '<span class="reading-book-count"><strong>'+visited+'</strong> / '+chapters.length+'장</span></div>'+
-    '<progress max="'+chapters.length+'" value="'+visited+'" aria-label="'+yearLabel+' '+titles[book]+' 묵상 진행률"></progress></div>'+
+  return '<button type="button" class="text-action book-checks-back" data-action="tracker-overview">'+icon('left')+
+    '책 목록</button><section class="card reading-chapters book-checks">'+bookChecksProgress(titles[book],yearLabel,visited,chapters.length)+
     (!visited?'<p class="muted">이 기간에 체크한 장이 없어요.</p>':'')+
     '<div class="chapter-grid">'+chapterButtons+'</div></section>';
 }
@@ -2011,6 +2040,13 @@ const actions = {
   'pick-edition':showEditionPicker,
   'pick-tracker-year'() { showTrackerPicker('year'); },
   'pick-tracker-book'() { showTrackerPicker('book'); },
+  'tracker-overview'() {
+    const book = trackerBook;
+    trackerBook = undefined;
+    render();
+    (main.querySelector('[data-book-check-detail="'+book+'"]') ??
+      main.querySelector('[data-tracker-scope="'+trackerScope+'"]'))?.focus();
+  },
   'close-dialog'() { modal.close(); },
   back() { goBack(); },
   'open-today-note'() { showDailyNote(); },
@@ -2169,11 +2205,18 @@ function showTrackerPicker(kind,testament,page) {
   modal.querySelector('#active-dialog-title')?.focus({preventScroll:true});
 }
 function chooseTrackerValue(kind,value) {
-  if (kind==='book') trackerBook = value;
-  else trackerYear = value;
   modal.close();
+  if (kind==='book') return showBookChecksDetail(value);
+  trackerYear = value;
   render();
-  main.querySelector('[data-action="pick-tracker-'+kind+'"]')?.focus({preventScroll:true});
+  main.querySelector('[data-action="pick-tracker-year"]')?.focus({preventScroll:true});
+}
+function showBookChecksDetail(book) {
+  if (!Object.hasOwn(titles,book)) return;
+  trackerBook = book;
+  render();
+  window.scrollTo(0,0);
+  main.querySelector('#book-checks-heading')?.focus({preventScroll:true});
 }
 function showEditionPicker() {
   if (view!=='bible' || !state.reader.edition) return;
@@ -2271,6 +2314,13 @@ document.addEventListener('click',event => {
   if ('trackerPage' in target) return showTrackerPicker(target.trackerKind,target.trackerSection,Number(target.trackerPage));
   if ('trackerBook' in target) return chooseTrackerValue('book',target.trackerBook);
   if ('trackerYear' in target) return chooseTrackerValue('year',target.trackerYear);
+  if (target.bookCheckDetail) return showBookChecksDetail(target.bookCheckDetail);
+  if (Object.hasOwn(trackerScopes,target.trackerScope)) {
+    trackerScope = target.trackerScope;
+    render();
+    main.querySelector('[data-tracker-scope="'+trackerScope+'"]')?.focus({preventScroll:true});
+    return;
+  }
   if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
