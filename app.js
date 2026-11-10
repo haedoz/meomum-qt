@@ -65,9 +65,9 @@ const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
 const markerColors = {gold:'#e6bc43',sage:'#7cb668',rose:'#dc7d9c',blue:'#6d9ddf'};
 let lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
 const settings = {
-  fontSize:{label:'글자 크기',min:12,max:48,step:1,unit:'px',initial:17},
-  lineHeight:{label:'줄 간격',min:1.2,max:3,step:.05,unit:'배',initial:1.85},
-  verseGap:{label:'구절 사이 간격',min:0,max:48,step:1,unit:'px',initial:8},
+  fontSize:{label:'글자 크기',min:12,max:48,step:1,unit:'px',initial:15},
+  lineHeight:{label:'줄 간격',min:1.2,max:3,step:.05,unit:'배',initial:1.25},
+  verseGap:{label:'구절 사이 간격',min:0,max:48,step:1,unit:'px',initial:0},
   letterSpace:{label:'글자 사이 간격',min:-1,max:5,step:.1,unit:'px',initial:0},
 };
 const themes = {system:'시스템 설정',light:'라이트',dark:'다크'};
@@ -2735,9 +2735,13 @@ function migrate(input) {
   const result = {...blank(),...input};
   const oldSize = {regular:17,large:20,largest:23};
   const oldFont = Object.hasOwn(oldSize,input.readingSize) ? oldSize[input.readingSize] : undefined;
-  result.display = Object.fromEntries(Object.keys(settings).map(key => [
-    key,displayValue(key,input.display?.[key] ?? (key==='fontSize'?oldFont:undefined)),
-  ]));
+  result.display = {};
+  for (const key of Object.keys(settings)) {
+    const value = input.display?.[key] ?? (key==='fontSize'?oldFont:undefined);
+    if (value != null && value !== '' && Number.isFinite(Number(value))) {
+      result.display[key] = displayValue(key,value);
+    }
+  }
   result.theme = Object.hasOwn(themes,input.theme)?input.theme:'system';
   const legacyPalettes = {rose:'lavender',coral:'oat',linen:'oat',sage:'gray',navy:'slate'};
   result.palette = Object.hasOwn(palettes,input.palette)?input.palette:

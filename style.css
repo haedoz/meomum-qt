@@ -121,7 +121,7 @@ button:focus-visible, a:focus-visible { outline-color: var(--green); }
 .reader-view { width: min(calc(100% - 32px), 724px); }
 .bible-passage {
   display: grid;
-  row-gap: var(--verse-gap, 8px);
+  row-gap: var(--verse-gap, 0px);
   padding: 10px 5px;
   border-radius: 13px;
 }
@@ -131,17 +131,17 @@ button:focus-visible, a:focus-visible { outline-color: var(--green); }
   column-gap: var(--verse-number-gap);
   min-height: 0;
   padding: 0 2px;
-  font-size: var(--reading-size, 1.0625rem);
-  line-height: var(--reading-leading, 1.85);
+  font-size: var(--reading-size, 15px);
+  line-height: var(--reading-leading, 1.25);
 }
 .bible-passage .verse:not(:has(> .mark)) { grid-template-columns: 2ch minmax(0, 1fr); }
 .bible-passage .verse-copy {
-  line-height: var(--reading-leading, 1.85);
+  line-height: var(--reading-leading, 1.25);
   letter-spacing: var(--reading-tracking, 0px);
 }
 .bible-passage .number, .bible-passage .mark {
   align-self: start;
-  line-height: calc(var(--reading-size, 17px) * var(--reading-leading, 1.85));
+  line-height: calc(var(--reading-size, 15px) * var(--reading-leading, 1.25));
 }
 .bible-passage .mark { font-size: 0.5rem; }
 .verse-copy { min-width: 0; overflow-wrap: anywhere; }
@@ -1314,5 +1314,9 @@ form[name="year-editor"] :is(input,textarea):focus {
 button, a, select, .palette-option, .compare-choice { -webkit-tap-highlight-color: transparent; }
 
 :is(input:not([type="checkbox"],[type="radio"],[type="color"],[type="range"],[type="file"],[type="hidden"],[type="date"]),textarea) {
-  font-size: var(--reading-size,1rem) !important;
+  font-size: var(--reading-size, 15px) !important;
+  line-height: calc(1em * var(--reading-leading, 1.25) + var(--input-line-gap, 0px)) !important;
+  letter-spacing: var(--reading-tracking, 0px);
 }
+
+textarea { --input-line-gap: var(--verse-gap, 0px); }
