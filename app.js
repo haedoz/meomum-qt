@@ -1102,7 +1102,7 @@ function studyPassage(mode,book,chapter,entries) {
   const source = original?originalPassageSource(book,chapter):undefined;
   const verseNumbers = [...new Set([entries,source?.chapters?.[chapter]].flatMap(chapterVerses=>
     Object.entries(chapterVerses ?? {}).filter(([verse,text])=>Number(verse)>0 && text).map(([verse])=>verse)))].sort((a,b)=>a-b);
-  return '<header class="commentary-heading"><h2>'+esc(titles[book])+' '+chapter+'장</h2></header>'+
+  return ''+
     (verseNumbers.map(verse=>'<section class="commentary-verse"'+
       (Number(verse)<=500?' data-reading-verse="'+verse+'"':'')+'><div class="row study-verse-heading"><h3 id="study-v-'+verse+'" tabindex="-1">'+
       (Number(verse)>500?'참고 항목 '+verse:verse+'절')+'</h3>'+
