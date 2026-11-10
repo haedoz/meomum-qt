@@ -458,9 +458,14 @@ select, .filters .pill { font-size: 0.875rem; }
 :is(.reading-progress,.reading-book-progress) progress::-webkit-progress-bar { background: var(--line); border-radius: 8px; }
 :is(.reading-progress,.reading-book-progress) progress::-webkit-progress-value { background: var(--accent-ink); border-radius: 8px; }
 :is(.reading-progress,.reading-book-progress) progress::-moz-progress-bar { background: var(--accent-ink); border-radius: 8px; }
-.reading-book-filters { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 8px; }
+.reading-book-filters { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 8px; margin-block: 16px 10px; }
 .reading-book-progress { display: grid; gap: 7px; padding: 9px 11px; background: var(--soft); border-radius: 12px; }
 .reading-book-progress progress { height: 6px; }
+.reading-book-progress .eyebrow { letter-spacing: normal; }
+.reading-book-count { color: var(--muted); font-size: .81rem; white-space: nowrap; }
+.reading-book-count strong { color: var(--accent-ink); font-size: 1.3rem; }
+.book-checks .chapter-grid { gap: 7px; }
+.book-checks .chapter-tile { border-radius: 11px; }
 .reading-suggestions { display: grid; gap: 5px; }
 .reading-suggestion {
   display: flex; align-items: center; justify-content: space-between; min-height: 44px;
@@ -906,10 +911,10 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
 
 :root { --page-gutter: 20px; --top-bar-height: 60px; }
 #main.frame { width: min(calc(100% - 2 * var(--page-gutter)), 660px); }
-:is(.reader-controls, .record-filters) {
+:is(.reader-controls, .record-filters, .reading-book-filters) {
   --control-height: max(46px, 2.875rem);
 }
-:is(.reader-controls, .record-filters) > .field {
+:is(.reader-controls, .record-filters, .reading-book-filters) > .field {
   position: relative;
   align-content: start;
 }
@@ -921,7 +926,7 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
   font: 700 .875rem/1.25 var(--sans); letter-spacing: -.025em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-:is(.reader-controls, .record-filters) > .field::after {
+:is(.reader-controls, .record-filters, .reading-book-filters) > .field::after {
   content: ""; position: absolute; right: 13px;
   bottom: calc((var(--control-height) - 7px) / 2 + 2px);
   width: 7px; height: 7px; border: solid var(--ink); border-width: 0 1.5px 1.5px 0;
@@ -944,6 +949,11 @@ body:has(.reader-search-results:not([hidden])) .workspace::after {
 .reader-picker-options .btn[aria-current="true"]:not(.primary) {
   background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; box-shadow: none;
 }
+form[name="tracker-picker"] .reader-picker-options { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+.tracker-testaments { grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 0; }
+.tracker-picker-pages { color: var(--muted); font-size: .78rem; }
+.tracker-picker-pages .btn { width: 44px; padding: 0; }
+.tracker-picker-pages svg { width: 16px; height: 16px; }
 .journal-editor .post-meta { flex-wrap: wrap; gap: 6px 12px; }
 .journal-editor-fields { display: grid; gap: 18px; margin-block: 18px 8px; }
 .journal-editor textarea { min-height: 160px; resize: vertical; }
@@ -1075,12 +1085,32 @@ form[name="dictionary"] > .row:first-child {
 .prayer-record .card-actions { justify-content: flex-end; margin-top: 2px; }
 .yearly-record { margin: 0; }
 .yearly-record header > div { min-width: 0; }
+.yearly-record .item-title { font-weight: 400; white-space: pre-wrap; }
 .yearly-record .year-verse { padding: 8px 10px; background: var(--soft); border: 0; border-radius: 10px; }
-.yearly-record .year-verse .note-link { display: inline-flex; align-items: center; gap: 5px; text-align: start; }
+.yearly-record .year-verse .note-link { display: inline-flex; align-items: center; gap: 5px; text-align: start; font-weight: 400; }
 .yearly-record .year-verse svg { width: 13px; height: 13px; flex: none; }
 .yearly-record blockquote { margin: 4px 0 0; }
 .yearly-note { margin-top: 10px; }
-.yearly-note > strong { font-size: .78rem; color: var(--muted); }
+.yearly-note > span { font-size: .78rem; color: var(--muted); }
+dialog:has(form[name="year-editor"]) { padding: clamp(12px,4vw,20px); }
+form[name="year-editor"] { min-width: 0; gap: 14px; }
+form[name="year-editor"] #active-dialog-title { font-weight: 400; }
+form[name="year-editor"] .btn { font-weight: 400; }
+.year-editor-dates { display: grid; grid-template-columns: minmax(0,.7fr) minmax(0,1.3fr); gap: 9px; }
+form[name="year-editor"] .field { color: var(--muted); font-weight: 400; }
+form[name="year-editor"] :is(input,textarea) {
+  display: block; box-sizing: border-box; min-width: 0; width: 100%; max-width: 100%;
+  padding: 8px 10px; border: 0; border-radius: 9px; background: var(--soft); color: var(--ink);
+  font: 400 1rem/1.5 var(--sans); box-shadow: inset 0 0 0 1px var(--line);
+}
+form[name="year-editor"] input { min-height: 44px; }
+form[name="year-editor"] input[type="date"] { text-align: start; }
+form[name="year-editor"] textarea { min-height: 0; max-height: none; overflow: hidden; resize: none; overflow-wrap: anywhere; }
+form[name="year-editor"] :is(input,textarea):focus {
+  outline: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line));
+}
+.year-editor-refs { margin-top: -7px; overflow-wrap: anywhere; }
+.year-editor-actions { padding-top: 9px; border-top: 1px solid var(--line); }
 .commentary-copy { overflow-wrap: anywhere; }
 .commentary-page .commentary-copy p {
   margin: 0; line-height: max(1.65, var(--reading-leading)); word-break: normal;

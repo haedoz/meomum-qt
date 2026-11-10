@@ -86,7 +86,7 @@ let renderedDailyDate;
 const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse;
 let toastTimer, jumpTo, activeRoute, prayerFilter = 'open', editId, trackerBook, editingVerseNote;
-let trackerYear = '';
+let trackerYear;
 
 function dateKey(date = new Date()) {
   return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
@@ -324,7 +324,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -1164,30 +1164,42 @@ function readingScreen() {
   const {counts,rounds,remaining,today} = readingProgress(canon);
   const progress = canon.length-remaining.length;
   const percent = canon.length ? (progress/canon.length*100).toFixed(1) : '0.0';
-  const book = trackerBook ?? state.reader.book;
-  const chapters = chapterNumbers(book);
-  const years = [...new Set([dateKey(),...Object.keys(state.chapterLog),
-    ...Object.keys(state.journal).filter(day=>journalChapters(state.journal[day]).size)].map(day=>day.slice(0,4)))].sort().reverse();
-  const year = years.includes(trackerYear)?trackerYear:'';
-  const bookCounts = year?readingProgress([],year).counts:counts;
-  const visited = chapters.filter(chapter=>bookCounts.has(book+'/'+chapter)).length;
-  const chapterButtons = chapters.map(chapter=>{
-    const key = book+'/'+chapter, count = bookCounts.get(key) ?? 0;
-    return '<button class="chapter-tile" data-open-chapter="'+key+'" data-checked="'+Boolean(count)+'" aria-label="'+titles[book]+' '+chapter+'장, '+(count?count+'회 묵상':'묵상 체크 없음')+'">'+
-      '<strong>'+chapter+'장</strong><span>'+(count?'✓ '+count+'회':'—')+'</span></button>';
-  }).join('');
   return heading('READING JOURNEY','묵상 체크·일독','묵상한 장과 다시 읽은 횟수를 한눈에 봐요.')+
     '<section class="card reading-progress"><div class="row"><h2>누적 일독 · '+String(rounds+1)+'회차</h2><span class="reading-badge">일독 완료 '+rounds+'회</span></div>'+
     '<div class="row reading-count"><strong>'+progress+' <small>/ '+canon.length+'장</small></strong><span>'+percent+'%</span></div>'+
     '<progress max="'+Math.max(1,canon.length)+'" value="'+progress+'" aria-label="현재 일독 진행률"></progress>'+
     '<p class="muted">같은 장은 하루에 한 번 집계해요. 묵상에 담아둔 구절도 QT를 완료하면 해당 장에 반영돼요.</p></section>'+
-    readingPlan(canon,counts,remaining,today)+
-    '<section class="card reading-chapters"><h2>성경책별 체크</h2>'+
-    '<div class="reading-book-filters"><label class="field">연도<select id="tracker-year">'+
-    options([['','전체 연도'],...years.map(value=>[value,value+'년'])],year)+'</select></label>'+
-    '<label class="field">성경책<select id="tracker-book">'+options(books,book)+'</select></label></div>'+
-    '<div class="reading-book-progress"><div class="row"><strong>'+titles[book]+'</strong><span class="muted">'+visited+' / '+chapters.length+'장</span></div>'+
-    '<progress max="'+chapters.length+'" value="'+visited+'" aria-label="'+titles[book]+' 묵상 진행률"></progress></div>'+
+    readingPlan(canon,counts,remaining,today);
+}
+function trackerYears() {
+  return [...new Set([dateKey(),...Object.keys(state.chapterLog),
+    ...Object.keys(state.journal).filter(day=>journalChapters(state.journal[day]).size)].map(day=>day.slice(0,4)))].sort().reverse();
+}
+function selectedTrackerYear() {
+  if (trackerYear==='' || trackerYears().includes(trackerYear)) return trackerYear;
+  return dateKey().slice(0,4);
+}
+function bookChecksScreen() {
+  const book = trackerBook ?? state.reader.book;
+  const chapters = chapterNumbers(book);
+  const year = selectedTrackerYear();
+  const yearLabel = year?year+'년':'전체 연도';
+  const {counts} = readingProgress([],year);
+  const visited = chapters.filter(chapter=>counts.has(book+'/'+chapter)).length;
+  const chapterButtons = chapters.map(chapter=>{
+    const key = book+'/'+chapter, count = counts.get(key) ?? 0;
+    return '<button type="button" class="chapter-tile" data-open-chapter="'+key+'" data-checked="'+Boolean(count)+'" aria-label="'+
+      titles[book]+' '+chapter+'장, '+(count?count+'회 묵상':'묵상 체크 없음')+'">'+
+      '<strong>'+chapter+'장</strong><span>'+(count?'✓ '+count+'회':'—')+'</span></button>';
+  }).join('');
+  return heading('READING RECORDS','성경책별 체크','연도와 성경책을 골라 장별 묵상 기록을 확인하세요.')+
+    '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
+    readerPickerField('성경책',titles[book],'pick-tracker-book','성경책 선택')+'</div>'+
+    '<section class="card reading-chapters book-checks"><div class="reading-book-progress"><div class="row">'+
+    '<div><span class="eyebrow">'+yearLabel+'</span><h2>'+titles[book]+'</h2></div>'+
+    '<span class="reading-book-count"><strong>'+visited+'</strong> / '+chapters.length+'장</span></div>'+
+    '<progress max="'+chapters.length+'" value="'+visited+'" aria-label="'+yearLabel+' '+titles[book]+' 묵상 진행률"></progress></div>'+
+    (!visited?'<p class="muted">이 기간에 체크한 장이 없어요.</p>':'')+
     '<div class="chapter-grid">'+chapterButtons+'</div></section>';
 }
 function readingPlan(canon,counts,remaining,today) {
@@ -1550,6 +1562,7 @@ function recordsScreen() {
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
+      ['book-checks','book','성경책별 체크','연도별 장 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
       '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
@@ -1654,7 +1667,7 @@ function rememberReadingArrival(verse) {
   }
 }
 function render(studyFromSelection = false) {
-  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,records:recordsScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
@@ -1678,7 +1691,6 @@ function render(studyFromSelection = false) {
     }
     readingArrival = undefined;
     chosen.clear();
-    if (next==='reading') trackerBook = state.reader.book;
   }
   if (day) {
     selectedDay = day;
@@ -1719,7 +1731,7 @@ function render(studyFromSelection = false) {
     }
   }
   resizeEditorWriting();
-  const navView = ['calendar','prayers','thoughts','newyear','reading','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['calendar','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -1997,6 +2009,8 @@ const actions = {
   'choose-menu-order':showMenuOrderPicker,
   'jump-chapter':showChapterJump,
   'pick-edition':showEditionPicker,
+  'pick-tracker-year'() { showTrackerPicker('year'); },
+  'pick-tracker-book'() { showTrackerPicker('book'); },
   'close-dialog'() { modal.close(); },
   back() { goBack(); },
   'open-today-note'() { showDailyNote(); },
@@ -2133,6 +2147,34 @@ function pickerOptions(items,active,attribute) {
     '<button type="button" class="btn" '+attribute+'="'+esc(id)+'"'+(id===active?' aria-current="true"':'')+
     '>'+esc(label)+'</button>').join('')+'</div>';
 }
+function showTrackerPicker(kind,testament,page) {
+  const isBook = kind==='book';
+  const selected = isBook?(trackerBook ?? state.reader.book):selectedTrackerYear();
+  const section = testament ?? testamentByBook[selected] ?? 'old';
+  const items = isBook?books.filter(([book])=>testamentByBook[book]===section):
+    [['','전체 연도'],...trackerYears().map(year=>[year,year+'년'])];
+  const pageSize = window.innerHeight<520?6:12;
+  const pages = Math.ceil(items.length/pageSize);
+  const initial = Math.floor(items.findIndex(([value])=>value===selected)/pageSize);
+  const current = Math.max(0,Math.min(page ?? initial,pages-1));
+  const tabs = isBook?'<div class="settings-tabs tracker-testaments" role="group" aria-label="구약 또는 신약">'+
+    [['old','구약'],['new','신약']].map(([key,label])=>
+      '<button type="button" data-tracker-testament="'+key+'" aria-pressed="'+(key===section)+'">'+label+'</button>').join('')+'</div>':'';
+  const pager = pages>1?'<nav class="row tracker-picker-pages" aria-label="선택 목록 페이지">'+
+    [[current-1,'이전','left'],[current+1,'다음','right']].map(([number,label,glyph])=>
+      '<button type="button" class="btn" data-tracker-page="'+number+'" data-tracker-kind="'+kind+'" data-tracker-section="'+section+
+      '" aria-label="'+label+' 페이지" '+(number<0 || number>=pages?'disabled':'')+'>'+icon(glyph)+'</button>').join('<span>'+(current+1)+' / '+pages+'</span>')+'</nav>':'';
+  dialog(isBook?'성경책 선택':'연도 선택',tabs+
+    pickerOptions(items.slice(current*pageSize,(current+1)*pageSize),selected,isBook?'data-tracker-book':'data-tracker-year')+pager,'tracker-picker');
+  modal.querySelector('#active-dialog-title')?.focus({preventScroll:true});
+}
+function chooseTrackerValue(kind,value) {
+  if (kind==='book') trackerBook = value;
+  else trackerYear = value;
+  modal.close();
+  render();
+  main.querySelector('[data-action="pick-tracker-'+kind+'"]')?.focus({preventScroll:true});
+}
 function showEditionPicker() {
   if (view!=='bible' || !state.reader.edition) return;
   dialog('번역본 선택',pickerOptions(Object.entries(editions),state.reader.edition,'data-pick-edition'));
@@ -2225,6 +2267,10 @@ document.addEventListener('click',event => {
   if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
   if (target.pickEdition) return chooseEdition(target.pickEdition);
   if (target.pickBook) return chooseBook(target.pickBook);
+  if (target.trackerTestament) return showTrackerPicker('book',target.trackerTestament,0);
+  if ('trackerPage' in target) return showTrackerPicker(target.trackerKind,target.trackerSection,Number(target.trackerPage));
+  if ('trackerBook' in target) return chooseTrackerValue('book',target.trackerBook);
+  if ('trackerYear' in target) return chooseTrackerValue('year',target.trackerYear);
   if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
@@ -2364,6 +2410,10 @@ function resizeEditorWriting() {
   main.querySelectorAll('[data-journal-field="reflection"], [data-thought-editor] textarea, [data-prayer-editor] textarea')
     .forEach(resizeWriting);
 }
+modal.addEventListener('input',event=>{
+  const field = event.target;
+  if (field.tagName==='TEXTAREA' && field.form?.name==='year-editor') resizeWriting(field);
+});
 main.addEventListener('input',event => {
   const field = event.target;
   if (field.tagName==='TEXTAREA' && (field.form?.dataset.thoughtEditor || field.form?.dataset.prayerEditor)) resizeWriting(field);
@@ -2412,6 +2462,7 @@ readerSearchForm.addEventListener('submit',event=>{
 });
 window.addEventListener('resize',()=>{
   resizeEditorWriting();
+  if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea').forEach(resizeWriting);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
   bibleSearchPageSize = fitReaderSearchPage();
@@ -2490,12 +2541,6 @@ main.addEventListener('change',async event => {
     save();
     render();
     if (focused) document.getElementById('reading-goal')?.focus({preventScroll:true});
-  }
-  if (field.id==='tracker-book' || field.id==='tracker-year') {
-    if (field.id==='tracker-book') trackerBook = field.value;
-    else trackerYear = field.value;
-    render();
-    document.getElementById(field.id)?.focus({preventScroll:true});
   }
   const displayPreference = field.name==='palette'?'palette':{appearance:'theme','font-choice':'fontChoice'}[field.id];
   if (displayPreference) {
@@ -2949,7 +2994,7 @@ function newYearCard(item) {
     item.refs.map(ref=>'<div class="year-verse"><button class="note-link" data-visit="'+ref+'">'+
       esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+' '+icon('arrow')+'</button>'+
       '<blockquote class="record-text">'+esc(savedVerseText(ref))+'</blockquote></div>').join('')+
-    (item.note?'<div class="yearly-note">'+(item.refs.length?'<strong>붙들고 싶은 마음</strong>':'')+
+    (item.note?'<div class="yearly-note"><span>메모</span>'+
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
 let yearRefs = [];
@@ -2958,11 +3003,15 @@ function showYearEditor(item,refs = []) {
   yearRefs = item?.refs ?? refs;
   const firstRef = yearRefs[0];
   dialog(item?'새해 말씀 편집':'새해 말씀 추가',
+    '<div class="year-editor-dates">'+
     editorField('연도','year',item?.year ?? new Date().getFullYear(),'number','min="1900" max="9999" required')+
-    editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+
-    editorField('말씀 제목 또는 구절','title',item?.title ?? (firstRef?reference(firstRef):''),'text','required maxlength="150"')+
-    (firstRef?'<p class="muted">'+yearRefs.map(reference).map(esc).join(' · ')+'</p>':'')+
-    editorField('붙들고 싶은 마음이나 말씀','note',item?.note,'textarea')+editorActions('year',item));
+    editorField('기록 날짜','day',item?item.day ?? '':dateKey(),'date')+'</div>'+
+    editorField('말씀 제목 또는 구절','title',item?.title ?? (firstRef?reference(firstRef):''),'textarea',
+      'rows="2" required placeholder="말씀 제목이나 구절을 적어보세요."')+
+    (firstRef?'<p class="muted year-editor-refs">'+yearRefs.map(reference).map(esc).join(' · ')+'</p>':'')+
+    editorField('메모','note',item?.note,'textarea','rows="3" placeholder="기억하고 싶은 내용을 남겨보세요."')+
+    '<footer class="year-editor-actions">'+editorActions('year',item)+'</footer>','year-editor');
+  modal.querySelectorAll('form[name="year-editor"] textarea').forEach(resizeWriting);
 }
 function saveYear() {
   const form = modal.querySelector('form');
