@@ -344,27 +344,28 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 }
 .day-detail-item + .day-detail-item { border-top: 1px solid var(--line); padding-top: 9px; }
 
-/* Calendar Highlight/Underline/Note Quote Cards */
+/* Calendar & Records Highlight/Underline Quote Cards (Tight Spacing) */
 .calendar-mark-card {
   position: relative;
   display: grid;
-  gap: 10px;
-  padding: 13px 15px;
+  gap: 4px;
+  padding: 9px 12px 7px;
   border: 1px solid var(--line);
-  border-radius: 15px;
+  border-radius: 13px;
   background: var(--card);
-  margin-block: 8px;
-  box-shadow: 0 1px 4px var(--glass-shadow);
+  margin-block: 6px;
+  box-shadow: 0 1px 3px var(--glass-shadow);
   transition: transform .12s, box-shadow .12s;
 }
 .calendar-mark-card:hover {
-  box-shadow: 0 4px 14px var(--glass-shadow);
+  box-shadow: 0 3px 10px var(--glass-shadow);
 }
 .calendar-mark-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 1px;
 }
 .calendar-mark-header .reading-badge {
   font-weight: 700;
@@ -374,8 +375,8 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 .mark-kind-pill {
   font-size: 0.6875rem;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 10px;
+  padding: 2px 6px;
+  border-radius: 7px;
 }
 .mark-kind-pill.highlight {
   background: color-mix(in srgb, #f59e0b 16%, var(--card));
@@ -403,13 +404,13 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 }
 .calendar-quote-body {
   margin: 0;
-  padding: 8px 12px;
+  padding: 5px 9px;
   border-left: 3px solid var(--accent-ink);
   background: var(--soft);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 8px 8px 0;
   font-family: var(--sans);
   font-size: var(--reading-size, 0.9375rem);
-  line-height: var(--reading-leading, 1.6);
+  line-height: var(--reading-leading, 1.5);
   letter-spacing: var(--reading-tracking, 0px);
   color: var(--ink);
 }
@@ -424,21 +425,89 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   color: var(--muted);
-  padding-top: 2px;
+  margin-top: 1px;
+  padding-top: 0;
+  min-height: 22px;
 }
 .calendar-mark-footer .note-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   color: var(--accent-ink);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
+  padding: 0;
 }
 .calendar-mark-footer .note-link svg {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
+}
+.calendar-mark-footer .item-actions {
+  margin: 0;
+  padding: 0;
+}
+.calendar-mark-footer .text-action {
+  font-size: 0.75rem;
+  padding: 1px 4px;
+}
+
+/* Calendar Chapter Check Styling */
+.calendar-chapter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 4px 1px;
+}
+.calendar-chapter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, var(--line));
+  border-radius: 11px;
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .1s, background-color .1s;
+}
+.calendar-chapter-pill:active {
+  transform: scale(0.97);
+}
+.calendar-chapter-pill .chapter-check-mark {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+.calendar-chapter-pill strong {
+  font-weight: 650;
+  font-size: 0.8125rem;
+}
+.calendar-chapter-pill .chapter-arrow {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+}
+.calendar-chapter-pill .chapter-arrow svg {
+  width: 11px;
+  height: 11px;
+}
+:root[data-appearance="dark"] .calendar-chapter-pill {
+  background: var(--card);
+  border-color: var(--line);
+}
+:root[data-appearance="dark"] .calendar-chapter-pill .chapter-check-mark {
+  background: var(--accent-ink);
+  color: var(--card);
 }
 .day-detail-copy, .thought-copy { display: grid; gap: var(--verse-gap, 0px); }
 .day-detail-text { margin: 0; white-space: pre-wrap; }
@@ -485,72 +554,18 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
   background: var(--accent-soft); color: var(--accent-ink);
 }
 .verse-note-icon svg, .record-note svg { width: 14px; height: 14px; }
-.record-shortcuts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-  margin-bottom: 20px;
-}
+.record-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--layout-gap); margin-top: 14px; }
 .record-shortcut {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 84px;
-  padding: 13px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--surface-radius);
-  background: var(--card);
-  text-align: left;
-  box-shadow: 0 1px 3px var(--glass-shadow);
-  transition: transform .12s, box-shadow .12s, background-color .12s;
-  cursor: pointer;
+  display: grid; align-content: start; justify-items: start; gap: 4px; min-width: 0; min-height: 90px; text-align: start;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--surface-radius); background: var(--card);
+  overflow-wrap: anywhere;
 }
-.record-shortcut:active {
-  transform: scale(0.975);
+.record-shortcut svg {
+  width: 28px; height: 28px; padding: 6px; margin-bottom: 2px;
+  border-radius: var(--control-radius); background: var(--accent-soft); color: var(--accent-ink);
 }
-.record-shortcut-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 6px;
-}
-.record-shortcut-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  flex-shrink: 0;
-}
-.record-shortcut-icon svg {
-  width: 18px;
-  height: 18px;
-  color: currentColor;
-}
-.record-shortcut-badge {
-  font-size: 0.72rem;
-  font-weight: 650;
-  color: var(--muted);
-  background: var(--soft);
-  padding: 3px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 60%;
-}
-.record-shortcut strong {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-  margin-top: auto;
-}
+.record-shortcut strong { font-size: 0.8125rem; }
+.record-shortcut span { color: var(--muted); font-size: 0.6875rem; }
 .record-item { padding-block-end: 4px; }
 .record-item .record-note { margin-top: 3px; padding: 6px 9px; }
 .record-note .text-action { padding-inline: 4px; }

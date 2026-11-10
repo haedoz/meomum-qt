@@ -798,6 +798,24 @@ function searchOriginal(query) {
 function readerSearchName(screen) {
   return screen==='records'?'기록 검색':screen==='original'?'원문 검색':'성경 검색';
 }
+function pageSearchType(currentView) {
+  if (currentView === 'journals') return 'journal';
+  if (currentView === 'prayers') return 'prayer';
+  if (currentView === 'thoughts') return 'thought';
+  if (currentView === 'newyear') return 'yearly';
+  return 'all';
+}
+function pageSearchTitle(currentView) {
+  if (currentView === 'journals') return '묵상 노트 검색';
+  if (currentView === 'prayers') return '기도 검색';
+  if (currentView === 'thoughts') return '생각 노트 검색';
+  if (currentView === 'newyear') return '새해 말씀 검색';
+  if (currentView === 'calendar') return '달력 기록 검색';
+  return '내 기록 검색';
+}
+function isPageSearchable(currentView) {
+  return ['records', 'journals', 'calendar', 'prayers', 'thoughts', 'newyear'].includes(currentView);
+}
 function showReaderSearch() {
   topBar.classList.add('search-open');
   readerSearchInput.value = '';
@@ -806,7 +824,12 @@ function showReaderSearch() {
   readerSearchButton.setAttribute('aria-expanded','true');
   readerSearchButton.setAttribute('aria-label','검색 실행');
   readerSearchInput.focus();
-  if (view==='records') renderPersonalSearch();
+  if (isPageSearchable(view)) {
+    personalSearchFilters.type = pageSearchType(view);
+    personalSearchFilters.year = 'all';
+    personalSearchSubmitted = false;
+    renderPersonalSearch();
+  }
 }
 function closeReaderSearch(restoreFocus = false) {
   bibleSearchScope = 'all';
@@ -819,7 +842,8 @@ function closeReaderSearch(restoreFocus = false) {
   readerSearchClose.hidden = true;
   clearReaderSearchResults();
   readerSearchButton.setAttribute('aria-expanded','false');
-  readerSearchButton.setAttribute('aria-label',readerSearchName(view)+' 열기');
+  const searchName = isPageSearchable(view) ? pageSearchTitle(view) : readerSearchName(view);
+  readerSearchButton.setAttribute('aria-label',searchName+' 열기');
   if (restoreFocus) readerSearchButton.focus({preventScroll:true});
 }
 function clearReaderSearchResults() {
@@ -1528,8 +1552,13 @@ function calendarDaySummary(day,items,records) {
       '<div class="day-summary-write"><button type="button" class="reading-suggestion" '+journalLink+'><span class="day-detail-label"><span class="day-detail-icon">'+icon('note')+'</span>묵상 노트 열기</span>'+icon('arrow')+'</button></div>')+
     (prayers.length?calendarDetail('prayer','기도',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
     (thoughts.length?calendarDetail('note','생각 노트',thoughts.length+'건',thoughts.map(calendarPrayer).join('')):'')+
-    (chapters.length?calendarDetail('check','묵상 체크',chapters.length+'장','<div class="day-detail-copy">'+chapters.map(key=>
-      '<button class="reading-suggestion" data-open-chapter="'+key+'"><span>'+esc(chapterLabel(key))+'</span>'+icon('arrow')+'</button>').join('')+'</div>'):'')+
+    (chapters.length?calendarDetail('check','묵상 체크',chapters.length+'장',
+      '<div class="calendar-chapter-grid">'+chapters.map(key=>
+        '<button type="button" class="calendar-chapter-pill" data-open-chapter="'+key+'">'+
+        '<span class="chapter-check-mark">✓</span>'+
+        '<strong>'+esc(chapterLabel(key))+'</strong>'+
+        '<span class="chapter-arrow">'+icon('arrow')+'</span>'+
+        '</button>').join('')+'</div>'):'')+
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
     (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
@@ -1611,20 +1640,26 @@ function recordList(rows = recordRows()) {
       const excerpt = passage.length?passage.map(([number,body])=>
         '<span class="record-verse"><span class="record-verse-number">'+number+'절</span>'+markedText(body,mark)+'</span>').join('')
         : markedText(savedVerseText(key),mark);
-      return title+'<details class="card record-item"><summary class="record-item-summary"><span class="row"><strong>'+esc(selectionReference(key,verses))+'</strong>'+
-        (day?'<time datetime="'+day+'">'+shortDate(day)+'</time>':'')+'</span>'+
-        '<span class="record-item-preview"><span class="record-item-kind">'+
-        (mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜')+'</span> · '+
-        esc(preview.slice(0,160))+(preview.length>160?'…':'')+'</span>'+icon('right')+'</summary>'+
-        '<div class="record-item-detail"><div class="row"><span class="record-edition">'+esc(editionLabel(readRef(key).edition))+'</span>'+
-        '<button type="button" class="text-action" data-visit="'+key+'">본문 보기 '+icon('arrow')+'</button></div>'+
-        '<div class="record-text record-excerpt">'+excerpt+'</div>'+
-        (mark.note?'<p class="record-text record-note">'+esc(mark.note)+'</p>':'')+
-        '<div class="record-footer"><span class="record-tags">'+
-        markKinds(mark).map(kind=>'<span>'+(kind==='underline'?markStyles[mark.underline.style]+' 밑줄':recordFilters[kind])+'</span>').join('')+'</span>'+
-        '<div class="item-actions record-delete">'+
-        (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">메모 삭제</button>':'')+
-        (verseMark(mark)?highlightDeleteButton(key):'')+'</div></div></div></details>';
+      const markKind = mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜';
+      const kindClass = mark.note?'note':mark.underline && !mark.color && !mark.highlight?'underline':'highlight';
+      const content = mark.note ? '<p class="calendar-quote-body">'+esc(mark.note)+'</p>' :
+        '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>';
+
+      return title+'<article class="calendar-mark-card tappable-card '+kindClass+'">'+
+        (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
+        '<div class="row calendar-mark-header">'+
+        '<span class="reading-badge">'+esc(selectionReference(key,verses))+' · '+esc(editionLabel(readRef(key).edition))+'</span>'+
+        '<div class="row" style="gap:5px; align-items:center;">'+
+        (day?'<time class="muted" style="font-size:0.75rem;" datetime="'+day+'">'+shortDate(day)+'</time>':'')+
+        '<span class="mark-kind-pill '+kindClass+'">'+markKind+'</span>'+
+        '</div></div>'+
+        content+
+        '<div class="row calendar-mark-footer">'+
+        '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
+        '<div class="item-actions card-actions">'+
+        (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>':'')+
+        (verseMark(mark)?highlightDeleteButton(key):'')+
+        '</div></div></article>';
     }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>')+pager;
 }
 function personalSearchEntries() {
@@ -1664,20 +1699,31 @@ function personalYearLabel(year) {
   return year==='all'?'모든 연도':year==='undated'?'날짜 미기록':year+'년';
 }
 function renderPersonalSearch() {
-  const {type,year} = personalSearchFilters;
+  const currentScopedType = pageSearchType(view);
+  const type = currentScopedType !== 'all' ? currentScopedType : personalSearchFilters.type;
+  const year = personalSearchFilters.year;
   const query = searchText(readerSearchInput.value);
-  const entries = personalSearchSubmitted ? personalSearchEntries().filter(item=>
-    (type==='all' || item.type===type) && (year==='all' || item.year===year) &&
-    searchText([item.title,item.body,personalSearchTypes[item.type],item.day ?? '',personalYearLabel(item.year)].join(' ')).includes(query)) : [];
+  const isCalendar = view === 'calendar';
+  const entries = personalSearchSubmitted ? personalSearchEntries().filter(item=>{
+    if (isCalendar) {
+      if (!['journal', 'daily', 'mark'].includes(item.type)) return false;
+    } else if (type !== 'all' && item.type !== type) {
+      return false;
+    }
+    if (year !== 'all' && item.year !== year) return false;
+    return !query || searchText([item.title,item.body,personalSearchTypes[item.type],item.day ?? '',personalYearLabel(item.year)].join(' ')).includes(query);
+  }) : [];
   const rows = entries.map(({type,year,day,title,body,attribute,value})=>
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
     '<span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
-  readerSearchPanel.innerHTML = '<section class="reader-search-group">'+searchToolbar('내 기록 검색',
-    searchTool('personal-search-type',personalSearchTypes[type],'filter')+
-    searchTool('personal-search-year',personalYearLabel(year),'calendar'))+'<div class="reader-search-list">'+(rows ||
-    '<p class="muted">'+(personalSearchSubmitted?'조건에 맞는 기록이 없어요.':'문구를 입력해 검색하거나 종류·연도를 선택해 주세요.')+'</p>')+'</div></section>';
+  const filterControls = currentScopedType !== 'all'
+    ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
+    : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
+  readerSearchPanel.innerHTML = '<section class="reader-search-group">'+searchToolbar(pageSearchTitle(view),filterControls)+
+    '<div class="reader-search-list">'+(rows ||
+    '<p class="muted">'+(personalSearchSubmitted?'조건에 맞는 기록이 없어요.':'검색어를 입력해 주세요.')+'</p>')+'</div></section>';
   readerSearchPanel.hidden = false;
 }
 function showPersonalSearchFilter(key) {
@@ -1725,21 +1771,17 @@ function recordsScreen() {
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
       ['calendar','calendar','달력','묵상 달력'],
-      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건'],
+      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
+      ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','묵상 체크','성경 일독'],
       ['book-checks','book','성경책별 체크','연도별 장 기록'],
-      ['newyear','book','새해 말씀',state.newYear.length+'건'],
-      ['bundles','bookmark','구절 모음',state.verseBundles.length+'건']
-    ].map(([route,symbol,label,detail])=>
-      '<button class="record-shortcut" data-nav="'+route+'">'+
-      '<div class="record-shortcut-top">'+
-      '<span class="record-shortcut-icon">'+icon(symbol)+'</span>'+
-      '<span class="record-shortcut-badge">'+detail+'</span>'+
-      '</div>'+
-      '<strong>'+label+'</strong>'+
-      '</button>'
-    ).join('')+'</div>'+
+    ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
+    (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
+      '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
+      '<strong>'+esc(reference(bundle.verses[0].ref))+' · '+bundle.verses.length+'구절</strong>'+
+      '<span class="muted">'+esc(bundle.day)+'</span></button><button type="button" class="text-action destructive" '+
+      'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
     '<div class="section-head"><h2>말씀 기록</h2></div><div class="record-toolbar"><div class="filters record-type-tabs" role="group" aria-label="기록 종류">'+Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
     '<details class="record-filter-panel" '+(activeFilters?'open':'')+'><summary>'+icon('filter')+'<span>번역본·성경·연도'+(activeFilters?' · '+activeFilters+'개 적용':'')+'</span>'+icon('down')+'</summary>'+
     '<div class="record-filters">'+pickers+'</div>'+(activeFilters?'<button type="button" class="text-action" data-action="clear-record-filters">필터 초기화</button>':'')+'</details></div>'+
@@ -1974,15 +2016,20 @@ function render(studyFromSelection = false) {
   main.classList.toggle('today-view',view==='today');
   main.classList.toggle('records-view',view==='records');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
-  readerSearchForm.hidden = !(view==='records' || view==='original' || (view==='bible' && state.reader.edition));
+  const isPersonal = isPageSearchable(view);
+  readerSearchForm.hidden = !(isPersonal || view==='original' || (view==='bible' && state.reader.edition));
   if ((changed || readerSearchForm.hidden) && !readerSearchInput.hidden) closeReaderSearch();
-  const personal = view==='records';
   const original = view==='original';
-  const searchName = readerSearchName(view);
-  readerSearchForm.setAttribute('aria-label',personal?'내 기록 검색':searchName);
-  readerSearchInput.setAttribute('aria-label',personal?'기록 제목이나 문구':
-    original?'히브리어, 헬라어, 단어 뜻, 스트롱 번호 또는 구절 주소':'단어, 문장, 성경책 이름 또는 구절 주소');
-  readerSearchInput.placeholder = personal?'기록 제목이나 문구':original?'원어, 단어 뜻, H559, 창 1:3':'단어, 창세기, 창 12:3';
+  const searchName = isPersonal ? pageSearchTitle(view) : readerSearchName(view);
+  readerSearchForm.setAttribute('aria-label',searchName);
+  readerSearchInput.setAttribute('aria-label',searchName);
+  readerSearchInput.placeholder = isPersonal ? (
+    view==='journals' ? '묵상 제목이나 내용 검색' :
+    view==='prayers' ? '기도 제목이나 내용 검색' :
+    view==='thoughts' ? '생각 노트 검색' :
+    view==='newyear' ? '새해 말씀 검색' :
+    view==='calendar' ? '날짜별 말씀이나 기록 검색' : '기록 제목이나 문구'
+  ) : original?'원어, 단어 뜻, H559, 창 1:3':'단어, 창세기, 창 12:3';
   readerSearchClose.setAttribute('aria-label',searchName+' 닫기');
   if (readerSearchInput.hidden) readerSearchButton.setAttribute('aria-label',searchName+' 열기');
   document.querySelector('.bottom').hidden = view==='journal' || view==='prayer-edit';
@@ -3022,8 +3069,8 @@ main.addEventListener('toggle',event=>{
   }
 },true);
 readerSearchInput.addEventListener('input',()=>{
-  if (view==='records') {
-    personalSearchSubmitted = false;
+  if (isPageSearchable(view)) {
+    personalSearchSubmitted = true;
     renderPersonalSearch();
   } else clearReaderSearchResults();
 });
@@ -3041,7 +3088,7 @@ readerSearchForm.addEventListener('submit',event=>{
   event.preventDefault();
   if (readerSearchInput.hidden) return showReaderSearch();
   readerSearchInput.blur();
-  if (view==='records') {
+  if (isPageSearchable(view)) {
     personalSearchSubmitted = true;
     return renderPersonalSearch();
   }
