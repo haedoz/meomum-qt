@@ -82,6 +82,7 @@ const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{e
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
+let recordPage = 0;
 const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
@@ -513,6 +514,25 @@ async function saveDailyNote(form) {
 function cardHit(label,attributes) {
   return '<button type="button" class="card-hit" aria-label="'+esc(label)+'" '+attributes+'></button>';
 }
+function todaySummary(day,journal,canOpenNote) {
+  const checked = checkedChaptersOn(day);
+  const read = state.readingRange?planChapters(canonChapters(),state.readingRange).filter(key=>checked.has(key)).length:checked.size;
+  const prayers = state.prayers.filter(item=>item.day===day);
+  const thoughts = prayers.filter(item=>item.kind==='thought').length;
+  const marks = recordRows().filter(item=>item.day===day).length;
+  const entries = [
+    ['comment','오늘의 QT',journal?.done?'완료':journal && hasJournalContent(journal)?'작성 중':'시작 전','data-nav="journal/'+day+'"'],
+    ['check','묵상 체크',read+' / '+state.readingGoal+'장','data-nav="reading"'],
+    ['note','말씀 묵상',state.dailyNotes[day]?'작성 완료':'미작성',canOpenNote?'data-action="open-today-note"':'data-action="open-today-calendar"'],
+    ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
+    ['note','생각 노트',thoughts+'건','data-nav="thoughts"'],
+    ['marker','말씀 기록',marks+'건','data-nav="records"'],
+  ];
+  return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
+    '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action" data-action="open-today-calendar">묵상 달력 '+icon('arrow')+'</button></div>'+
+    '<div class="today-summary-grid">'+entries.map(([symbol,label,value,action])=>
+      '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong></button>').join('')+'</div></section>';
+}
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
   const saved = state.dailyVerses[today];
@@ -526,20 +546,16 @@ function todayScreen() {
       icon('comment')+(note?'묵상 보기':'묵상하기')+'</button>'
     : '';
   const journal = state.journal[today];
-  const read = state.chapterLog[today]?.length || journalChapters(journal).size;
-  const badge = label => '<span class="today-done">'+icon('check')+label+'</span>';
   return '<div class="welcome"><div class="eyebrow"><span></span> 나의 QT 노트</div><h1>오늘의 QT</h1><p class="date-tag">'+icon('calendar')+longDate(today)+'</p></div>'+
     (key?'<section class="hero tappable-card">'+cardHit('오늘의 말씀 본문 읽기',verseText(key)?'data-visit="'+key+'"':'data-action="open-today-note"')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+esc(quote)+'</blockquote><p class="ref">'+esc(reference(key))+' · '+esc(label)+'</p><div class="hero-actions">'+
       '<span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>':
       '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+
       (reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+
       '</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
-    '<div class="today-links">'+(reader.edition?'<div class="card row continue tappable-card'+(read?' is-done':'')+'">'+cardHit('이어서 읽기','data-nav="bible"')+
-      '<div class="continue-label"><span class="tile-icon">'+icon('book')+'</span><div><div class="eyebrow">이어서 읽기</div><h3>'+titles[reader.book]+' '+reader.chapter+'장</h3>'+(read?badge('오늘 읽음'):'')+'</div></div><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span></div>':'')+
-    '<section class="card row today-journal tappable-card'+(journal?.done?' is-done':'')+'">'+cardHit('오늘의 묵상 열기','data-nav="journal/'+today+'"')+
-      '<div class="continue-label"><span class="tile-icon">'+icon('comment')+'</span><div><div class="eyebrow">QT JOURNAL</div><h3>오늘의 묵상</h3>'+(journal?.done?badge('QT 완료'):'')+'</div></div><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span></section>'+
-    '<section class="card row today-thoughts tappable-card">'+cardHit('생각 노트 열기','data-nav="thoughts"')+
-      '<div class="continue-label"><span class="tile-icon">'+icon('note')+'</span><div><h3>생각 노트</h3><p class="muted">자유롭게 남기는 생각</p></div></div><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span></section></div>';
+    todaySummary(today,journal,Boolean(noteButton))+
+    (reader.edition?'<button type="button" class="card row today-resume" data-nav="bible">'+
+      '<span class="tile-icon">'+icon('book')+'</span><span><span class="eyebrow">이어서 읽기</span><strong>'+
+      titles[reader.book]+' '+reader.chapter+'장</strong></span>'+icon('arrow')+'</button>':'');
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -1088,6 +1104,9 @@ function journalChapters(entry) {
     return book+'/'+chapter;
   }) : []);
 }
+function checkedChaptersOn(day) {
+  return new Set([...(state.chapterLog[day] ?? []),...journalChapters(state.journal[day])]);
+}
 function openChapter(key) {
   if (!validChapter(key)) return;
   const [book,chapter] = key.split('/');
@@ -1398,7 +1417,7 @@ function calendarDaySummary(day,items,records) {
   const ref = saved?.ref ?? note?.ref;
   const notes = records.filter(({mark})=>mark.note);
   const highlights = records.filter(({mark})=>verseMark(mark));
-  const chapters = [...new Set([...(state.chapterLog[day] ?? []),...journalChapters(journal)])];
+  const chapters = [...checkedChaptersOn(day)];
   const journalLink = 'data-nav="journal/'+day+'"';
   const verseContent = ref
     ? '<div class="tappable-card">'+(verseText(ref)?cardHit('본문에서 읽기','data-visit="'+ref+'"'):'')+
@@ -1482,27 +1501,42 @@ function recordList(rows = recordRows()) {
       (!recordSelection.book || book===recordSelection.book) &&
       (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year);
   });
+  const pageSize = 8;
+  const pages = Math.max(1,Math.ceil(matching.length/pageSize));
+  recordPage = Math.min(recordPage,pages-1);
+  const start = recordPage*pageSize;
+  const visible = matching.slice(start,start+pageSize);
+  const pager = pages>1?'<nav class="row record-pages" aria-label="말씀 기록 페이지">'+
+    '<button type="button" class="btn" data-record-page="'+(recordPage-1)+'" aria-label="이전 페이지" '+(!recordPage?'disabled':'')+'>'+icon('left')+'</button>'+
+    '<span>'+String(recordPage+1)+' / '+pages+'</span>'+
+    '<button type="button" class="btn" data-record-page="'+(recordPage+1)+'" aria-label="다음 페이지" '+(recordPage+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>':'';
   let previousYear;
-  return '<p class="record-result muted">말씀 기록 '+matching.length+'건</p>'+
-    (matching.map(({key,verses,day,mark,noteKey}) => {
+  return '<p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건'+
+    (pages>1?' · '+(start+1)+'–'+(start+visible.length)+'번째':'')+'</p>'+
+    (visible.map(({key,verses,day,mark,noteKey}) => {
       const year = day?.slice(0,4) ?? '';
       const title = year===previousYear?'':'<h3 class="record-year">'+(year?year+'년':'날짜 미기록')+'</h3>';
       previousYear = year;
       const passage = recordPassage(key,verses);
+      const preview = (mark.note || passage[0]?.[1] || savedVerseText(key)).replace(/\s+/g,' ').trim();
       const excerpt = passage.length?passage.map(([number,body])=>
         '<span class="record-verse"><span class="record-verse-number">'+number+'절</span>'+markedText(body,mark)+'</span>').join('')
         : markedText(savedVerseText(key),mark);
-      return title+'<article class="card record-item"><button class="record-open" data-visit="'+key+'"><span class="row"><strong>'+esc(selectionReference(key,verses))+'</strong>'+
-        (day?'<time datetime="'+day+'">'+day.replaceAll('-','.')+'</time>':'')+'</span>'+
-        '<span class="record-edition">'+esc(editionLabel(readRef(key).edition))+'</span>'+
-        '<span class="record-text record-excerpt">'+excerpt+'</span>'+
-        (mark.note?'<span class="record-text record-note">'+esc(mark.note)+'</span>':'')+'</button>'+
+      return title+'<details class="card record-item"><summary class="record-item-summary"><span class="row"><strong>'+esc(selectionReference(key,verses))+'</strong>'+
+        (day?'<time datetime="'+day+'">'+shortDate(day)+'</time>':'')+'</span>'+
+        '<span class="record-item-preview"><span class="record-item-kind">'+
+        (mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜')+'</span> · '+
+        esc(preview.slice(0,160))+(preview.length>160?'…':'')+'</span>'+icon('right')+'</summary>'+
+        '<div class="record-item-detail"><div class="row"><span class="record-edition">'+esc(editionLabel(readRef(key).edition))+'</span>'+
+        '<button type="button" class="text-action" data-visit="'+key+'">본문 보기 '+icon('arrow')+'</button></div>'+
+        '<div class="record-text record-excerpt">'+excerpt+'</div>'+
+        (mark.note?'<p class="record-text record-note">'+esc(mark.note)+'</p>':'')+
         '<div class="record-footer"><span class="record-tags">'+
         markKinds(mark).map(kind=>'<span>'+(kind==='underline'?markStyles[mark.underline.style]+' 밑줄':recordFilters[kind])+'</span>').join('')+'</span>'+
         '<div class="item-actions record-delete">'+
         (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">메모 삭제</button>':'')+
-        (verseMark(mark)?highlightDeleteButton(key):'')+'</div></div></article>';
-    }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
+        (verseMark(mark)?highlightDeleteButton(key):'')+'</div></div></div></details>';
+    }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>')+pager;
 }
 function personalSearchEntries() {
   const entries = [];
@@ -2058,6 +2092,11 @@ const actions = {
   'close-dialog'() { modal.close(); },
   back() { goBack(); },
   'open-today-note'() { showDailyNote(); },
+  'open-today-calendar'() {
+    selectedDay = dateKey();
+    month = selectedDay.slice(0,7);
+    navigate('calendar');
+  },
   'calendar-today'() {
     selectedDay = dateKey();
     month = selectedDay.slice(0,7);
@@ -2273,6 +2312,7 @@ function showRecordPicker(key) {
 function chooseRecordOption(button) {
   const {recordFilter:key} = button.closest('[data-record-filter]').dataset;
   recordSelection[key] = button.dataset.recordOption;
+  recordPage = 0;
   modal.close();
   render();
   main.querySelector('[data-action="pick-record-'+key+'"]')?.focus({preventScroll:true});
@@ -2413,7 +2453,17 @@ document.addEventListener('click',event => {
     selectedDay = dateKey(new Date(year,num-1+Number(target.month),1));
     month = selectedDay.slice(0,7);
   }
-  if (target.filter) filter = target.filter;
+  if ('recordPage' in target) {
+    const page = Number(target.recordPage);
+    if (!Number.isInteger(page) || page<0) return;
+    recordPage = page;
+    render();
+    const summary = main.querySelector('#record-list .record-result');
+    summary?.focus({preventScroll:true});
+    summary?.scrollIntoView({block:'start'});
+    return;
+  }
+  if (target.filter) { filter = target.filter; recordPage = 0; }
   if (target.step) return stepChapter(Number(target.step));
   if (target.done) {
     const entry = journalEntry(target.done);
@@ -3052,23 +3102,24 @@ async function savePrayer(form) {
 }
 function newYearScreen() {
   const years = [...new Set(state.newYear.map(item=>item.year))].sort((a,b)=>b-a);
-  return heading('YEARLY VERSES','새해 말씀','한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.')+
-    '<button class="btn primary block spaced" data-action="add-year">＋ 새해 말씀 추가</button>'+
-    '<div class="thought-list">'+(years.map(year=>{
+  return '<header class="yearly-screen-head"><div><div class="eyebrow">YEARLY VERSES</div><h1>새해 말씀</h1></div>'+
+    '<button type="button" class="btn primary" data-action="add-year" aria-label="새해 말씀 추가">＋ 추가</button></header>'+
+    '<p class="lead">한 해 동안 붙들고 싶은 말씀을 모아보세요.</p>'+
+    '<div class="yearly-list">'+(years.map(year=>{
       const items = state.newYear.filter(item=>item.year===year);
-      return '<section class="thought-group"><header class="thought-group-header"><h2>'+year+'년</h2><span>'+items.length+
+      return '<section class="yearly-group"><header class="yearly-group-header row"><h2>'+year+'년</h2><span>'+items.length+
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
     }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div>';
 }
 function newYearCard(item) {
-  return '<article class="card yearly-record"><header class="row"><div>'+
+  return '<article class="card yearly-record"><header class="row yearly-card-top"><div>'+
     (item.day?'<time class="muted" datetime="'+item.day+'">'+
       (Number(item.day.slice(0,4))===item.year?'':item.day.slice(0,4)+'년 ')+shortDate(item.day)+'</time>':'')+
     (item.title && (!item.refs.length || item.title!==reference(item.refs[0]))?'<h3 class="item-title">'+esc(item.title)+'</h3>':'')+'</div>'+
     '<button type="button" class="icon-action" data-year-edit="'+item.id+'" aria-label="새해 말씀 편집" title="새해 말씀 편집">'+icon('edit')+'</button></header>'+
-    item.refs.map(ref=>'<div class="year-verse"><button class="note-link" data-visit="'+ref+'">'+
-      esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+' '+icon('arrow')+'</button>'+
-      '<blockquote class="record-text">'+esc(savedVerseText(ref))+'</blockquote></div>').join('')+
+    item.refs.map(ref=>'<figure class="year-verse"><blockquote class="record-text">'+esc(savedVerseText(ref))+'</blockquote>'+
+      '<figcaption><button type="button" class="note-link" data-visit="'+ref+'"><span>'+esc(reference(ref))+'</span>'+
+      '<small>'+esc(editionLabel(readRef(ref).edition))+'</small>'+icon('arrow')+'</button></figcaption></figure>').join('')+
     (item.note?'<div class="yearly-note"><span>메모</span>'+
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
