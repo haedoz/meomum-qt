@@ -19,6 +19,7 @@ const icons = {
   left:'<path d="m15 5-7 7 7 7"/>',
   edit:'<path d="m4 16 11-11 4 4L8 20H4v-4Zm9-9 4 4"/>',
   right:'<path d="m9 5 7 7-7 7"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
   check:'<path d="m5 12 4 4L19 6"/>',
   close:'<path d="m6 6 12 12M18 6 6 18"/>',
   back:'<path d="m14 6-6 6 6 6m-6-6h13"/>',
@@ -1335,8 +1336,9 @@ function verseActions() {
   const label = erase?'말씀 표시 해제':markStyles[marker.style]+' 바로 적용';
   return '<div class="selection verse-actions" aria-label="선택한 구절 메뉴"><div class="verse-actions-top">'+
     '<span class="compact">'+chosen.size+'절 선택</span><button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div>'+
-    '<div class="verse-actions-row verse-actions-main"><div class="marker-group"><button class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
-    '<button class="icon-action marker-options" data-action="highlight" aria-label="형광펜 색상 및 밑줄 옵션">⌄</button></div>'+
+    '<div class="verse-actions-row verse-actions-main"><div class="marker-group" role="group" aria-label="말씀 표시">'+
+    '<button type="button" class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
+    '<button type="button" class="icon-action marker-options" data-action="highlight" aria-haspopup="dialog" aria-label="형광펜 색상 및 밑줄 옵션">'+icon('down')+'</button></div>'+
     '<button class="btn" data-action="note">메모</button>'+
     '<button type="button" class="btn icon-action" data-action="copy-verses" aria-label="구절 복사" title="구절 복사">'+icon('copy')+'</button>'+
     '<button class="btn primary" data-action="attach">묵상에 담기</button></div>'+

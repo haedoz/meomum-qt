@@ -223,7 +223,7 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
 .verse-actions-top, .marker-group, .item-actions { display: flex; align-items: center; gap: 5px; }
 .verse-actions-top { justify-content: space-between; color: var(--muted); padding-inline-start: 3px; }
 .verse-actions-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.verse-actions-main { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) 44px minmax(0, 1.2fr); }
+.verse-actions-main { grid-template-columns: minmax(90px, 1fr) minmax(0, .8fr) 44px minmax(0, 1.2fr); }
 .verse-actions-row .btn { min-width: 0; padding-inline: 6px; }
 .icon-action { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; flex: 0 0 auto; }
 @media (hover: hover) {
@@ -231,11 +231,14 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
   .icon-action:hover { background: var(--soft); }
 }
 .icon-action svg { width: 19px; height: 19px; }
-.marker-group { gap: 0; min-width: 0; border: 1px solid var(--line); background: var(--soft); border-radius: 12px; }
+.marker-group { gap: 0; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 999px; }
 .marker-quick { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; position: relative; }
-.marker-quick::after { content: ""; position: absolute; bottom: 6px; width: 17px; height: 0; border-bottom: 3px var(--marker-style, solid) var(--marker-color); }
-.marker-group .icon-action { flex: 1 1 0; min-width: 0; width: auto; }
-.marker-options { border-inline-start: 1px solid var(--line); border-radius: 0 11px 11px 0; font-size: 1.125rem; }
+.marker-quick svg { transform: translateY(-2px); }
+.marker-quick::after { content: ""; position: absolute; bottom: 8px; width: 15px; height: 0; border-bottom: 2px var(--marker-style, solid) var(--marker-color); }
+.marker-group .icon-action { flex: 1 1 0; min-width: 0; width: auto; border-radius: 999px; }
+.marker-options { position: relative; color: var(--muted); }
+.marker-options::before { content: ""; position: absolute; inset-block: 13px; inset-inline-start: 0; border-inline-start: 1px solid var(--line); }
+.marker-options svg { width: 15px; height: 15px; }
 #toast button { margin-inline-start: 8px; color: inherit; font-weight: 750; text-decoration: underline; min-height: 32px; }
 .text-action { min-height: 44px; padding: 4px 6px; font-size: 0.8125rem; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .destructive { color: var(--danger-ink); }
