@@ -347,6 +347,7 @@ async function save() {
 function navigate(screen, context, studyFromSelection = false) {
   const hash = '#'+screen;
   if (location.hash!==hash) history.pushState({qtPrevious:true,...context},'',hash);
+  checkGhAutoSync();
   render(studyFromSelection);
 }
 function goBack() {
@@ -2431,10 +2432,12 @@ const actions = {
       const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
 
       let sha;
-      const getRes = await fetch(url, {
+      const getRes = await fetch(`${url}?_t=${Date.now()}`, {
+        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
+          'Accept': 'application/vnd.github+json',
+          'Cache-Control': 'no-cache'
         }
       });
       if (getRes.ok) {
@@ -2447,15 +2450,43 @@ const actions = {
         content: contentBase64,
         ...(sha ? { sha } : {})
       };
-      const putRes = await fetch(url, {
+      let putRes = await fetch(url, {
         method: 'PUT',
+        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify(body)
       });
+
+      if (putRes.status === 409) {
+        const freshGet = await fetch(`${url}?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        if (freshGet.ok) {
+          const freshData = await freshGet.json();
+          body.sha = freshData.sha;
+          putRes = await fetch(url, {
+            method: 'PUT',
+            cache: 'no-store',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache'
+            },
+            body: JSON.stringify(body)
+          });
+        }
+      }
 
       if (!putRes.ok) {
         const err = await putRes.json().catch(() => ({}));
@@ -2491,11 +2522,13 @@ const actions = {
     if (!silent) notify('깃허브에서 기록을 가져오는 중이에요…');
     try {
       const filePath = `${user}.json`;
-      const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+      const url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
       const res = await fetch(url, {
+        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
+          'Accept': 'application/vnd.github+json',
+          'Cache-Control': 'no-cache'
         }
       });
       if (!res.ok) {
@@ -3815,19 +3848,27 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
 checkGhAutoSync();
 
 let lastGhCheckTime = 0;
+let isGhSyncing = false;
 async function checkGhAutoSync() {
+  if (isGhSyncing) return;
   const token = localStorage.getItem('logbible-gh-token');
   const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
   if (!token || !auto) return;
-  if (Date.now() - lastGhCheckTime < 15000) return;
+  if (Date.now() - lastGhCheckTime < 2500) return;
   lastGhCheckTime = Date.now();
+  isGhSyncing = true;
   try {
     const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
     const user = localStorage.getItem('logbible-gh-user') || 'haedo';
     const filePath = `${user}.json`;
-    const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+    const url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
     const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+      cache: 'no-store',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Cache-Control': 'no-cache'
+      }
     });
     if (!res.ok) return;
     const fileData = await res.json();
@@ -3851,8 +3892,15 @@ async function checkGhAutoSync() {
     }
   } catch {
     /* Silent background check */
+  } finally {
+    isGhSyncing = false;
   }
 }
+
+window.addEventListener('focus', checkGhAutoSync);
+setInterval(() => {
+  if (!document.hidden) checkGhAutoSync();
+}, 7000);
 
 main.addEventListener('input', event => {
   const target = event.target;
