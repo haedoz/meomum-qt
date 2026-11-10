@@ -561,10 +561,11 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'본문 보기':key?'묵상 열기':'번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':key?'data-action="open-today-note"':'data-nav="settings" data-import-link';
-  return '<header class="today-heading"><h1>오늘의 QT</h1><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time></header>'+
+  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1>오늘의 QT</h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
-    (key?'<blockquote>'+esc(quote)+'</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p>':
+    (key?'<div class="today-quote"><span class="today-quote-mark" aria-hidden="true">“</span><div><blockquote>'+esc(quote)+
+      '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '<div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+heroLink+' '+icon('arrow')+'</span>'+noteButton+'</div></section>'+
     (reader.edition?'<button type="button" class="card row today-resume" data-nav="bible">'+
@@ -773,7 +774,7 @@ function clearReaderSearchResults() {
 function searchResultRow(key,canSelect,excerpts) {
   const title = esc(reference(key));
   const checkbox = canSelect?'<label class="search-result-check"><input type="checkbox" data-search-select="'+key+'" aria-label="'+
-    title+' 선택" '+(selectedSearchVerses.has(key)?'checked':'')+'></label>':'';
+    title+' 선택" '+(selectedSearchVerses.has(key)?'checked':'')+'><span class="search-result-box" aria-hidden="true">'+icon('check')+'</span></label>':'';
   return '<div class="search-result-row"><button type="button" class="record-open search-result" data-search-visit="'+key+'">'+
     '<strong>'+title+'</strong><span'+(excerpts?' dir="auto"':'')+'>'+esc(excerpts?.get(key) ?? verseText(key))+'</span></button>'+checkbox+'</div>';
 }
