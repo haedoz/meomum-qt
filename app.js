@@ -51,7 +51,7 @@ const commentaries = {}, originals = {}, dictionaries = {};
 const studySelection = {commentary:{},original:{}};
 let readingArrival;
 let readingBookmark = '', renderedBible = '', readingBookmarkTimer, lastBibleScrollTop;
-const readingBookmarkKey = 'm-bible-reading-bookmark';
+const readingBookmarkKey = '로그바이블-reading-bookmark';
 const draftEditors = new WeakMap();
 const sessionDrafts = new Map();
 let bibleSearchScope = 'all';
@@ -2901,7 +2901,7 @@ main.addEventListener('change',async event => {
       pendingImport = validatedBackup(JSON.parse(await field.files[0].text()));
       dialog('백업 기록 가져오기','<p>이 기기의 현재 기록을 백업 파일의 내용으로 바꿔요. 현재 기록을 보관하려면 먼저 내보내세요.</p><button class="btn primary block" type="button" data-action="restore">백업으로 복원</button>');
     } catch {
-      notify('이 파일을 읽을 수 없어요. M-BIBLE에서 내보낸 백업인지 확인해 주세요.');
+      notify('이 파일을 읽을 수 없어요. 로그바이블에서 내보낸 백업인지 확인해 주세요.');
     }
     field.value = '';
   }
@@ -3273,7 +3273,7 @@ function showDraftStatus(editor,message) {
   if (editor.status.textContent!==message) editor.status.textContent = message;
 }
 function prepareDraft(form,key,names) {
-  const editor = {key:'m-bible-draft/'+key,fields:names.map(name=>form.elements[name]).filter(Boolean),
+  const editor = {key:'로그바이블-draft/'+key,fields:names.map(name=>form.elements[name]).filter(Boolean),
     status:form.querySelector('[data-draft-status]')};
   draftEditors.set(form,editor);
   editor.baseline = draftSnapshot(form);
