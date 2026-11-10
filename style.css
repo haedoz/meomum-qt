@@ -1141,7 +1141,17 @@ form[name="year-editor"] textarea { min-height: 0; max-height: none; overflow: h
 form[name="year-editor"] :is(input,textarea):focus {
   outline: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-ink) 55%, var(--line));
 }
-.year-editor-refs { margin-top: -7px; overflow-wrap: anywhere; }
+.year-ref-input { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 7px; }
+.year-ref-input .btn { min-height: 44px; padding-inline: 10px; }
+.year-ref-status { margin-top: 5px; }
+.year-ref-status:empty, .year-ref-list:empty { display: none; }
+.year-ref-list { display: grid; gap: 6px; margin-top: 8px; }
+.year-ref-preview, .year-ref-legacy {
+  margin: 0; padding: 4px 10px 8px; border-radius: 9px; background: var(--soft); overflow-wrap: anywhere;
+}
+.year-ref-legacy, .year-ref-preview blockquote { white-space: pre-wrap; }
+.year-ref-preview blockquote { margin: 0; }
+.year-ref-preview .row { flex-wrap: nowrap; color: var(--muted); font-size: .8rem; }
 .year-editor-actions { padding-top: 9px; border-top: 1px solid var(--line); }
 .commentary-copy { overflow-wrap: anywhere; }
 .commentary-page .commentary-copy p {
@@ -1154,7 +1164,8 @@ form[name="year-editor"] :is(input,textarea):focus {
 .commentary-verse h3[id^="study-v-"] {
   scroll-margin-top: calc(78px + env(safe-area-inset-top)); border-radius: 6px; padding: 6px 8px;
 }
-.study-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px; }
+.study-shortcuts { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 6px; }
+.study-shortcuts .btn { word-break: keep-all; }
 
 .study-verse-heading { gap: 8px; }
 .study-verse-heading .text-action { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-ink); }

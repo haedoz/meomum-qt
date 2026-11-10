@@ -1,4 +1,5 @@
 import { books, chapterCounts } from './books.js';
+import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=37';
 
 const icons = {
@@ -391,15 +392,7 @@ function savedVerseText(key) {
   return verseText(key) || '해당 역본의 본문을 표시할 수 없어요.';
 }
 function dailyVerse(day,edition) {
-  const source = data[edition];
-  const available = [];
-  for (const [book] of books) {
-    for (const [chapter,verses] of Object.entries(source?.[book] ?? {})) {
-      for (const [verse,body] of Object.entries(verses)) {
-        if (body) available.push([edition,book,chapter,verse].join('/'));
-      }
-    }
-  }
+  const available = dailyVerseRefs.map(ref=>edition+'/'+ref).filter(ref=>verseText(ref).trim());
   if (!available.length) return;
   let hash = 2166136261;
   for (const char of day) hash = Math.imul(hash ^ char.charCodeAt(0),16777619);
@@ -407,16 +400,23 @@ function dailyVerse(day,edition) {
 }
 function rememberDailyVerse(day) {
   const edition = state.reader.edition;
-  if (!edition) return;
   const saved = state.dailyVerses[day];
-  const previousRef = saved?.wholeBible ? saved.ref : undefined;
-  const matchingRef = previousRef && edition+previousRef.slice(previousRef.indexOf('/'));
-  const ref = matchingRef && verseText(matchingRef)?matchingRef:dailyVerse(day,edition);
-  if (!ref || !validRef(ref)) return;
+  const note = state.dailyNotes[day];
+  if (saved && (note || day!==dateKey() || state.journal[day]?.verses.includes(saved.ref))) return;
+  const address = saved?.ref.slice(saved.ref.indexOf('/')+1);
+  const matchingRef = dailyVerseRefs.includes(address)?edition+'/'+address:undefined;
+  const ref = note?.ref ?? (edition && (matchingRef && verseText(matchingRef).trim()?matchingRef:dailyVerse(day,edition)));
+  if (!ref || !validRef(ref) || !verseText(ref).trim()) {
+    if (edition && saved && !matchingRef) {
+      delete state.dailyVerses[day];
+      if (db) save();
+    }
+    return;
+  }
   const body = verseText(ref);
-  const label = editionLabel(edition);
-  if (saved?.wholeBible && saved.ref===ref && saved.body===body && saved.label===label) return;
-  state.dailyVerses[day] = {ref,body,label,wholeBible:true};
+  const label = editionLabel(readRef(ref).edition);
+  if (saved?.ref===ref && saved.body===body && saved.label===label) return;
+  state.dailyVerses[day] = {ref,body,label};
   if (db) save();
 }
 function journalEntry(key) {
@@ -515,7 +515,11 @@ function cardHit(label,attributes) {
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
-  const {ref:key,body:quote,label} = state.dailyVerses[today] ?? {};
+  const saved = state.dailyVerses[today];
+  const selectedRef = saved && reader.edition?reader.edition+saved.ref.slice(saved.ref.indexOf('/')):undefined;
+  const selectedText = selectedRef?verseText(selectedRef):'';
+  const {ref:key,body:quote,label} = selectedText.trim()?
+    {ref:selectedRef,body:selectedText,label:editionLabel(reader.edition)}:saved ?? {};
   const note = state.dailyNotes[today];
   const noteButton = note || quote
     ? '<button class="hero-note-button" type="button" data-action="open-today-note" aria-haspopup="dialog">'+
@@ -527,7 +531,9 @@ function todayScreen() {
   return '<div class="welcome"><div class="eyebrow"><span></span> 나의 QT 노트</div><h1>오늘의 QT</h1><p class="date-tag">'+icon('calendar')+longDate(today)+'</p></div>'+
     (key?'<section class="hero tappable-card">'+cardHit('오늘의 말씀 본문 읽기',verseText(key)?'data-visit="'+key+'"':'data-action="open-today-note"')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+esc(quote)+'</blockquote><p class="ref">'+esc(reference(key))+' · '+esc(label)+'</p><div class="hero-actions">'+
       '<span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>':
-      '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 내 성경</div><blockquote>사용할 성경 번역본 파일을 추가해 주세요.</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
+      '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+
+      (reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+
+      '</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
     '<div class="today-links">'+(reader.edition?'<div class="card row continue tappable-card'+(read?' is-done':'')+'">'+cardHit('이어서 읽기','data-nav="bible"')+
       '<div class="continue-label"><span class="tile-icon">'+icon('book')+'</span><div><div class="eyebrow">이어서 읽기</div><h3>'+titles[reader.book]+' '+reader.chapter+'장</h3>'+(read?badge('오늘 읽음'):'')+'</div></div><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span></div>':'')+
     '<section class="card row today-journal tappable-card'+(journal?.done?' is-done':'')+'">'+cardHit('오늘의 묵상 열기','data-nav="journal/'+today+'"')+
@@ -1313,7 +1319,8 @@ function verseActions() {
     '<button type="button" class="btn icon-action" data-action="copy-verses" aria-label="구절 복사" title="구절 복사">'+icon('copy')+'</button>'+
     '<button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
     '<div class="verse-actions-row study-shortcuts"><button type="button" class="btn" data-nav="commentary">주석 보기</button>'+
-    '<button type="button" class="btn" data-nav="original">원전분해 보기</button></div></div>';
+    '<button type="button" class="btn" data-nav="original">원전분해 보기</button>'+
+    '<button type="button" class="btn" data-action="add-selected-year">새해 말씀에 담기</button></div></div>';
 }
 function calendarScreen() {
   const [year,num] = month.split('-').map(Number), today = dateKey();
@@ -2094,6 +2101,8 @@ const actions = {
   'add-prayer'() { showPrayerEditor(); },
   'add-thought'() { showThoughtEditor(); },
   'add-year'() { showYearEditor(); },
+  'add-selected-year'() { if (chosen.size) showYearEditor(undefined,[...chosen]); },
+  'add-year-reference'() { addYearReference(modal.querySelector('form[name="year-editor"]')); },
   'save-year'() { saveYear(); },
   'delete-item'() { removeItem(); },
   'save-comment'() { saveComment(); },
@@ -2373,6 +2382,13 @@ document.addEventListener('click',event => {
   }
   if (target.prayer) return showPrayerEditor(state.prayers.find(item => item.id===target.prayer));
   if (target.yearEdit) return showYearEditor(state.newYear.find(item => item.id===target.yearEdit));
+  if (target.removeYearRef) {
+    yearRefs = yearRefs.filter(ref=>ref!==target.removeYearRef);
+    const form = button.form;
+    renderYearReferences(form);
+    form.elements.reference.focus({preventScroll:true});
+    return;
+  }
   if (target.delete) return confirmItemRemoval(target.delete,editId);
   if (target.deletePrayer) return confirmItemRemoval('prayer',target.deletePrayer);
   if (target.deleteDailyNote) return confirmItemRemoval('dailyNote',target.deleteDailyNote);
@@ -2464,7 +2480,14 @@ function resizeEditorWriting() {
 modal.addEventListener('input',event=>{
   const field = event.target;
   if (field.tagName==='TEXTAREA' && field.form?.name==='year-editor') resizeWriting(field);
+  if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
   updateYearEditorDate(field);
+});
+modal.addEventListener('keydown',event=>{
+  const field = event.target;
+  if (event.key!=='Enter' || event.isComposing || field.name!=='reference' || field.form?.name!=='year-editor') return;
+  event.preventDefault();
+  addYearReference(field.form);
 });
 main.addEventListener('input',event => {
   const field = event.target;
@@ -3035,13 +3058,13 @@ function newYearScreen() {
       const items = state.newYear.filter(item=>item.year===year);
       return '<section class="thought-group"><header class="thought-group-header"><h2>'+year+'년</h2><span>'+items.length+
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
-    }).join('') || '<p class="empty">성경에서 구절을 골라 담거나, 기억하고 싶은 말씀을 직접 적어보세요.</p>')+'</div>';
+    }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div>';
 }
 function newYearCard(item) {
   return '<article class="card yearly-record"><header class="row"><div>'+
     (item.day?'<time class="muted" datetime="'+item.day+'">'+
       (Number(item.day.slice(0,4))===item.year?'':item.day.slice(0,4)+'년 ')+shortDate(item.day)+'</time>':'')+
-    '<h3 class="item-title">'+esc(item.title)+'</h3></div>'+
+    (item.title && (!item.refs.length || item.title!==reference(item.refs[0]))?'<h3 class="item-title">'+esc(item.title)+'</h3>':'')+'</div>'+
     '<button type="button" class="icon-action" data-year-edit="'+item.id+'" aria-label="새해 말씀 편집" title="새해 말씀 편집">'+icon('edit')+'</button></header>'+
     item.refs.map(ref=>'<div class="year-verse"><button class="note-link" data-visit="'+ref+'">'+
       esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+' '+icon('arrow')+'</button>'+
@@ -3050,6 +3073,45 @@ function newYearCard(item) {
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
 let yearRefs = [];
+function yearVerseKeys(query) {
+  const range = query.normalize('NFKC').match(/^(.*?)\s*[-–~]\s*(\d+)\s*절?$/);
+  const position = parseBibleReference(range?.[1] ?? query);
+  const edition = state.reader.edition;
+  if (!edition || !position?.book || !position.verse) return [];
+  const {book,chapter,verse} = position;
+  const last = range?Number(range[2]):verse;
+  if (!validChapter(book+'/'+chapter) || last<verse || last>500) return [];
+  const refs = Array.from({length:last-verse+1},(_,index)=>[edition,book,chapter,verse+index].join('/'));
+  return refs.every(ref=>verseText(ref).trim())?refs:[];
+}
+function yearReferencePreview(item) {
+  if (!yearRefs.length) return item?.title && !item.refs.length?
+    '<p class="year-ref-legacy">'+esc(item.title)+'</p>':'';
+  return yearRefs.map(ref=>'<article class="year-ref-preview"><div class="row"><span>'+
+    esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</span>'+
+    '<button type="button" class="text-action" data-remove-year-ref="'+ref+'" aria-label="'+
+    esc(reference(ref))+' 제거">빼기</button></div><blockquote>'+esc(savedVerseText(ref))+'</blockquote></article>').join('');
+}
+function renderYearReferences(form) {
+  const item = state.newYear.find(entry=>entry.id===editId);
+  form.querySelector('[data-year-ref-preview]').innerHTML = yearReferencePreview(item);
+}
+function addYearReference(form) {
+  if (!form) return false;
+  const field = form.elements.reference;
+  const status = form.querySelector('[data-year-ref-status]');
+  const refs = yearVerseKeys(field.value.trim());
+  if (!refs.length) {
+    status.textContent = state.reader.edition?'현재 번역본에서 찾을 수 있는 구절 주소를 입력해 주세요. 예: 시편 65:13':'먼저 성경 번역본을 추가해 주세요.';
+    field.focus();
+    return false;
+  }
+  yearRefs = [...new Set([...yearRefs,...refs])];
+  field.value = '';
+  status.textContent = '';
+  renderYearReferences(form);
+  return true;
+}
 function yearEditorDateLabel(day) {
   if (!day) return '날짜 선택';
   const [year,month,number] = day.split('-').map(Number);
@@ -3062,8 +3124,7 @@ function updateYearEditorDate(field) {
 }
 function showYearEditor(item,refs = []) {
   editId = item?.id;
-  yearRefs = item?.refs ?? refs;
-  const firstRef = yearRefs[0];
+  yearRefs = item?(item.refs.length?[...item.refs]:yearVerseKeys(item.title.split(/[|｜]/,1)[0].trim())):[...refs];
   const day = item?item.day ?? '':dateKey();
   dialog(item?'새해 말씀 편집':'새해 말씀 추가',
     '<div class="year-editor-dates">'+
@@ -3071,9 +3132,11 @@ function showYearEditor(item,refs = []) {
     '<label class="field">기록 날짜<span class="year-editor-date-control">'+
     '<span data-year-date-value aria-hidden="true">'+yearEditorDateLabel(day)+'</span>'+icon('calendar')+
     '<input type="date" name="day" value="'+esc(day)+'"></span></label></div>'+
-    editorField('말씀 제목 또는 구절','title',item?.title ?? (firstRef?reference(firstRef):''),'textarea',
-      'rows="2" required placeholder="말씀 제목이나 구절을 적어보세요."')+
-    (firstRef?'<p class="muted year-editor-refs">'+yearRefs.map(reference).map(esc).join(' · ')+'</p>':'')+
+    '<div class="year-ref-fields"><div class="year-ref-input">'+
+    editorField('말씀 구절','reference','','text','maxlength="120" autocomplete="off" enterkeyhint="go" placeholder="예: 시편 65:13"')+
+    '<button type="button" class="btn" data-action="add-year-reference">불러오기</button></div>'+
+    '<p class="muted year-ref-status" data-year-ref-status role="status"></p>'+
+    '<div class="year-ref-list" data-year-ref-preview>'+yearReferencePreview(item)+'</div></div>'+
     editorField('메모','note',item?.note,'textarea','rows="3" placeholder="기억하고 싶은 내용을 남겨보세요."')+
     '<footer class="year-editor-actions">'+editorActions('year',item)+'</footer>','year-editor');
   modal.querySelectorAll('form[name="year-editor"] textarea').forEach(resizeWriting);
@@ -3081,9 +3144,12 @@ function showYearEditor(item,refs = []) {
 function saveYear() {
   const form = modal.querySelector('form');
   if (!form.reportValidity()) return;
+  if (form.elements.reference.value.trim() && !addYearReference(form)) return;
   const values = new FormData(form);
-  const title = values.get('title').trim();
-  if (!title) return notify('말씀 제목이나 구절을 입력해 주세요.');
+  const existing = state.newYear.find(item=>item.id===editId);
+  if (!yearRefs.length && (!existing || existing.refs.length)) return notify('말씀 구절을 한 개 이상 골라 주세요.');
+  const title = yearRefs.length?
+    (existing?.refs.length && existing.title!==reference(existing.refs[0])?existing.title:reference(yearRefs[0])):existing.title;
   writeItem('newYear',{id:editId ?? newId(),year:Number(values.get('year')),title,note:values.get('note').trim(),refs:yearRefs,day:validDay(values.get('day'))?values.get('day'):undefined});
   chosen.clear();
   if (view==='bible') navigate('newyear');
