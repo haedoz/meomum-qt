@@ -540,9 +540,11 @@ function todaySummary(day,journal) {
     ['note','생각 노트',thoughts+'건','data-nav="thoughts"'],
   ];
   return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
-    '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action" data-action="open-today-calendar">묵상 달력 '+icon('arrow')+'</button></div>'+
+    '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 묵상 달력 '+icon('right')+'</button></div>'+
     '<div class="today-summary-grid">'+entries.map(([symbol,label,value,action])=>
-      '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong></button>').join('')+'</div></section>';
+      '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong>'+
+      (symbol==='check'?'<progress class="today-reading-progress" aria-hidden="true" max="'+state.readingGoal+'" value="'+Math.min(read,state.readingGoal)+'"></progress>':'')+
+      '</button>').join('')+'</div></section>';
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
@@ -556,17 +558,19 @@ function todayScreen() {
     ? '<button class="hero-note-button" type="button" data-action="open-today-note" aria-haspopup="dialog">'+
       icon('comment')+(note?'묵상 보기':'묵상하기')+'</button>'
     : '';
-  const journal = state.journal[today];
-  return '<div class="welcome"><div class="eyebrow"><span></span> 나의 QT 노트</div><h1>오늘의 QT</h1><p class="date-tag">'+icon('calendar')+longDate(today)+'</p></div>'+
-    (key?'<section class="hero tappable-card">'+cardHit('오늘의 말씀 본문 읽기',verseText(key)?'data-visit="'+key+'"':'data-action="open-today-note"')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+esc(quote)+'</blockquote><p class="ref">'+esc(reference(key))+' · '+esc(label)+'</p><div class="hero-actions">'+
-      '<span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>':
-      '<section class="hero tappable-card">'+cardHit('성경 번역본 추가','data-nav="settings" data-import-link')+'<div class="kicker"><span aria-hidden="true">✦</span> 오늘의 말씀</div><blockquote>'+
-      (reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+
-      '</blockquote><div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+icon('arrow')+'</span>'+noteButton+'</div></section>')+
-    todaySummary(today,journal)+
+  const hasPassage = Boolean(key && verseText(key));
+  const heroLink = hasPassage?'본문 보기':key?'묵상 열기':'번역본 추가';
+  const heroAction = hasPassage?'data-visit="'+key+'"':key?'data-action="open-today-note"':'data-nav="settings" data-import-link';
+  return '<header class="today-heading"><h1>오늘의 QT</h1><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time></header>'+
+    '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
+    '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
+    (key?'<blockquote>'+esc(quote)+'</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p>':
+      '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
+    '<div class="hero-actions"><span class="card-arrow" aria-hidden="true">'+heroLink+' '+icon('arrow')+'</span>'+noteButton+'</div></section>'+
     (reader.edition?'<button type="button" class="card row today-resume" data-nav="bible">'+
-      '<span class="tile-icon">'+icon('book')+'</span><span><span class="eyebrow">이어서 읽기</span><strong>'+
-      titles[reader.book]+' '+reader.chapter+'장</strong></span>'+icon('arrow')+'</button>':'');
+      '<span class="tile-icon">'+icon('book')+'</span><span class="today-resume-copy"><span>이어서 읽기</span><strong>'+
+      titles[reader.book]+' '+reader.chapter+'장</strong></span>'+icon('right')+'</button>':'')+
+    todaySummary(today,state.journal[today]);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');

@@ -366,8 +366,6 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
 
 
 .frame:not(.reader-view) { width: min(calc(100% - 40px), 660px); }
-.today-view .hero blockquote { font-size: clamp(1rem, calc(4.3vw + var(--ui-size-offset, 0px)), 1.25rem); line-height: 1.68; font-weight: 620; }
-.today-view .hero .ref, .today-view .date-tag { font-size: 0.75rem; }
 .verse-with-note { position: relative; min-height: 32px; }
 .bible-passage .verse-with-note .verse { padding-inline-end: 34px; }
 .bible-passage .verse-note-icon {
@@ -1145,20 +1143,67 @@ form[name="dictionary"] > .row:first-child {
 .tappable-card .card-arrow { display: inline-flex; align-items: center; color: var(--accent-ink); }
 .card-arrow svg { width: 17px; }
 .hero-actions { align-items: center; min-height: 30px; }
-.today-summary { margin-block: 16px; }
+.today-heading {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px;
+  margin-bottom: 12px;
+}
+.today-heading h1 { margin: 0; }
+.today-heading .date-tag {
+  margin: 0; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); font-size: .75rem;
+}
+.today-verse-card {
+  margin: 0 0 10px; padding: clamp(14px, 4.5vw, 24px); border: 1px solid var(--line);
+  background: radial-gradient(ellipse at top right, var(--accent-soft), transparent 78%), var(--card);
+}
+.today-verse-card h2 { display: flex; align-items: center; gap: 8px; font-size: .875rem; color: var(--accent-ink); }
+.today-verse-icon, .today-resume .tile-icon {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
+  border-radius: 11px; background: var(--accent-soft); color: var(--accent-ink);
+}
+.today-verse-icon svg { width: 18px; height: 18px; }
+.today-verse-card blockquote {
+  max-width: 54ch; margin: 12px 0 10px; color: var(--ink);
+  font: 550 var(--reading-size, 15px)/var(--reading-leading, 1.25) var(--sans);
+  letter-spacing: var(--reading-tracking, 0px); overflow-wrap: anywhere;
+}
+.today-verse-empty { margin-block: 12px; color: var(--muted); }
+.today-verse-card .ref {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+.today-verse-card .ref span { color: var(--muted); }
+.today-verse-card .hero-actions { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.today-verse-card .card-arrow { gap: 5px; min-height: 44px; font-size: .8rem; font-weight: 650; }
+.today-verse-card .hero-note-button { background: var(--accent-soft); font-size: .8rem; }
+.today-summary { margin-block: 14px; }
+.today-summary-heading { flex-wrap: wrap; gap: 4px 8px; margin: 0 2px 4px; }
 .today-summary-heading h2 { font-size: 1rem; }
-.today-summary-heading svg { width: 14px; height: 14px; }
-.today-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.today-calendar-link { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-ink); }
+.today-calendar-link svg { width: 14px; height: 14px; flex: none; }
+.today-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
 .today-summary-item {
-  display: grid; gap: 3px; min-width: 0; min-height: 63px; padding: 8px 10px;
-  border: 1px solid var(--line); border-radius: 13px; background: var(--card); text-align: start;
+  position: relative; display: grid; align-content: center; gap: 4px; min-width: 0; min-height: 72px;
+  padding: 9px 11px 13px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--card); text-align: start; overflow-wrap: anywhere;
 }
 .today-summary-item > span { display: flex; gap: 5px; align-items: center; color: var(--muted); font-size: .76rem; }
-.today-summary-item svg { width: 14px; height: 14px; flex: none; }
-.today-summary-item strong { font-size: .92rem; font-variant-numeric: tabular-nums; }
-.today-resume { width: 100%; justify-content: flex-start; padding: 10px 12px; text-align: start; }
-.today-resume .eyebrow { display: block; }
-.today-resume > svg { margin-inline-start: auto; width: 17px; height: 17px; }
+.today-summary-item svg { width: 14px; height: 14px; flex: none; color: var(--accent-ink); }
+.today-summary-item strong { font-size: 1rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.today-reading-progress {
+  position: absolute; inset: auto 11px 7px; width: calc(100% - 22px); height: 3px;
+  border: 0; border-radius: 3px; appearance: none; overflow: hidden; background: var(--line); color: var(--accent-ink);
+}
+.today-reading-progress::-webkit-progress-bar { background: var(--line); }
+.today-reading-progress::-webkit-progress-value { background: var(--accent-ink); }
+.today-reading-progress::-moz-progress-bar { background: var(--accent-ink); }
+.today-resume { width: 100%; justify-content: flex-start; gap: 9px; margin: 0; padding: 9px 12px; text-align: start; }
+.today-resume-copy { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+.today-resume-copy > span { color: var(--muted); font-size: .75rem; }
+.today-resume > svg { flex: none; margin-inline-start: auto; width: 17px; height: 17px; color: var(--accent-ink); }
+@media (min-width: 640px) {
+  .today-summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
 .thought-list { display: grid; gap: 22px; margin-top: 18px; }
 .thought-group { display: grid; gap: 8px; min-width: 0; }
 .thought-group-header {
