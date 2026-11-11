@@ -2074,7 +2074,7 @@ function backupSettings() {
   const ghToken = localStorage.getItem('logbible-gh-token') || '';
   const ghRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
   const ghUser = localStorage.getItem('logbible-gh-user') || '';
-  const ghLastSync = localStorage.getItem('logbible-gh-last-sync') || '';
+  const ghLastSync = localStorage.getItem('logbible-gh-last-sync') || (state.backup ? new Date(state.backup).toLocaleString('ko-KR') : '');
   const ghAuto = localStorage.getItem('logbible-gh-auto') !== 'false';
   const isConnected = Boolean(ghToken && ghRepo);
 
@@ -4760,6 +4760,9 @@ async function checkGhAutoSync() {
     const payload = JSON.parse(jsonStr);
     const remoteTime = payload?.data?.backup || '';
     const localTime = state?.backup || '';
+    const nowStr = new Date().toLocaleString('ko-KR');
+    localStorage.setItem('logbible-gh-last-sync', nowStr);
+
     if (remoteTime && (!localTime || remoteTime > localTime)) {
       const currentDisplay = {...state.display};
       const imported = validatedBackup(payload);
@@ -4767,8 +4770,6 @@ async function checkGhAutoSync() {
       state.display = currentDisplay;
       lastMarkerEdit = undefined;
       pendingImport = undefined;
-      const nowStr = new Date().toLocaleString('ko-KR');
-      localStorage.setItem('logbible-gh-last-sync', nowStr);
       await storeLocal('journal', state);
       render();
     }
