@@ -2614,12 +2614,24 @@ input[type="date"] {
   border-color: var(--line);
   color: var(--muted);
 }
-:root[data-appearance="dark"] .font-chip.active {
-  background: #2b394d;
-  border-color: #6d8db5;
-  color: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+/* 성경 본문 및 언어별 글꼴 적용 */
+body, .bible-passage, .passage-title, .reader-view {
+  font-family: var(--font-ko, Pretendard, -apple-system, sans-serif);
 }
+
+[lang="he"], [dir="rtl"], .original-verse-text[lang="he"], .original-body[lang="he"] bdi, .original-word-head[lang="he"] bdi, bdi[lang="he"], .original-lemma[lang="he"], [data-lang="he"] {
+  font-family: var(--font-he, "Ezra SIL", "Noto Serif Hebrew", serif) !important;
+  direction: rtl;
+}
+
+[lang="grc"], .original-verse-text[lang="grc"], .original-body[lang="grc"] bdi, .original-word-head[lang="grc"] bdi, bdi[lang="grc"], .original-lemma[lang="grc"], [data-lang="grc"] {
+  font-family: var(--font-grc, "Cardo", "Gentium Plus", serif) !important;
+}
+
+[lang="en"], .english-edition, [data-lang="en"] {
+  font-family: var(--font-en, "EB Garamond", serif);
+}
+
 
 
 

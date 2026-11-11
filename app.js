@@ -1103,12 +1103,12 @@ function originalVerseReading(body,verse,source,chapter) {
     '<p class="original-verse-text" lang="'+source.language+'" dir="'+source.direction+'">'+esc(text)+'</p>':'';
   const breakdown = words.map(({line,form,lemma,grammar,gloss})=>{
     if (line) return '<p>'+originalCodes(line)+'</p>';
-    return '<div class="original-word"><div class="original-word-head"><bdi>'+esc(form)+'</bdi>'+
+    return '<div class="original-word"><div class="original-word-head"><bdi lang="'+source.language+'" dir="'+source.direction+'">'+esc(form)+'</bdi>'+
       (gloss?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
       (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+
-      (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+'</div>';
+      (lemma?'<div class="original-lemma" lang="'+source.language+'" dir="'+source.direction+'">'+originalCodes(lemma)+'</div>':'')+'</div>';
   }).join('');
-  return original+(breakdown?'<h4 class="original-caption">단어별 풀이</h4>'+breakdown:'');
+  return '<div class="original-body" lang="'+source.language+'" dir="'+source.direction+'">'+original+(breakdown?'<h4 class="original-caption">단어별 풀이</h4>'+breakdown:'')+'</div>';
 }
 function showOriginalMeaning(button) {
   const code = button.dataset.strongCode;
@@ -2725,7 +2725,25 @@ const actions = {
     render();
     main.querySelector('[data-action="calendar-today"]')?.focus({preventScroll:true});
   },
-  'choose-font'() { document.querySelector('#custom-font-file').click(); },
+  'choose-font'() { document.querySelector('#custom-font-file-he')?.click() || document.querySelector('#custom-font-file')?.click(); },
+  'choose-font-ko'() { document.querySelector('#custom-font-file-ko').click(); },
+  'choose-font-he'() { document.querySelector('#custom-font-file-he').click(); },
+  'choose-font-grc'() { document.querySelector('#custom-font-file-grc').click(); },
+  'choose-font-en'() { document.querySelector('#custom-font-file-en').click(); },
+  'set-lang-font'(btn) {
+    const el = btn || event?.target?.closest('[data-lang-font]');
+    const lang = el?.dataset.lang;
+    const font = el?.dataset.langFont;
+    if (lang && font) {
+      if (lang === 'ko') state.fontKorean = font;
+      else if (lang === 'he') state.fontHebrew = font;
+      else if (lang === 'grc') state.fontGreek = font;
+      else if (lang === 'en') state.fontEnglish = font;
+      applyDisplay();
+      save();
+      render();
+    }
+  },
   'choose-bdb'() { document.querySelector('#bdb-files').click(); },
   'reset-reading-range'() {
     const canon = canonChapters();
@@ -3660,7 +3678,11 @@ main.addEventListener('change',async event => {
     applyDisplay();
     save();
   }
-  if (field.id==='custom-font-file' && field.files[0]) return importCustomFont(field.files[0]);
+  if (field.id==='custom-font-file-ko' && field.files[0]) return importCustomFont(field.files[0], 'ko');
+  if (field.id==='custom-font-file-he' && field.files[0]) return importCustomFont(field.files[0], 'he');
+  if (field.id==='custom-font-file-grc' && field.files[0]) return importCustomFont(field.files[0], 'grc');
+  if (field.id==='custom-font-file-en' && field.files[0]) return importCustomFont(field.files[0], 'en');
+  if (field.id==='custom-font-file' && field.files[0]) return importCustomFont(field.files[0], 'he');
   if (field.id==='bdb-files') return importBibleFiles([...field.files]);
   if (field.id==='backup-file' && field.files[0]) {
     try {
@@ -3741,37 +3763,41 @@ function migrate(input) {
   }
   return result;
 }
-async function loadFontFace(bytes) {
-  return new FontFace('WordJournalCustom',bytes).load();
-}
-function activateFont(name,face) {
-  if (customFont) document.fonts.delete(customFont.face);
+const customFonts = { ko: null, he: null, grc: null, en: null };
+function activateCustomFont(lang, name, family, face) {
+  if (customFonts[lang]?.face) document.fonts.delete(customFonts[lang].face);
   document.fonts.add(face);
-  customFont = {name,face};
+  customFonts[lang] = { name, family, face };
 }
-async function importCustomFont(file) {
+async function importCustomFont(file, lang = 'he') {
   if (importingFont) return;
   if (!/\.(ttf|otf|woff2?)$/i.test(file.name) || !file.size || file.size>24*1024*1024) {
     notify('24MB 이하의 TTF, OTF, WOFF 또는 WOFF2 글꼴 파일을 선택해 주세요.');
-    document.querySelector('#custom-font-file').value = '';
     return;
   }
   importingFont = true;
   render();
   try {
     const bytes = await file.arrayBuffer();
-    const face = await loadFontFace(bytes);
+    const family = 'CustomFont_' + lang;
+    const face = await new FontFace(family, bytes).load();
     const name = file.name.normalize('NFC').slice(0,100);
-    await storeLocal('custom-font',{name,bytes});
-    activateFont(name,face);
-    state.fontChoice = 'custom';
-    if (await save()) notify('이 기기에 글꼴을 저장했어요.');
+    await storeLocal('custom-font-' + lang, { name, bytes });
+    activateCustomFont(lang, name, family, face);
+    if (lang === 'ko') state.fontKorean = 'custom';
+    else if (lang === 'he') state.fontHebrew = 'custom';
+    else if (lang === 'grc') state.fontGreek = 'custom';
+    else if (lang === 'en') state.fontEnglish = 'custom';
+    if (await save()) {
+      const labels = { ko: '한글 본문', he: '히브리어', grc: '헬라어', en: '영어' };
+      notify((labels[lang] || '성경') + ' 글꼴로 [' + name + ']을(를) 적용했어요!');
+    }
   } catch {
     notify('글꼴을 가져오지 못했어요. 파일 형식과 저장 공간을 확인해 주세요.');
   } finally {
     importingFont = false;
-    if (view==='settings') render();
-    else applyDisplay();
+    applyDisplay();
+    render();
   }
 }
 
@@ -3790,35 +3816,40 @@ function applyDisplay() {
       paperlogy: 'Paperlogy, serif',
       notosanskr: 'NotoSansKR, sans-serif',
       system: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif',
-      custom: 'WordJournalCustom, Pretendard, sans-serif'
-    },
-    en: {
-      ebgaramond: "'EB Garamond', serif",
-      cardo: "'Cardo', serif",
-      system: '-apple-system, BlinkMacSystemFont, serif'
+      custom: customFonts.ko ? `"${customFonts.ko.family}", Pretendard, sans-serif` : 'Pretendard, sans-serif'
     },
     he: {
-      notohebrew: "'Noto Serif Hebrew', 'Cardo', serif",
-      cardo: "'Cardo', serif",
-      system: 'system-ui, serif'
+      ezra: '"Ezra SIL", "Ezra SIL SR", "SBL Hebrew", serif',
+      notohebrew: '"Noto Serif Hebrew", "Ezra SIL", serif',
+      sblhebrew: '"SBL Hebrew", "Ezra SIL", serif',
+      system: 'system-ui, serif',
+      custom: customFonts.he ? `"${customFonts.he.family}", "Ezra SIL", serif` : '"Ezra SIL", serif'
     },
     grc: {
-      cardo: "'Cardo', 'Gentium Plus', serif",
-      gentium: "'Gentium Plus', 'Cardo', serif",
-      system: 'system-ui, serif'
+      cardo: '"Cardo", "Gentium Plus", serif',
+      gentium: '"Gentium Plus", "Cardo", serif',
+      sblgreek: '"SBL Greek", "Cardo", serif',
+      system: 'system-ui, serif',
+      custom: customFonts.grc ? `"${customFonts.grc.family}", "Cardo", serif` : '"Cardo", serif'
+    },
+    en: {
+      ebgaramond: '"EB Garamond", serif',
+      cardo: '"Cardo", serif',
+      system: '-apple-system, BlinkMacSystemFont, serif',
+      custom: customFonts.en ? `"${customFonts.en.family}", "EB Garamond", serif` : '"EB Garamond", serif'
     }
   };
 
   const koFont = fontFamilies.ko[state.fontKorean] || fontFamilies.ko.pretendard;
-  const enFont = fontFamilies.en[state.fontEnglish] || fontFamilies.en.ebgaramond;
-  const heFont = fontFamilies.he[state.fontHebrew] || fontFamilies.he.notohebrew;
-  const grcFont = fontFamilies.grc[state.fontGreek] || fontFamilies.grc.cardo;
+  const heFont = (state.fontHebrew==='custom' && customFonts.he) ? fontFamilies.he.custom : (fontFamilies.he[state.fontHebrew] || (customFonts.he ? fontFamilies.he.custom : fontFamilies.he.ezra));
+  const grcFont = (state.fontGreek==='custom' && customFonts.grc) ? fontFamilies.grc.custom : (fontFamilies.grc[state.fontGreek] || (customFonts.grc ? fontFamilies.grc.custom : fontFamilies.grc.cardo));
+  const enFont = (state.fontEnglish==='custom' && customFonts.en) ? fontFamilies.en.custom : (fontFamilies.en[state.fontEnglish] || (customFonts.en ? fontFamilies.en.custom : fontFamilies.en.ebgaramond));
 
   root.style.setProperty('--font-ko', koFont);
   root.style.setProperty('--font-en', enFont);
   root.style.setProperty('--font-he', heFont);
   root.style.setProperty('--font-grc', grcFont);
-  root.style.setProperty('--preferred-font', enFont + ', ' + koFont);
+  root.style.setProperty('--preferred-font', koFont);
 
   root.style.setProperty('--reading-leading',displayValue('lineHeight',state.display.lineHeight));
   root.style.setProperty('--verse-gap',displayValue('verseGap',state.display.verseGap)+'px');
@@ -3838,52 +3869,142 @@ function displayFields() {
   }).join('')+'</div>';
 }
 function readingPreview() {
-  const id = state.reader.edition;
-  const texts = id ? [1,2,3].map(number=>verseText(id+'/PSA/23/'+number)) :
-    ['오늘 읽을 말씀을 천천히 살펴봐요.','마음에 남는 문장을 묵상 노트에 적어요.','한 줄씩 적으며 하루를 돌아봐요.'];
-  return '<section class="reading-example"><div class="row"><h3>성경 본문 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
-    '<div class="bible-passage preview-passage"><header class="passage-heading"><strong>'+(id?'시편 23편':'글자 설정 예시')+'</strong><span>'+(id?esc(editionLabel(id)):'예시 문장')+'</span></header>'+
-    texts.map((text,index)=>'<div class="verse"><span class="number">'+(index+1)+'</span>'+markedText(text)+'</div>').join('')+'</div></section>';
+  return '<section class="reading-example"><div class="row"><h3>4개 언어 실시간 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
+    '<div class="bible-passage preview-passage">'+
+      '<div class="preview-lang-box">'+
+        '<div class="row preview-lang-header"><span class="kicker">🇰🇷 한글</span><span class="muted" style="font-size:0.75rem;">시 23:1</span></div>'+
+        '<p class="verse-copy" style="font-family:var(--font-ko); margin:2px 0;">여호와는 나의 목자시니 내게 부족함이 없으리로다</p>'+
+      '</div>'+
+      '<div class="preview-lang-box" style="margin-top:8px;">'+
+        '<div class="row preview-lang-header"><span class="kicker">📜 히브리어 (구약 원어)</span><span class="muted" style="font-size:0.75rem;">시 23:1</span></div>'+
+        '<p class="verse-copy" lang="he" dir="rtl" style="font-family:var(--font-he); font-size:1.18em; margin:2px 0;">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃</p>'+
+      '</div>'+
+      '<div class="preview-lang-box" style="margin-top:8px;">'+
+        '<div class="row preview-lang-header"><span class="kicker">🏛️ 헬라어 (신약 원어)</span><span class="muted" style="font-size:0.75rem;">요 1:1</span></div>'+
+        '<p class="verse-copy" lang="grc" style="font-family:var(--font-grc); font-size:1.06em; margin:2px 0;">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν</p>'+
+      '</div>'+
+      '<div class="preview-lang-box" style="margin-top:8px;">'+
+        '<div class="row preview-lang-header"><span class="kicker">📖 영어</span><span class="muted" style="font-size:0.75rem;">Ps 23:1</span></div>'+
+        '<p class="verse-copy" lang="en" style="font-family:var(--font-en); margin:2px 0;">The LORD is my shepherd; I shall not want.</p>'+
+      '</div>'+
+    '</div></section>';
 }
 function displaySettings() {
   const swatches = Object.entries(palettes).map(([id,label])=>
     '<label class="palette-option"><input type="radio" name="palette" value="'+id+'" '+(state.palette===id?'checked':'')+'>'+
     '<span class="palette-swatch" data-swatch="'+id+'" aria-hidden="true"></span><span>'+label+'</span></label>').join('');
 
-  const fontChips = [
+  const koChips = [
     ['pretendard', '프리텐다드'],
     ['paperlogy', '페이퍼로지'],
     ['notosanskr', '노토 산스'],
     ['system', '기기 기본'],
-    ...(customFont ? [['custom', customFont.name]] : [])
+    ...(customFonts.ko ? [['custom', customFonts.ko.name]] : [])
+  ];
+  const heChips = [
+    ...(customFonts.he ? [['custom', customFonts.he.name]] : []),
+    ['ezra', '에즈라 SIL'],
+    ['notohebrew', 'Noto Serif'],
+    ['sblhebrew', 'SBL Hebrew'],
+    ['system', '기기 기본']
+  ];
+  const grcChips = [
+    ...(customFonts.grc ? [['custom', customFonts.grc.name]] : []),
+    ['cardo', 'Cardo'],
+    ['gentium', 'Gentium Plus'],
+    ['sblgreek', 'SBL Greek'],
+    ['system', '기기 기본']
+  ];
+  const enChips = [
+    ...(customFonts.en ? [['custom', customFonts.en.name]] : []),
+    ['ebgaramond', 'EB Garamond'],
+    ['cardo', 'Cardo'],
+    ['system', '기기 기본']
   ];
 
-  const currentFont = state.fontChoice === 'custom' && !customFont ? 'pretendard' : state.fontChoice;
-  const currentFontLabel = fontChips.find(([val]) => val === currentFont)?.[1] || currentFont;
+  const curKo = state.fontKorean || 'pretendard';
+  const curHe = state.fontHebrew || (customFonts.he ? 'custom' : 'ezra');
+  const curGrc = state.fontGreek || (customFonts.grc ? 'custom' : 'cardo');
+  const curEn = state.fontEnglish || (customFonts.en ? 'custom' : 'ebgaramond');
+
+  const curKoLabel = koChips.find(([val]) => val === curKo)?.[1] || curKo;
+  const curHeLabel = heChips.find(([val]) => val === curHe)?.[1] || curHe;
+  const curGrcLabel = grcChips.find(([val]) => val === curGrc)?.[1] || curGrc;
+  const curEnLabel = enChips.find(([val]) => val === curEn)?.[1] || curEn;
+
   const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
 
   return '<div class="section-head"><h2>화면 테마</h2></div><section class="card stack appearance-settings">'+
     '<fieldset class="palette-field"><legend>색상 테마</legend><div class="palette-grid">'+swatches+'</div></fieldset>'+
     '<label class="field">화면 모드<select id="appearance">'+options(Object.entries(themes),state.theme)+'</select></label></section>'+
-    '<div class="section-head"><h2>글꼴과 읽기</h2></div><section class="card stack reading-settings">'+
+
+    '<div class="section-head"><h2>성경 및 언어별 글꼴</h2></div><section class="card stack reading-settings">'+
+
     '<div class="font-group-block">'+
       '<div class="row font-group-header">'+
-        '<span class="font-group-label">앱 글꼴</span>'+
-        '<span class="font-group-current">'+esc(currentFontLabel)+'</span>'+
+        '<span class="font-group-label">🇰🇷 한글 본문 글꼴</span>'+
+        '<span class="font-group-current">'+esc(curKoLabel)+'</span>'+
       '</div>'+
       '<div class="font-chip-grid">'+
-        fontChips.map(([val, label]) =>
-          '<button type="button" class="font-chip '+(currentFont===val?'active':'')+'" data-action="set-app-font" data-font="'+val+'">'+
-          esc(label)+
-          '</button>').join('')+
+        koChips.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(curKo===val?'active':'')+'" data-action="set-lang-font" data-lang="ko" data-lang-font="'+val+'">'+
+          esc(label)+'</button>').join('')+
       '</div>'+
-      '<div class="row" style="margin-top:10px;">'+
-        '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
-        '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+      '<div class="row" style="margin-top:4px;">'+
+        '<button type="button" class="btn small" data-action="choose-font-ko">'+(customFonts.ko ? '한글 글꼴 변경' : '+ 한글 글꼴 파일 가져오기')+'</button>'+
+        '<input id="custom-font-file-ko" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
       '</div>'+
-      '<p class="muted" style="font-size:0.75rem; margin-top:4px;">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요. 글꼴 파일은 백업에 포함되지 않아요.</p>'+
     '</div>'+
-    '<p class="muted" style="margin-top:10px;">글자 크기는 성경과 앱 전체에 적용돼요. 줄 간격과 구절 간격은 아래에서 바로 비교해 보세요.</p>'+
+
+    '<div class="font-group-block">'+
+      '<div class="row font-group-header">'+
+        '<span class="font-group-label">📜 히브리어 (구약 원어) 글꼴</span>'+
+        '<span class="font-group-current">'+esc(curHeLabel)+'</span>'+
+      '</div>'+
+      '<div class="font-chip-grid">'+
+        heChips.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(curHe===val?'active':'')+'" data-action="set-lang-font" data-lang="he" data-lang-font="'+val+'">'+
+          esc(label)+'</button>').join('')+
+      '</div>'+
+      '<div class="row" style="margin-top:4px;">'+
+        '<button type="button" class="btn small" data-action="choose-font-he">'+(customFonts.he ? '히브리어 글꼴 변경 (' + esc(customFonts.he.name) + ')' : '+ 히브리어 글꼴 파일(.ttf/.otf) 가져오기')+'</button>'+
+        '<input id="custom-font-file-he" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="font-group-block">'+
+      '<div class="row font-group-header">'+
+        '<span class="font-group-label">🏛️ 헬라어 (신약 원어) 글꼴</span>'+
+        '<span class="font-group-current">'+esc(curGrcLabel)+'</span>'+
+      '</div>'+
+      '<div class="font-chip-grid">'+
+        grcChips.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(curGrc===val?'active':'')+'" data-action="set-lang-font" data-lang="grc" data-lang-font="'+val+'">'+
+          esc(label)+'</button>').join('')+
+      '</div>'+
+      '<div class="row" style="margin-top:4px;">'+
+        '<button type="button" class="btn small" data-action="choose-font-grc">'+(customFonts.grc ? '헬라어 글꼴 변경 (' + esc(customFonts.grc.name) + ')' : '+ 헬라어 글꼴 파일(.ttf/.otf) 가져오기')+'</button>'+
+        '<input id="custom-font-file-grc" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="font-group-block">'+
+      '<div class="row font-group-header">'+
+        '<span class="font-group-label">📖 영어 성경 글꼴</span>'+
+        '<span class="font-group-current">'+esc(curEnLabel)+'</span>'+
+      '</div>'+
+      '<div class="font-chip-grid">'+
+        enChips.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(curEn===val?'active':'')+'" data-action="set-lang-font" data-lang="en" data-lang-font="'+val+'">'+
+          esc(label)+'</button>').join('')+
+      '</div>'+
+      '<div class="row" style="margin-top:4px;">'+
+        '<button type="button" class="btn small" data-action="choose-font-en">'+(customFonts.en ? '영문 글꼴 변경 (' + esc(customFonts.en.name) + ')' : '+ 영문 글꼴 파일(.ttf/.otf) 가져오기')+'</button>'+
+        '<input id="custom-font-file-en" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+      '</div>'+
+    '</div>'+
+
+    '<p class="muted" style="margin-top:14px;">글자 크기, 줄 간격, 구절 간격을 조정하고 아래 실시간 미리보기에서 확인해 보세요.</p>'+
     displayFields()+readingPreview()+
     '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>'+
     '<div class="section-head"><h2>퀵 형광펜 설정</h2></div><section class="card stack quick-marker-settings">'+
@@ -4480,14 +4601,53 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 try { readingBookmark = localStorage.getItem(readingBookmarkKey) ?? ''; } catch { /* Use the current chapter. */ }
 try {
   db = await openDB();
-  const [saved,imported,font] = await Promise.all([
-    loadLocal('journal'),readLocalEditions().catch(()=>({added:[]})),loadLocal('custom-font').catch(()=>null),
+  const [saved,imported,fontLegacy,fontKo,fontHe,fontGrc,fontEn] = await Promise.all([
+    loadLocal('journal'),readLocalEditions().catch(()=>({added:[]})),
+    loadLocal('custom-font').catch(()=>null),
+    loadLocal('custom-font-ko').catch(()=>null),
+    loadLocal('custom-font-he').catch(()=>null),
+    loadLocal('custom-font-grc').catch(()=>null),
+    loadLocal('custom-font-en').catch(()=>null),
   ]);
   for (const edition of imported.added) registerLocalEdition(edition);
   state = migrate(saved ?? blank());
-  if (font) {
-    try { activateFont(font.name,await loadFontFace(font.bytes)); }
-    catch { /* Use the default font when the device cannot load the saved file. */ }
+
+  if (fontKo) {
+    try {
+      const face = await new FontFace('CustomFont_ko', fontKo.bytes).load();
+      activateCustomFont('ko', fontKo.name, 'CustomFont_ko', face);
+    } catch {}
+  }
+  if (fontHe) {
+    try {
+      const face = await new FontFace('CustomFont_he', fontHe.bytes).load();
+      activateCustomFont('he', fontHe.name, 'CustomFont_he', face);
+    } catch {}
+  }
+  if (fontGrc) {
+    try {
+      const face = await new FontFace('CustomFont_grc', fontGrc.bytes).load();
+      activateCustomFont('grc', fontGrc.name, 'CustomFont_grc', face);
+    } catch {}
+  }
+  if (fontEn) {
+    try {
+      const face = await new FontFace('CustomFont_en', fontEn.bytes).load();
+      activateCustomFont('en', fontEn.name, 'CustomFont_en', face);
+    } catch {}
+  }
+  if (fontLegacy && !fontHe && !fontKo) {
+    try {
+      const lower = (fontLegacy.name || '').toLowerCase();
+      const targetLang = (lower.includes('ezra') || lower.includes('sil') || lower.includes('heb')) ? 'he' :
+                         (lower.includes('greek') || lower.includes('grc') || lower.includes('sblg')) ? 'grc' : 'ko';
+      const family = 'CustomFont_' + targetLang;
+      const face = await new FontFace(family, fontLegacy.bytes).load();
+      activateCustomFont(targetLang, fontLegacy.name, family, face);
+      if (targetLang === 'he') state.fontHebrew = 'custom';
+      else if (targetLang === 'grc') state.fontGreek = 'custom';
+      else state.fontKorean = 'custom';
+    } catch {}
   }
 } catch {
   writeError = true;
