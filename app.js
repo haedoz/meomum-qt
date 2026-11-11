@@ -99,6 +99,7 @@ let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all
 const recordSelection = {edition:'',book:'',year:''};
 let recordPage = 0;
 let oldestRecordsFirst = false;
+let recordGroupBy = 'book';
 const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
@@ -1457,7 +1458,7 @@ function showReadingRange() {
       '<p class="muted" style="margin-top:6px; font-size:0.8rem;">마감 날짜 없이 매일 읽는 하루 분량에 맞춰 예상 완독일이 계산돼요.</p>'+
     '</div>'+
     '<div id="plan-mode-target-panel" '+(hasTarget?'':'hidden')+'>'+
-      '<div class="range-fields">'+
+      '<div class="range-date-fields">'+
         '<label class="field"><span>시작일</span><input type="date" id="range-start-date-target" value="'+esc(startDate)+'"></label>'+
         '<label class="field"><span>목표 완료일</span><input type="date" id="range-target-date" value="'+esc(targetDate)+'"></label>'+
       '</div>'+
@@ -1693,6 +1694,33 @@ function recordPassage(key,verses) {
   const passage = data[edition]?.[book]?.[chapter];
   return verses.filter(verse=>passage?.[verse]).map(verse=>[verse,passage[verse]]);
 }
+function renderRecordCard(item) {
+  const {key,verses,day,mark,noteKey} = item;
+  const passage = recordPassage(key,verses);
+  const excerpt = passage.length?passage.map(([number,body])=>
+    '<span class="record-verse"><span class="record-verse-number">'+number+'절</span>'+markedText(body,mark)+'</span>').join('')
+    : markedText(savedVerseText(key),mark);
+  const markKind = mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜';
+  const kindClass = mark.note?'note':mark.underline && !mark.color && !mark.highlight?'underline':'highlight';
+  const content = mark.note ? '<p class="calendar-quote-body">'+esc(mark.note)+'</p>' :
+    '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>';
+
+  return '<article class="calendar-mark-card tappable-card '+kindClass+'">'+
+    (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
+    '<div class="row calendar-mark-header">'+
+    '<span class="reading-badge">'+esc(selectionReference(key,verses))+' · '+esc(editionLabel(readRef(key).edition))+'</span>'+
+    '<div class="row" style="gap:5px; align-items:center;">'+
+    (day?'<time class="muted" style="font-size:0.75rem;" datetime="'+day+'">'+shortDate(day)+'</time>':'')+
+    '<span class="mark-kind-pill '+kindClass+'">'+markKind+'</span>'+
+    '</div></div>'+
+    content+
+    '<div class="row calendar-mark-footer">'+
+    '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
+    '<div class="item-actions card-actions">'+
+    (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>':'')+
+    (verseMark(mark)?highlightDeleteButton(key):'')+
+    '</div></div></article>';
+}
 function recordList(rows = recordRows()) {
   const matching = rows.filter(({key,day,mark}) => {
     const {edition,book} = readRef(key);
@@ -1703,52 +1731,79 @@ function recordList(rows = recordRows()) {
       (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year);
   });
   if (oldestRecordsFirst) matching.sort((a,b)=>(a.day ?? '9999').localeCompare(b.day ?? '9999'));
-  const pageSize = 8;
-  const pages = Math.max(1,Math.ceil(matching.length/pageSize));
-  recordPage = Math.min(recordPage,pages-1);
-  const start = recordPage*pageSize;
-  const visible = matching.slice(start,start+pageSize);
-  const pager = pages>1?'<nav class="row record-pages" aria-label="말씀 기록 페이지">'+
-    '<button type="button" class="btn" data-record-page="'+(recordPage-1)+'" aria-label="이전 페이지" '+(!recordPage?'disabled':'')+'>'+icon('left')+'</button>'+
-    '<span>'+String(recordPage+1)+' / '+pages+'</span>'+
-    '<button type="button" class="btn" data-record-page="'+(recordPage+1)+'" aria-label="다음 페이지" '+(recordPage+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>':'';
-  let previousYear;
   const hasFilter = Object.values(recordSelection).some(Boolean);
-  return '<div class="row record-list-tools"><p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건'+
-    (pages>1?' · '+(recordPage+1)+' / '+pages+'페이지':'')+'</p>'+
-    (hasFilter ? '<button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 ✕</button>' : '')+
-    '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
-    (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button></div>'+
-    (visible.map(({key,verses,day,mark,noteKey}) => {
-      const year = day?.slice(0,4) ?? '';
-      const title = year===previousYear?'':'<h3 class="record-year">'+(year?year+'년':'날짜 미기록')+'</h3>';
-      previousYear = year;
-      const passage = recordPassage(key,verses);
-      const preview = (mark.note || passage[0]?.[1] || savedVerseText(key)).replace(/\s+/g,' ').trim();
-      const excerpt = passage.length?passage.map(([number,body])=>
-        '<span class="record-verse"><span class="record-verse-number">'+number+'절</span>'+markedText(body,mark)+'</span>').join('')
-        : markedText(savedVerseText(key),mark);
-      const markKind = mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜';
-      const kindClass = mark.note?'note':mark.underline && !mark.color && !mark.highlight?'underline':'highlight';
-      const content = mark.note ? '<p class="calendar-quote-body">'+esc(mark.note)+'</p>' :
-        '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>';
 
-      return title+'<article class="calendar-mark-card tappable-card '+kindClass+'">'+
-        (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
-        '<div class="row calendar-mark-header">'+
-        '<span class="reading-badge">'+esc(selectionReference(key,verses))+' · '+esc(editionLabel(readRef(key).edition))+'</span>'+
-        '<div class="row" style="gap:5px; align-items:center;">'+
-        (day?'<time class="muted" style="font-size:0.75rem;" datetime="'+day+'">'+shortDate(day)+'</time>':'')+
-        '<span class="mark-kind-pill '+kindClass+'">'+markKind+'</span>'+
-        '</div></div>'+
-        content+
-        '<div class="row calendar-mark-footer">'+
-        '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
-        '<div class="item-actions card-actions">'+
-        (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>':'')+
-        (verseMark(mark)?highlightDeleteButton(key):'')+
-        '</div></div></article>';
-    }).join('') || '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>')+pager;
+  let groupsHtml = '';
+  if (matching.length) {
+    if (recordGroupBy === 'date') {
+      const dateGroups = new Map();
+      for (const item of matching) {
+        const m = item.day ? item.day.slice(0, 7) : 'undated';
+        if (!dateGroups.has(m)) dateGroups.set(m, []);
+        dateGroups.get(m).push(item);
+      }
+      const dateKeys = [...dateGroups.keys()].sort((a,b) => oldestRecordsFirst ? a.localeCompare(b) : b.localeCompare(a));
+      groupsHtml = dateKeys.map(m => {
+        const items = dateGroups.get(m);
+        const label = m === 'undated' ? '날짜 미기록' : m.replace('-', '년 ') + '월';
+        return '<details class="record-group-accordion" open>'+
+          '<summary class="record-group-summary">'+
+            '<div class="record-group-info">'+
+              '<span class="record-group-title">📅 '+esc(label)+'</span>'+
+              '<span class="record-group-badge">'+items.length+'건</span>'+
+            '</div>'+
+            '<span class="record-group-chevron">'+icon('down')+'</span>'+
+          '</summary>'+
+          '<div class="record-group-items">'+
+            items.map(renderRecordCard).join('')+
+          '</div>'+
+        '</details>';
+      }).join('');
+    } else {
+      const bookOrder = new Map(books.map(([code], idx) => [code, idx]));
+      const bookGroups = new Map();
+      for (const item of matching) {
+        const b = readRef(item.key).book;
+        if (!bookGroups.has(b)) bookGroups.set(b, []);
+        bookGroups.get(b).push(item);
+      }
+      const sortedBooks = [...bookGroups.keys()].sort((a,b) => {
+        if (oldestRecordsFirst) return (bookOrder.get(a) ?? 99) - (bookOrder.get(b) ?? 99);
+        const latestA = bookGroups.get(a)[0]?.day ?? '';
+        const latestB = bookGroups.get(b)[0]?.day ?? '';
+        return latestB.localeCompare(latestA) || (bookOrder.get(a) ?? 99) - (bookOrder.get(b) ?? 99);
+      });
+      groupsHtml = sortedBooks.map(bookCode => {
+        const items = bookGroups.get(bookCode);
+        const bookTitle = titles[bookCode] || bookCode;
+        return '<details class="record-group-accordion" open>'+
+          '<summary class="record-group-summary">'+
+            '<div class="record-group-info">'+
+              '<span class="record-group-title">📖 '+esc(bookTitle)+'</span>'+
+              '<span class="record-group-badge">'+items.length+'건</span>'+
+            '</div>'+
+            '<span class="record-group-chevron">'+icon('down')+'</span>'+
+          '</summary>'+
+          '<div class="record-group-items">'+
+            items.map(renderRecordCard).join('')+
+          '</div>'+
+        '</details>';
+      }).join('');
+    }
+  }
+
+  return '<div class="row record-list-tools">'+
+    '<div class="record-group-toggle" role="radiogroup" aria-label="묶어보기 방식">'+
+      '<button type="button" class="group-toggle-btn '+(recordGroupBy==='book'?'active':'')+'" data-action="group-records-book">성경책별</button>'+
+      '<button type="button" class="group-toggle-btn '+(recordGroupBy==='date'?'active':'')+'" data-action="group-records-date">날짜별</button>'+
+    '</div>'+
+    '<div class="row" style="gap:8px; align-items:center;">'+
+      '<p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건</p>'+
+      (hasFilter ? '<button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 ✕</button>' : '')+
+      '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
+      (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button>'+
+    '</div></div>'+
+    (matching.length ? groupsHtml : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
 }
 function personalSearchEntries() {
   const entries = [];
@@ -2556,6 +2611,14 @@ const actions = {
     save();
     render();
     notify('통독 기록을 보관함에 저장했어요!');
+  },
+  'group-records-book'() {
+    recordGroupBy = 'book';
+    render();
+  },
+  'group-records-date'() {
+    recordGroupBy = 'date';
+    render();
   },
   'plan-mode-daily'() {
     modal.querySelectorAll('.plan-mode-tab').forEach(t=>t.classList.toggle('active',t.dataset.action==='plan-mode-daily'));
