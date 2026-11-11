@@ -404,11 +404,14 @@ function verseText(key) {
   return data[edition]?.[book]?.[chapter]?.[verse] ?? '';
 }
 function setReader(key) {
-  const {edition,book,chapter} = readRef(key);
+  const {edition,book,chapter,verse} = readRef(key);
   swapComparison(edition);
   state.reader = {edition,book,chapter};
   setReadingBookmark(key);
   chosen.clear();
+  const vNum = Number(verse) || 1;
+  studySelection.commentary.location = {book,chapter,verse:vNum};
+  studySelection.original.location = {book,chapter,verse:vNum};
   save();
 }
 function visit(key) {
@@ -420,8 +423,11 @@ function visit(key) {
     return;
   }
   if (!verseText(key)) return notify('이 역본에서 해당 구절을 찾을 수 없어요.');
+  const vNum = Number(verse) || 1;
+  studySelection.commentary.location = {book,chapter,verse:vNum};
+  studySelection.original.location = {book,chapter,verse:vNum};
   setReader(key);
-  jumpTo = 'v-'+verse;
+  jumpTo = 'v-'+vNum;
   navigate('bible');
 }
 function returnToBible(location, verse = location?.verse) {
@@ -1049,8 +1055,12 @@ function jumpToChapter(form) {
     return;
   }
   modal.close();
+  studySelection.commentary.location = {book,chapter,verse};
+  studySelection.original.location = {book,chapter,verse};
   if (selection) {
     selection.location = {book,chapter,verse};
+    state.reader.book = book;
+    state.reader.chapter = chapter;
     return render();
   }
   visit([edition,book,chapter,verse].join('/'));
@@ -1180,9 +1190,10 @@ function studyScreen(mode) {
   }
   const selection = studySelection[mode];
   const firstBook = books.find(([code])=>studyBookChapters(mode,code))?.[0];
-  const {book,chapter,verse} = selection.location ?? (studyBookChapters(mode,state.reader.book)?.[state.reader.chapter]
-    ? state.reader
-    : {book:firstBook ?? state.reader.book,chapter:Number(Object.keys(studyBookChapters(mode,firstBook) ?? {})[0] ?? 1)});
+  const loc = selection.location ?? {book: state.reader.book, chapter: state.reader.chapter, verse: 1};
+  const book = loc.book ?? state.reader.book ?? firstBook;
+  const chapter = loc.chapter ?? state.reader.chapter ?? 1;
+  const verse = loc.verse ?? 1;
   const entries = source?.verses[book]?.[chapter] ?? {};
   selection.location = {book,chapter,verse};
   return '<div class="reader-controls commentary-controls'+(original?'':' with-commentary-source')+'">'+
@@ -3096,7 +3107,10 @@ function stepChapter(offset) {
   reader.book = book;
   reader.chapter = Number(chapter);
   const first = Object.keys(source[book][chapter]).find(verse=>source[book][chapter][verse]);
-  if (first!==undefined) setReadingBookmark(readerAddress()+'/'+first);
+  const verse = first ? Number(first) : 1;
+  studySelection.commentary.location = {book,chapter:Number(chapter),verse};
+  studySelection.original.location = {book,chapter:Number(chapter),verse};
+  setReadingBookmark(readerAddress()+'/'+verse);
   chosen.clear();
   save();
   render();
@@ -3237,8 +3251,15 @@ function chooseBook(book) {
   modal.close();
   if (current.book!==book) {
     const chapter = Number(Object.keys(chapters)[0]);
-    if (current.selection) current.selection.location = {book,chapter};
-    else setReader([current.edition,book,chapter,1].join('/'));
+    studySelection.commentary.location = {book,chapter,verse:1};
+    studySelection.original.location = {book,chapter,verse:1};
+    if (current.selection) {
+      current.selection.location = {book,chapter,verse:1};
+      state.reader.book = book;
+      state.reader.chapter = chapter;
+    } else {
+      setReader([current.edition,book,chapter,1].join('/'));
+    }
     render();
   }
   main.querySelector('[data-action="pick-book"]')?.focus({preventScroll:true});
@@ -3514,11 +3535,23 @@ window.addEventListener('resize',()=>{
   updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
 window.addEventListener('scroll',()=>{
-  if (view!=='bible' || !renderedBible) return;
-  const scrollTop = document.scrollingElement.scrollTop;
-  if (scrollTop===lastBibleScrollTop) return;
-  lastBibleScrollTop = scrollTop;
-  if (readingBookmarkTimer===undefined) readingBookmarkTimer = setTimeout(flushReadingBookmark,160);
+  const isReading = view==='bible' || view==='commentary' || view==='original';
+  if (!isReading) return;
+  if (view==='bible' && renderedBible) {
+    const scrollTop = document.scrollingElement.scrollTop;
+    if (scrollTop===lastBibleScrollTop) return;
+    lastBibleScrollTop = scrollTop;
+    if (readingBookmarkTimer===undefined) readingBookmarkTimer = setTimeout(flushReadingBookmark,160);
+  }
+  const pos = currentReadingPosition();
+  if (pos && pos.book && pos.chapter) {
+    studySelection.commentary.location = {book:pos.book, chapter:pos.chapter, verse:pos.verse ?? 1};
+    studySelection.original.location = {book:pos.book, chapter:pos.chapter, verse:pos.verse ?? 1};
+    if (view!=='bible') {
+      state.reader.book = pos.book;
+      state.reader.chapter = pos.chapter;
+    }
+  }
 },{passive:true});
 window.addEventListener('pagehide',flushReadingBookmark);
 document.fonts?.addEventListener('loadingdone',()=>updateVerseScrollRoom());
