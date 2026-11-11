@@ -541,6 +541,37 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 :root[data-appearance="dark"] .record-note-label {
   color: #92bceb;
 }
+.record-journal-content {
+  margin-top: 6px;
+  padding: 10px 13px;
+  border-radius: 11px;
+  background: color-mix(in srgb, #fbf7fd 80%, var(--card));
+  border: 1px solid color-mix(in srgb, #e8d7f8 55%, var(--line));
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.record-journal-title {
+  font-size: 0.9375rem;
+  font-weight: 750;
+  color: #5f2b8c;
+  margin: 0;
+  line-height: 1.4;
+}
+.record-journal-text {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+:root[data-appearance="dark"] .record-journal-content {
+  background: #241630;
+  border-color: #3f2752;
+}
+:root[data-appearance="dark"] .record-journal-title {
+  color: #cf9eeb;
+}
 :root[data-appearance="dark"] .calendar-mark-card.highlight {
   border-color: #4a3e20;
 }

@@ -1675,7 +1675,7 @@ function calendarDaySummary(day,items,records) {
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
     (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
-const recordFilters = {all:'전체',highlight:'형광펜·밑줄',note:'메모',journal:'묵상 담기'};
+const recordFilters = {all:'전체',highlight:'형광펜·밑줄',note:'메모',journal:'묵상 노트'};
 function markKinds(mark) {
   const kinds = [];
   if (mark.color || mark.highlight || mark.underline) kinds.push('highlight');
@@ -1707,8 +1707,8 @@ function recordRows() {
     add(key,keys.map(verseNumber),markDay,{color,highlight,underline});
   }
   for (const [day, entry] of Object.entries(state.journal)) {
+    if (!hasJournalContent(entry)) continue;
     const validRefs = (entry.verses || []).filter(validRef);
-    if (!validRefs.length) continue;
 
     const chMap = new Map();
     for (const ref of validRefs) {
@@ -1718,7 +1718,7 @@ function recordRows() {
       chMap.get(chKey).push(verse);
     }
 
-    const firstRef = validRefs[0];
+    const firstRef = validRefs[0] || (state.reader.edition ? state.reader.edition + '/JHN/1/1' : 'krv/JHN/1/1');
     const chSummaries = [...chMap.entries()].map(([chKey, vNums]) => {
       vNums.sort((a,b) => a - b);
       return selectionReference(chKey + '/' + vNums[0], vNums);
@@ -1728,6 +1728,8 @@ function recordRows() {
     add(firstRef, validRefs.map(ref => readRef(ref).verse), day, {
       journal: true,
       journalTitle: entry.title,
+      journalReflection: entry.reflection,
+      journalDone: entry.done,
       combinedRefTitle,
       allRefs: validRefs
     }, undefined, day);
@@ -1755,25 +1757,45 @@ function renderRecordCard(item) {
   const {key,verses,day,mark,noteKey,journalDay} = item;
 
   const kindClass = mark.journal ? 'journal' : mark.note ? 'note' : 'highlight';
-  const markKind = mark.journal ? '묵상 담기' : mark.note ? '메모' : '형광펜·밑줄';
+  const markKind = mark.journal ? '묵상 노트' : mark.note ? '메모' : '형광펜·밑줄';
 
-  let content;
-  let badgeTitle;
+  let content = '';
+  let badgeTitle = '';
 
-  if (mark.journal && mark.allRefs?.length) {
-    badgeTitle = esc(mark.combinedRefTitle || selectionReference(key,verses)) + ' (' + mark.allRefs.length + '구절) · ' + esc(editionLabel(readRef(key).edition));
+  if (mark.journal) {
+    const hasRefs = Boolean(mark.allRefs?.length);
+    const refCount = hasRefs ? ' (' + mark.allRefs.length + '구절)' : '';
+    badgeTitle = hasRefs
+      ? esc(mark.combinedRefTitle || selectionReference(key,verses)) + refCount + ' · ' + esc(editionLabel(readRef(key).edition))
+      : (mark.journalTitle ? esc(mark.journalTitle) : '나의 묵상');
 
-    const versesHtml = mark.allRefs.map(ref => {
-      const {book, chapter, verse} = readRef(ref);
-      const body = verseText(ref) || savedVerseText(ref);
-      return '<div class="journal-bundled-verse">'+
-        '<span class="record-verse-number">'+esc(titles[book] || book)+' '+chapter+':'+verse+'</span>'+
-        '<span class="verse-text">'+esc(body)+'</span>'+
+    let versesHtml = '';
+    if (hasRefs) {
+      versesHtml = '<blockquote class="calendar-quote-body journal-bundled-quote">' +
+        mark.allRefs.map(ref => {
+          const {book, chapter, verse} = readRef(ref);
+          const body = verseText(ref) || savedVerseText(ref);
+          return '<div class="journal-bundled-verse">'+
+            '<span class="record-verse-number">'+esc(titles[book] || book)+' '+chapter+':'+verse+'</span>'+
+            '<span class="verse-text">'+esc(body)+'</span>'+
+          '</div>';
+        }).join('') +
+      '</blockquote>';
+    }
+
+    let reflectionHtml = '';
+    if (mark.journalReflection?.trim()) {
+      reflectionHtml = '<div class="record-journal-content">'+
+        (mark.journalTitle ? '<h4 class="record-journal-title">'+esc(mark.journalTitle)+'</h4>' : '')+
+        '<div class="record-journal-text">'+esc(mark.journalReflection)+'</div>'+
       '</div>';
-    }).join('');
+    } else if (mark.journalTitle) {
+      reflectionHtml = '<div class="record-journal-content">'+
+        '<h4 class="record-journal-title" style="margin:0;">'+esc(mark.journalTitle)+'</h4>'+
+      '</div>';
+    }
 
-    content = '<blockquote class="calendar-quote-body journal-bundled-quote">'+versesHtml+'</blockquote>'+
-      (mark.journalTitle ? '<p class="record-journal-sub">📖 묵상: '+esc(mark.journalTitle)+'</p>' : '');
+    content = versesHtml + reflectionHtml;
   } else if (mark.note) {
     const passage = recordPassage(key,verses);
     const excerpt = passage.length?passage.map(([number,body])=>
@@ -1804,7 +1826,7 @@ function renderRecordCard(item) {
     '</div></div>'+
     content+
     '<div class="row calendar-mark-footer">'+
-    '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
+    (mark.allRefs?.length ? '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>' : '<span></span>')+
     '<div class="item-actions card-actions">'+
     (journalDay ? '<button type="button" class="text-action" data-nav="journal/'+journalDay+'">묵상 열기</button>' : '')+
     (noteKey ? '<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>' : '')+
