@@ -1281,11 +1281,30 @@ function readingProgress(canon,year = '') {
   return {counts,rounds,remaining,today:daily.get(dateKey()) ?? new Set()};
 }
 function readingScreen() {
+  const isBookChecks = location.hash === '#book-checks';
+  const tabs = '<nav class="settings-tabs reading-tabs" role="group" aria-label="체크 분류">'+
+    '<button type="button" data-action="set-reading-tab" data-tab="reading" aria-pressed="'+(!isBookChecks)+'">묵상 일독 체크</button>'+
+    '<button type="button" data-action="set-reading-tab" data-tab="book-checks" aria-pressed="'+(isBookChecks)+'">성경책별 체크</button>'+
+    '</nav>';
+
+  if (isBookChecks) {
+    const year = selectedTrackerYear();
+    const yearLabel = year?year+'년':'전체 연도';
+    const {counts} = readingProgress([],year);
+    const bookLabel = trackerBook?titles[trackerBook]:'책 바로 선택';
+    return heading('READING RECORDS','성경 묵상·통독 체크','연도별 묵상 기록과 전체 일독 진행률을 확인하세요.')+
+      tabs +
+      '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
+      readerPickerField('성경책',bookLabel,'pick-tracker-book','성경책 선택')+'</div>'+
+      (trackerBook?bookChecksDetail(trackerBook,yearLabel,counts):bookChecksOverview(yearLabel,counts));
+  }
+
   const canon = canonChapters();
   const {counts,rounds,remaining,today} = readingProgress(canon);
   const progress = canon.length-remaining.length;
   const percent = canon.length ? (progress/canon.length*100).toFixed(1) : '0.0';
-  return heading('READING JOURNEY','묵상 체크·일독','묵상한 장과 다시 읽은 횟수를 한눈에 봐요.')+
+  return heading('READING JOURNEY','성경 묵상·통독 체크','연도별 묵상 기록과 전체 일독 진행률을 확인하세요.')+
+    tabs +
     '<section class="card reading-progress"><div class="row"><h2>누적 일독 · '+String(rounds+1)+'회차</h2><span class="reading-badge">일독 완료 '+rounds+'회</span></div>'+
     '<div class="row reading-count"><strong>'+progress+' <small>/ '+canon.length+'장</small></strong><span>'+percent+'%</span></div>'+
     '<progress max="'+Math.max(1,canon.length)+'" value="'+progress+'" aria-label="현재 일독 진행률"></progress>'+
@@ -1301,14 +1320,7 @@ function selectedTrackerYear() {
   return dateKey().slice(0,4);
 }
 function bookChecksScreen() {
-  const year = selectedTrackerYear();
-  const yearLabel = year?year+'년':'전체 연도';
-  const {counts} = readingProgress([],year);
-  const bookLabel = trackerBook?titles[trackerBook]:'책 바로 선택';
-  return heading('READING RECORDS','성경책별 체크','연도별 묵상 기록을 확인하세요.')+
-    '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
-    readerPickerField('성경책',bookLabel,'pick-tracker-book','성경책 선택')+'</div>'+
-    (trackerBook?bookChecksDetail(trackerBook,yearLabel,counts):bookChecksOverview(yearLabel,counts));
+  return readingScreen();
 }
 function bookChecksProgress(label,yearLabel,visited,total) {
   return '<div class="reading-book-progress"><div class="row">'+
@@ -1763,9 +1775,15 @@ function recordsScreen() {
   const counts = {all:rows.length,highlight:0,underline:0,note:0};
   for (const {mark} of rows) for (const kind of markKinds(mark)) counts[kind]++;
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
-  const pickers = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
+  const filterChips = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
-    return readerPickerField(label,selected?.[1] ?? all,'pick-record-'+key,label+' 선택');
+    const isFiltered = Boolean(recordSelection[key]);
+    const valText = selected ? selected[1] : all;
+    return '<button type="button" class="filter-chip '+(isFiltered?'active':'')+'" data-action="pick-record-'+key+'" aria-label="'+label+' 필터 선택">'+
+      '<span class="filter-chip-label">'+label+'</span>'+
+      '<span class="filter-chip-val">'+esc(valText)+'</span>'+
+      icon('down')+
+      '</button>';
   }).join('');
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
@@ -1774,17 +1792,23 @@ function recordsScreen() {
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
-      ['reading','check','묵상 체크','성경 일독'],
-      ['book-checks','book','성경책별 체크','연도별 장 기록'],
+      ['reading','check','묵상·통독 체크','일독 진행 · 성경책별 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
       '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
       '<strong>'+esc(reference(bundle.verses[0].ref))+' · '+bundle.verses.length+'구절</strong>'+
       '<span class="muted">'+esc(bundle.day)+'</span></button><button type="button" class="text-action destructive" '+
       'data-remove-verse-bundle="'+bundle.id+'">삭제</button></article>').join(''):'')+
-    '<div class="section-head"><h2>말씀 기록</h2></div><div class="record-toolbar"><div class="filters record-type-tabs" role="group" aria-label="기록 종류">'+Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+'</div>'+
-    '<details class="record-filter-panel" '+(activeFilters?'open':'')+'><summary>'+icon('filter')+'<span>번역본·성경·연도'+(activeFilters?' · '+activeFilters+'개 적용':'')+'</span>'+icon('down')+'</summary>'+
-    '<div class="record-filters">'+pickers+'</div>'+(activeFilters?'<button type="button" class="text-action" data-action="clear-record-filters">필터 초기화</button>':'')+'</details></div>'+
+    '<div class="section-head"><h2>말씀 기록</h2></div>'+
+    '<div class="record-toolbar">'+
+      '<div class="record-type-tabs" role="group" aria-label="기록 종류">'+
+        Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+
+      '</div>'+
+      '<div class="record-filter-row">'+
+        filterChips +
+        (activeFilters ? '<button type="button" class="filter-reset-chip" data-action="clear-record-filters" aria-label="필터 초기화">'+icon('close')+'<span>초기화</span></button>' : '')+
+      '</div>'+
+    '</div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
 function settingsScreen() {
@@ -2379,7 +2403,12 @@ const actions = {
     for (const key of Object.keys(recordSelection)) recordSelection[key] = '';
     recordPage = 0;
     render();
-    main.querySelector('.record-filter-panel > summary')?.focus({preventScroll:true});
+  },
+  'set-reading-tab'() {
+    const btn = event.target.closest('[data-tab]');
+    const tab = btn?.dataset.tab || 'reading';
+    history.replaceState(null, '', '#' + tab);
+    render();
   },
   'pick-tracker-year'() { showTrackerPicker('year'); },
   'pick-tracker-book'() { showTrackerPicker('book'); },

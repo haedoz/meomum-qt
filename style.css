@@ -796,25 +796,133 @@ select, .filters .pill { font-size: 0.875rem; }
   font-size: 0.72rem;
   opacity: 0.85;
 }
-.record-filter-panel {
+.record-toolbar {
+  padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--surface-radius);
   background: var(--card);
-  overflow: hidden;
+  box-shadow: 0 2px 8px var(--glass-shadow);
+  display: grid;
+  gap: 10px;
 }
-.record-filter-panel summary {
-  padding: 10px 14px;
+.record-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  background: var(--soft);
+  padding: 4px;
+  border-radius: 12px;
+}
+.record-type-tabs .pill {
+  min-width: 0;
+  min-height: 38px;
+  padding: 4px 6px;
+  gap: 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--muted);
   cursor: pointer;
+  transition: all .15s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
 }
-.record-filter-panel summary svg:first-child { width: 14px; height: 14px; color: var(--accent-ink); }
-.record-filter-panel summary svg:last-child { margin-left: auto; width: 14px; height: 14px; }
-.record-filter-panel[open] summary svg:last-child { transform: rotate(180deg); }
+.record-type-tabs .pill[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--accent-ink);
+  box-shadow: 0 2px 6px var(--glass-shadow);
+  font-weight: 750;
+}
+.record-type-tabs .pill span {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+.record-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.filter-chip:hover {
+  background: var(--card);
+  border-color: var(--accent-ink);
+}
+.filter-chip.active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+  font-weight: 700;
+}
+.filter-chip-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.filter-chip.active .filter-chip-label {
+  color: var(--accent-ink);
+  opacity: 0.8;
+}
+.filter-chip-val {
+  font-weight: 650;
+}
+.filter-chip svg {
+  width: 11px;
+  height: 11px;
+  color: var(--muted);
+  flex: none;
+}
+.filter-chip.active svg {
+  color: var(--accent-ink);
+}
+.filter-reset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 18px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all .15s ease;
+}
+.filter-reset-chip:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+  background: var(--soft);
+}
+.filter-reset-chip svg {
+  width: 10px;
+  height: 10px;
+}
+.reading-tabs {
+  margin-bottom: 16px;
+}
 #record-list .record-item {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1684,19 +1792,6 @@ form[name="year-editor"] :is(input,textarea):focus {
 }
 .day-summary-title h2 { font-size: 1rem; }
 
-.record-toolbar { padding: 9px; border: 1px solid var(--line); border-radius: var(--surface-radius); background: var(--card); }
-.record-type-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 3px; margin: 0; }
-.record-type-tabs .pill { min-width: 0; min-height: 40px; padding: 4px; gap: 3px; border: 0; border-radius: 9px; font-size: .76rem; }
-.record-type-tabs .pill[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
-.record-filter-panel { border-top: 1px solid var(--line); margin-top: 7px; }
-.record-filter-panel > summary {
-  display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 4px 5px; cursor: pointer; color: var(--muted);
-  font-size: .78rem; list-style: none;
-}
-.record-filter-panel > summary::-webkit-details-marker { display: none; }
-.record-filter-panel > summary svg { width: 15px; height: 15px; flex: none; }
-.record-filter-panel > summary svg:last-child { margin-inline-start: auto; }
-.record-filter-panel[open] > summary svg:last-child { transform: rotate(180deg); }
 .record-list-tools { flex-wrap: wrap; gap: 4px 8px; margin-bottom: 7px; }
 .record-list-tools .record-result { margin: 0; }
 .record-sort { display: inline-flex; align-items: center; gap: 4px; padding-inline: 8px; border-radius: 8px; background: var(--soft); }
