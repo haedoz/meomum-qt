@@ -77,13 +77,9 @@ const settings = {
 const themes = {system:'시스템 설정',light:'라이트',dark:'다크'};
 const palettes = {slate:'미스트 블루',lavender:'모브 그레이',oat:'오트 베이지',gray:'라이트 그레이'};
 const fontChoices = {
-  pretendard: '프리텐다드 (기본)',
+  pretendard: '프리텐다드',
   paperlogy: '페이퍼로지',
   notosanskr: '노토 산스 KR',
-  ebgaramond: 'EB Garamond (클래식 영문)',
-  cardo: 'Cardo (성경 원어·헬라어·영문)',
-  gentium: 'Gentium Plus (헬라어·그리스어)',
-  notohebrew: 'Noto Serif Hebrew (히브리어 원어)',
   system: '기기 기본 글꼴',
   custom: '가져온 글꼴'
 };
@@ -93,7 +89,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',fontKorean:'pretendard',fontEnglish:'ebgaramond',fontHebrew:'notohebrew',fontGreek:'cardo',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
@@ -232,20 +228,44 @@ function editionLabel(id) {
   return editions[id] ?? retiredEditions[id] ?? state.editionLabels[id] ?? '가져온 역본';
 }
 function importPanel() {
-  const installed = installedEditionIds().map(id=>{
+  const installedCards = installedEditionIds().map(id=>{
     const bible = Object.hasOwn(editions,id);
-    const label = editions[id] ?? commentaries[id]?.label ?? originals[id]?.label ?? dictionaries[id]?.label;
-    const title = bible?'<button type="button" data-read-edition="'+id+'">'+esc(label)+' · 읽기 '+icon('arrow')+'</button>':
-      '<span>'+esc(label)+' · '+(commentaries[id]?'주석':dictionaries[id]?'원어사전':'원어')+'</span>';
-    return '<li>'+title+'<button type="button" class="text-action destructive" data-remove-edition="'+id+
-      '" aria-label="'+esc(label)+' 파일 삭제" '+(importingEditions || deletingEdition?'disabled':'')+'>삭제</button></li>';
+    const commentary = commentaries[id];
+    const original = originals[id];
+    const dictionary = dictionaries[id];
+    const label = editions[id] ?? commentary?.label ?? original?.label ?? dictionary?.label ?? '성경 자료';
+    const kind = bible ? 'bible' : commentary ? 'commentary' : original ? 'original' : 'dictionary';
+    const kindLabel = bible ? '성경' : commentary ? '주석' : original ? '원전분해' : '원어사전';
+    const kindIcon = bible ? icon('book') : commentary ? icon('comment') : original ? icon('search') : icon('folder');
+    const kindDesc = bible ? '성경 본문 읽기 및 번역본 대조' : commentary ? '장별·절별 성경 해설 주석' : original ? '히브리어·헬라어 원문 및 단어 분해' : '스트롱 코드 원어사전 및 어원';
+
+    return '<article class="installed-edition-card '+kind+'">'+
+      '<div class="edition-card-main">'+
+        '<div class="edition-card-icon">'+kindIcon+'</div>'+
+        '<div class="edition-card-info">'+
+          '<div class="edition-card-title-row">'+
+            '<strong class="edition-card-name">'+esc(label)+'</strong>'+
+            '<span class="edition-kind-pill '+kind+'">'+kindLabel+'</span>'+
+          '</div>'+
+          '<p class="edition-card-desc muted">'+kindDesc+'</p>'+
+        '</div>'+
+      '</div>'+
+      '<div class="edition-card-actions">'+
+        (bible ? '<button type="button" class="btn edition-read-btn" data-read-edition="'+id+'">본문 읽기 '+icon('arrow')+'</button>' : '')+
+        '<button type="button" class="text-action destructive" data-remove-edition="'+id+
+        '" aria-label="'+esc(label)+' 파일 삭제" '+(importingEditions || deletingEdition?'disabled':'')+'>삭제</button>'+
+      '</div>'+
+    '</article>';
   });
-  return '<div class="section-head"><h2 id="local-library-heading" tabindex="-1">내 성경 자료</h2></div><section class="card stack local-editions">'+
-    '<p>사용할 성경 번역본 파일(.bdb)을 추가해 주세요. 주석(.cdb), 원전분해(.sdb), 원어사전(.dct) 파일도 추가할 수 있어요. 가져온 파일은 이 기기에 저장돼요.</p>'+
-    '<button class="btn primary" data-action="choose-bdb" '+(importingEditions || deletingEdition?'disabled':'')+'>'+(importingEditions?'읽는 중…':'성경 번역본·자료 추가')+'</button>'+
+  return '<div class="section-head"><h2 id="local-library-heading" tabindex="-1">자료 추가하기</h2></div><section class="card stack local-editions">'+
+    '<p>사용할 성경 번역본 파일(.bdb)을 추가해 주세요. 주석(.cdb), 원전분해(.sdb), 원어사전(.dct) 파일도 추가할 수 있어요. 가져온 파일은 이 기기에 안전하게 저장돼요.</p>'+
+    '<button class="btn primary" data-action="choose-bdb" '+(importingEditions || deletingEdition?'disabled':'')+'>'+(importingEditions?'읽는 중…':'성경 번역본·자료 파일 추가')+'</button>'+
     '<input id="bdb-files" type="file" accept=".bdb,.cdb,.sdb,.dct,application/vnd.sqlite3,application/x-sqlite3,application/octet-stream" multiple hidden>'+
     '<p id="bdb-status" class="muted" role="status">'+esc(importMessage)+'</p>'+
-    (installed.length?'<ul class="installed-editions">'+installed.join('')+'</ul>':'')+'</section>';
+    '</section>'+
+    '<div class="section-head" style="margin-top:24px;"><div class="row"><h2>내 성경 자료 목록</h2><span class="reading-badge">'+installedCards.length+'개 보관 중</span></div></div>'+
+    (installedCards.length ? '<div class="installed-editions-list">'+installedCards.join('')+'</div>' :
+      '<section class="card empty" style="margin-top:10px;"><p class="muted">아직 기기에 추가된 성경이나 주석 자료가 없어요. 위에서 파일을 추가해 보세요.</p></section>');
 }
 async function importBibleFiles(files) {
   if (!files.length || importingEditions || deletingEdition) return;
@@ -1508,14 +1528,20 @@ function verseActions() {
   if (!chosen.size) return '';
   const markers = indexVerseMarkers();
   const selected = [...chosen].map(key=>verseMark(markers.get(verseAddress(key))?.mark));
-  const erase = selected.every(Boolean);
-  const marker = erase?selected[0]:{style:state.markerStyle,color:state.markerColor};
-  const label = erase?'말씀 표시 해제':markStyles[marker.style]+' 바로 적용';
+  const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
+  const dots = quickColors.map((color, idx) => {
+    const isThisColor = selected.length && selected.every(m => m && m.color?.toLowerCase() === color.toLowerCase());
+    return '<button type="button" class="marker-dot-btn '+(isThisColor?'active':'')+'" data-action="apply-dot-marker" data-preset="'+idx+
+      '" style="background:'+color+';" aria-label="'+(idx+1)+'번 형광펜 바로 칠하기" title="'+(idx+1)+'번 형광펜"></button>';
+  }).join('');
+
   return '<div class="selection verse-actions" aria-label="선택한 구절 메뉴"><div class="verse-actions-top">'+
     '<span class="compact">'+chosen.size+'절 선택</span><button class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div>'+
-    '<div class="verse-actions-row verse-actions-main"><div class="marker-group" role="group" aria-label="말씀 표시">'+
-    '<button type="button" class="icon-action marker-quick" data-action="quick-marker" aria-label="'+label+'" title="'+label+' · 길게 눌러 옵션" style="--marker-color:'+marker.color+';--marker-style:'+(['fill','wavy'].includes(marker.style)?'solid':marker.style)+'">'+icon('marker')+'</button>'+
-    '<button type="button" class="icon-action marker-options" data-action="highlight" aria-haspopup="dialog" aria-label="형광펜 색상 및 밑줄 옵션">'+icon('down')+'</button></div>'+
+    '<div class="verse-actions-row verse-actions-main">'+
+    '<div class="quick-marker-palette" role="group" aria-label="퀵 형광펜">'+
+      dots+
+      '<button type="button" class="marker-dot-more" data-action="highlight" aria-haspopup="dialog" aria-label="형광펜 상세 설정">'+icon('down')+'</button>'+
+    '</div>'+
     '<button class="btn" data-action="note">메모</button>'+
     '<button type="button" class="btn icon-action" data-action="copy-verses" aria-label="구절 복사" title="구절 복사">'+icon('copy')+'</button>'+
     '<button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
@@ -1981,7 +2007,12 @@ function menuOrderSettings() {
     '<div class="row menu-order-heading"><div><h2 id="menu-order-heading">메뉴 순서</h2><p class="muted">메뉴바 미리보기</p></div>'+
     '<button type="button" class="menu-order-edit" data-action="choose-menu-order" aria-haspopup="dialog">순서 바꾸기 '+icon('right')+'</button></div>'+
     '<ol class="menu-order-preview" role="list" aria-label="현재 메뉴 순서">'+order+'</ol>'+
-    '<p class="menu-order-caption">첫 화면 <strong>'+first+'</strong></p></section>';
+    '<p class="menu-order-caption">첫 화면 <strong>'+first+'</strong></p></section>'+
+    '<div class="section-head" style="margin-top:20px;"><h2>구절 이동 동작</h2></div><section class="card verse-arrival-settings">'+
+    '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+
+    '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 검색하거나 직접 스크롤할 때 마지막 절도 상단 선택 줄 바로 아래까지 올릴 수 있어요.</span></span>'+
+    '<span class="verse-arrival-switch"><input type="checkbox" role="switch" id="align-verse-at-top" aria-labelledby="verse-arrival-label" '+
+    'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
 }
 function showMenuOrderPicker() {
   pendingMenuOrder = [];
@@ -2498,6 +2529,7 @@ function validatedBackup(payload) {
       result.editionLabels[id] = label;
     }
   }
+  result.quickMarkers = Array.isArray(input.quickMarkers) && input.quickMarkers.length===3 ? input.quickMarkers : ['#e6bc43','#7cb668','#dc7d9c'];
   result.readingGoal = input.readingGoal;
   result.commentaryEdition = input.commentaryEdition;
   result.alignVerseAtTop = input.alignVerseAtTop;
@@ -2612,38 +2644,10 @@ const actions = {
     render();
     notify('통독 기록을 보관함에 저장했어요!');
   },
-  'set-font-ko'(btn) {
+  'set-app-font'(btn) {
     const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
     if (f) {
-      state.fontKorean = f;
       state.fontChoice = f;
-      applyDisplay();
-      save();
-      render();
-    }
-  },
-  'set-font-en'(btn) {
-    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
-    if (f) {
-      state.fontEnglish = f;
-      applyDisplay();
-      save();
-      render();
-    }
-  },
-  'set-font-he'(btn) {
-    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
-    if (f) {
-      state.fontHebrew = f;
-      applyDisplay();
-      save();
-      render();
-    }
-  },
-  'set-font-grc'(btn) {
-    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
-    if (f) {
-      state.fontGreek = f;
       applyDisplay();
       save();
       render();
@@ -2676,6 +2680,33 @@ const actions = {
   'reset-reading-range'() { setReadingRange(null); },
   highlight() { showMarkDialog(); },
   'quick-marker'() { if (Date.now()>=ignoreMarkerClick) quickMarker(); },
+  'apply-dot-marker'(button) {
+    const preset = Number(button.dataset.preset);
+    const color = (state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'])[preset] || '#e6bc43';
+    const keys = [...chosen];
+    const markers = indexVerseMarkers();
+    const allHaveColor = keys.length && keys.every(key => {
+      const m = verseMark(markers.get(verseAddress(key))?.mark);
+      return m && m.color?.toLowerCase() === color.toLowerCase();
+    });
+    if (allHaveColor) {
+      applyVerseMarks(keys, undefined, '형광펜을 지웠어요.');
+    } else {
+      applyVerseMarks(keys, {style: 'fill', color}, (preset + 1) + '번 형광펜을 칠했어요.');
+    }
+  },
+  'save-to-quick'(button) {
+    const preset = Number(button.dataset.preset);
+    const colorInput = modal.querySelector('#mark-color');
+    const color = colorInput?.value;
+    if (validColor(color)) {
+      if (!Array.isArray(state.quickMarkers)) state.quickMarkers = ['#e6bc43','#7cb668','#dc7d9c'];
+      state.quickMarkers[preset] = color;
+      save();
+      notify((preset + 1) + '번 퀵 형광펜에 지정했어요.');
+      render();
+    }
+  },
   'undo-marker'() {
     if (!lastMarkerEdit) return;
     for (const [key,previous] of lastMarkerEdit) {
@@ -3457,6 +3488,13 @@ main.addEventListener('change',async event => {
   const field = event.target;
   updateDraft(field.form);
   updateEditorDate(field);
+  if (field.dataset.action === 'set-quick-color') {
+    const preset = Number(field.dataset.preset);
+    if (!Array.isArray(state.quickMarkers)) state.quickMarkers = ['#e6bc43','#7cb668','#dc7d9c'];
+    state.quickMarkers[preset] = field.value;
+    save();
+    return render();
+  }
   if (field.id==='align-verse-at-top') {
     state.alignVerseAtTop = field.checked;
     return save();
@@ -3527,6 +3565,7 @@ function migrate(input) {
   result.fontEnglish = input.fontEnglish ?? 'ebgaramond';
   result.fontHebrew = input.fontHebrew ?? 'notohebrew';
   result.fontGreek = input.fontGreek ?? 'cardo';
+  result.quickMarkers = Array.isArray(input.quickMarkers) && input.quickMarkers.length===3 ? input.quickMarkers : ['#e6bc43','#7cb668','#dc7d9c'];
   const menuOrder = Array.isArray(input.menuOrder) ? input.menuOrder.filter(route=>menuItems.has(route)) : [];
   result.menuOrder = [...new Set([...menuOrder,...menuItems.keys()])];
   if (!Object.hasOwn(editions,result.reader.edition)) result.reader.edition = Object.keys(editions)[0] ?? '';
@@ -3587,41 +3626,7 @@ async function importCustomFont(file) {
     else applyDisplay();
   }
 }
-const fontCategories = {
-  ko: {
-    label: '한글 본문 글꼴',
-    options: [
-      ['pretendard', '프리텐다드'],
-      ['paperlogy', '페이퍼로지'],
-      ['notosanskr', '노토 산스'],
-      ['system', '기기 기본'],
-    ]
-  },
-  en: {
-    label: '영문 성경 글꼴',
-    options: [
-      ['ebgaramond', 'EB Garamond'],
-      ['cardo', 'Cardo'],
-      ['system', '기기 기본']
-    ]
-  },
-  he: {
-    label: '히브리어 구약 원어',
-    options: [
-      ['notohebrew', 'Noto Serif'],
-      ['cardo', 'Cardo'],
-      ['system', '기기 기본']
-    ]
-  },
-  grc: {
-    label: '헬라어 신약 원어',
-    options: [
-      ['cardo', 'Cardo'],
-      ['gentium', 'Gentium Plus'],
-      ['system', '기기 기본']
-    ]
-  }
-};
+
 function applyDisplay() {
   const root = document.documentElement;
   const size = displayValue('fontSize',state.display.fontSize);
@@ -3685,61 +3690,65 @@ function displayFields() {
   }).join('')+'</div>';
 }
 function readingPreview() {
-  return '<section class="reading-example"><div class="row"><h3>글꼴 실시간 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
-    '<div class="bible-passage preview-passage">'+
-      '<div class="verse"><span class="number" style="font-size:0.75rem;">한글</span><span style="font-family:var(--font-ko)">여호와는 나의 목자시니 내게 부족함이 없으리로다. (시 23:1)</span></div>'+
-      '<div class="verse"><span class="number" style="font-size:0.75rem;">영어</span><span style="font-family:var(--font-en)">The LORD is my shepherd; I shall not want. (PSA 23:1)</span></div>'+
-      '<div class="verse"><span class="number" style="font-size:0.75rem;">히브리어</span><span lang="he" dir="rtl">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃ (תהלים כג:א)</span></div>'+
-      '<div class="verse"><span class="number" style="font-size:0.75rem;">헬라어</span><span lang="grc">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν. (요 1:1)</span></div>'+
-    '</div></section>';
+  const id = state.reader.edition;
+  const texts = id ? [1,2,3].map(number=>verseText(id+'/PSA/23/'+number)) :
+    ['오늘 읽을 말씀을 천천히 살펴봐요.','마음에 남는 문장을 묵상 노트에 적어요.','한 줄씩 적으며 하루를 돌아봐요.'];
+  return '<section class="reading-example"><div class="row"><h3>성경 본문 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
+    '<div class="bible-passage preview-passage"><header class="passage-heading"><strong>'+(id?'시편 23편':'글자 설정 예시')+'</strong><span>'+(id?esc(editionLabel(id)):'예시 문장')+'</span></header>'+
+    texts.map((text,index)=>'<div class="verse"><span class="number">'+(index+1)+'</span>'+markedText(text)+'</div>').join('')+'</div></section>';
 }
 function displaySettings() {
   const swatches = Object.entries(palettes).map(([id,label])=>
     '<label class="palette-option"><input type="radio" name="palette" value="'+id+'" '+(state.palette===id?'checked':'')+'>'+
     '<span class="palette-swatch" data-swatch="'+id+'" aria-hidden="true"></span><span>'+label+'</span></label>').join('');
 
-  const ko = state.fontKorean || 'pretendard';
-  const en = state.fontEnglish || 'ebgaramond';
-  const he = state.fontHebrew || 'notohebrew';
-  const grc = state.fontGreek || 'cardo';
+  const fontChips = [
+    ['pretendard', '프리텐다드'],
+    ['paperlogy', '페이퍼로지'],
+    ['notosanskr', '노토 산스'],
+    ['system', '기기 기본'],
+    ...(customFont ? [['custom', customFont.name]] : [])
+  ];
 
-  const fontGroupHtml = (categoryKey, currentVal, actionName) => {
-    const cat = fontCategories[categoryKey];
-    const opts = [...cat.options, ...(categoryKey==='ko' && customFont ? [['custom', customFont.name]] : [])];
-    const currentLabel = opts.find(([val]) => val === currentVal)?.[1] || currentVal;
-    return '<div class="font-group-block">'+
-      '<div class="row font-group-header">'+
-        '<span class="font-group-label">'+cat.label+'</span>'+
-        '<span class="font-group-current">'+esc(currentLabel)+'</span>'+
-      '</div>'+
-      '<div class="font-chip-grid">'+
-        opts.map(([val, label]) =>
-          '<button type="button" class="font-chip '+(currentVal===val?'active':'')+'" data-action="'+actionName+'" data-font="'+val+'">'+
-          esc(label)+
-          '</button>').join('')+
-      '</div></div>';
-  };
+  const currentFont = state.fontChoice === 'custom' && !customFont ? 'pretendard' : state.fontChoice;
+  const currentFontLabel = fontChips.find(([val]) => val === currentFont)?.[1] || currentFont;
+  const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
 
   return '<div class="section-head"><h2>화면 테마</h2></div><section class="card stack appearance-settings">'+
     '<fieldset class="palette-field"><legend>색상 테마</legend><div class="palette-grid">'+swatches+'</div></fieldset>'+
     '<label class="field">화면 모드<select id="appearance">'+options(Object.entries(themes),state.theme)+'</select></label></section>'+
     '<div class="section-head"><h2>글꼴과 읽기</h2></div><section class="card stack reading-settings">'+
-    fontGroupHtml('ko', ko, 'set-font-ko')+
-    fontGroupHtml('en', en, 'set-font-en')+
-    fontGroupHtml('he', he, 'set-font-he')+
-    fontGroupHtml('grc', grc, 'set-font-grc')+
-    '<div class="row" style="margin-top:6px;">'+
-      '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
-      '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+    '<div class="font-group-block">'+
+      '<div class="row font-group-header">'+
+        '<span class="font-group-label">앱 글꼴</span>'+
+        '<span class="font-group-current">'+esc(currentFontLabel)+'</span>'+
+      '</div>'+
+      '<div class="font-chip-grid">'+
+        fontChips.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(currentFont===val?'active':'')+'" data-action="set-app-font" data-font="'+val+'">'+
+          esc(label)+
+          '</button>').join('')+
+      '</div>'+
+      '<div class="row" style="margin-top:10px;">'+
+        '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
+        '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+      '</div>'+
+      '<p class="muted" style="font-size:0.75rem; margin-top:4px;">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요. 글꼴 파일은 백업에 포함되지 않아요.</p>'+
     '</div>'+
-    '<p class="muted" style="font-size:0.75rem;">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요.</p>'+
+    '<p class="muted" style="margin-top:10px;">글자 크기는 성경과 앱 전체에 적용돼요. 줄 간격과 구절 간격은 아래에서 바로 비교해 보세요.</p>'+
     displayFields()+readingPreview()+
     '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>'+
-    '<div class="section-head"><h2>구절 이동</h2></div><section class="card verse-arrival-settings">'+
-    '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+
-    '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 검색하거나 직접 스크롤할 때 마지막 절도 상단 선택 줄 바로 아래까지 올릴 수 있어요.</span></span>'+
-    '<span class="verse-arrival-switch"><input type="checkbox" role="switch" id="align-verse-at-top" aria-labelledby="verse-arrival-label" '+
-    'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
+    '<div class="section-head"><h2>퀵 형광펜 설정</h2></div><section class="card stack quick-marker-settings">'+
+    '<p class="muted">본문 구절 선택 시 바로 칠할 수 있는 3가지 동그라미 형광펜이에요. 동그라미를 누르면 원하는 색으로 바꿀 수 있어요.</p>'+
+    '<div class="quick-marker-preset-row">'+
+      quickColors.map((color, idx) =>
+        '<label class="quick-marker-preset-pill">'+
+          '<span class="preset-color-dot" style="background:'+color+';"></span>'+
+          '<span class="preset-label">'+(idx + 1)+'번 형광펜</span>'+
+          '<input type="color" data-action="set-quick-color" data-preset="'+idx+'" value="'+color+'">'+
+        '</label>'
+      ).join('')+
+    '</div></section>';
 }
 function validColor(color) {
   return typeof color==='string' && /^#[a-f0-9]{6}$/i.test(color);
@@ -3829,10 +3838,20 @@ function showMarkDialog() {
   const first = chosen.values().next().value;
   const appearance = first && verseMark(indexVerseMarkers().get(verseAddress(first))?.mark);
   const initial = appearance?.color ?? state.markerColor;
+  const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
   dialog('말씀 표시','<p class="muted">선택한 '+chosen.size+'절에 한 가지 표시를 적용해요.</p>'+
     '<label class="field">표시 방식<select id="mark-style">'+options(Object.entries(markStyles),appearance?.style ?? state.markerStyle)+'</select></label>'+
     '<label class="field color-field">원하는 색<input type="color" id="mark-color" value="'+initial+'"></label>'+
-    '<div class="row"><button type="button" class="btn" data-action="erase-mark">표시 지우기</button><button type="button" class="btn primary" data-action="apply-mark">적용</button></div>');
+    '<div class="quick-assign-block" style="margin-top:12px; padding:10px; background:var(--soft); border-radius:12px;">'+
+      '<span class="muted" style="font-size:0.75rem; display:block; margin-bottom:6px;">현재 색상을 퀵 동그라미에 저장:</span>'+
+      '<div class="row" style="gap:6px;">'+
+        quickColors.map((c, i) =>
+          '<button type="button" class="btn" data-action="save-to-quick" data-preset="'+i+'" style="font-size:0.8125rem; padding:5px 8px; flex:1;">'+
+          '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:'+c+'; margin-right:4px;"></span>'+(i+1)+'번에 지정</button>'
+        ).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="row" style="margin-top:16px;"><button type="button" class="btn" data-action="erase-mark">표시 지우기</button><button type="button" class="btn primary" data-action="apply-mark">적용</button></div>');
 }
 function applyMark(erase = false) {
   if (erase) return applyVerseMarks([...chosen],undefined,'말씀 표시를 지웠어요.');
