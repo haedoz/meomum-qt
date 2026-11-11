@@ -2092,6 +2092,7 @@ function backupSettings() {
     '<button type="button" class="btn primary" data-action="gh-backup">☁️ 지금 백업</button>'+
     '<button type="button" class="btn" data-action="gh-restore">🔄 지금 동기화</button>'+
     '</div>'+
+    '<p class="muted" style="font-size:0.8rem; margin-top:8px;">💡 <strong>첫 등록 시:</strong> 새 이름으로 처음 시작할 때는 <strong>[지금 백업]</strong>을 한 번 눌러 깃허브에 첫 파일을 생성해 주세요. 다른 기기에서 이어받을 때는 <strong>[지금 동기화]</strong>를 누르면 바로 가져와요.</p>'+
     '<p class="muted">입력한 내용은 기기에 즉시 자동 저장되며, 비밀 토큰은 내 기기 브라우저에만 암호처럼 안전하게 보관돼요.</p>'+
     '</section>';
 }
