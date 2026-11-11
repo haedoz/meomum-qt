@@ -93,7 +93,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',fontKorean:'pretendard',fontEnglish:'ebgaramond',fontHebrew:'notohebrew',fontGreek:'cardo',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
@@ -2612,6 +2612,43 @@ const actions = {
     render();
     notify('통독 기록을 보관함에 저장했어요!');
   },
+  'set-font-ko'(btn) {
+    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
+    if (f) {
+      state.fontKorean = f;
+      state.fontChoice = f;
+      applyDisplay();
+      save();
+      render();
+    }
+  },
+  'set-font-en'(btn) {
+    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
+    if (f) {
+      state.fontEnglish = f;
+      applyDisplay();
+      save();
+      render();
+    }
+  },
+  'set-font-he'(btn) {
+    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
+    if (f) {
+      state.fontHebrew = f;
+      applyDisplay();
+      save();
+      render();
+    }
+  },
+  'set-font-grc'(btn) {
+    const f = (btn || event?.target?.closest('[data-font]'))?.dataset.font;
+    if (f) {
+      state.fontGreek = f;
+      applyDisplay();
+      save();
+      render();
+    }
+  },
   'group-records-book'() {
     recordGroupBy = 'book';
     render();
@@ -3141,7 +3178,7 @@ document.addEventListener('click',event => {
   if (target.searchScope) return chooseSearchScope(target.searchScope);
   if ('searchPage' in target) return changeSearchPage(button);
   if (target.visit) return visit(target.visit);
-  if (target.action) return actions[target.action]?.();
+  if (target.action) return actions[target.action]?.(button);
   if (target.openChapter) return openChapter(target.openChapter);
   if (target.checkChapter) return toggleChapter(target.checkChapter);
   if (target.displayStep) return stepDisplay(button);
@@ -3486,6 +3523,10 @@ function migrate(input) {
   result.palette = Object.hasOwn(palettes,input.palette)?input.palette:
     Object.hasOwn(legacyPalettes,input.palette)?legacyPalettes[input.palette]:'slate';
   result.fontChoice = Object.hasOwn(fontChoices,input.fontChoice)?input.fontChoice:'pretendard';
+  result.fontKorean = input.fontKorean ?? input.fontChoice ?? 'pretendard';
+  result.fontEnglish = input.fontEnglish ?? 'ebgaramond';
+  result.fontHebrew = input.fontHebrew ?? 'notohebrew';
+  result.fontGreek = input.fontGreek ?? 'cardo';
   const menuOrder = Array.isArray(input.menuOrder) ? input.menuOrder.filter(route=>menuItems.has(route)) : [];
   result.menuOrder = [...new Set([...menuOrder,...menuItems.keys()])];
   if (!Object.hasOwn(editions,result.reader.edition)) result.reader.edition = Object.keys(editions)[0] ?? '';
@@ -3546,6 +3587,41 @@ async function importCustomFont(file) {
     else applyDisplay();
   }
 }
+const fontCategories = {
+  ko: {
+    label: '한글 본문 글꼴',
+    options: [
+      ['pretendard', '프리텐다드'],
+      ['paperlogy', '페이퍼로지'],
+      ['notosanskr', '노토 산스'],
+      ['system', '기기 기본'],
+    ]
+  },
+  en: {
+    label: '영문 성경 글꼴',
+    options: [
+      ['ebgaramond', 'EB Garamond'],
+      ['cardo', 'Cardo'],
+      ['system', '기기 기본']
+    ]
+  },
+  he: {
+    label: '히브리어 구약 원어',
+    options: [
+      ['notohebrew', 'Noto Serif'],
+      ['cardo', 'Cardo'],
+      ['system', '기기 기본']
+    ]
+  },
+  grc: {
+    label: '헬라어 신약 원어',
+    options: [
+      ['cardo', 'Cardo'],
+      ['gentium', 'Gentium Plus'],
+      ['system', '기기 기본']
+    ]
+  }
+};
 function applyDisplay() {
   const root = document.documentElement;
   const size = displayValue('fontSize',state.display.fontSize);
@@ -3554,7 +3630,43 @@ function applyDisplay() {
   root.style.fontSize = uiSize+'px';
   root.style.setProperty('--ui-size-offset',(uiSize-16)+'px');
   root.dataset.palette = state.palette;
-  root.dataset.font = state.fontChoice==='custom' && !customFont?'pretendard':state.fontChoice;
+
+  const fontFamilies = {
+    ko: {
+      pretendard: 'Pretendard, -apple-system, sans-serif',
+      paperlogy: 'Paperlogy, serif',
+      notosanskr: 'NotoSansKR, sans-serif',
+      system: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif',
+      custom: 'WordJournalCustom, Pretendard, sans-serif'
+    },
+    en: {
+      ebgaramond: "'EB Garamond', serif",
+      cardo: "'Cardo', serif",
+      system: '-apple-system, BlinkMacSystemFont, serif'
+    },
+    he: {
+      notohebrew: "'Noto Serif Hebrew', 'Cardo', serif",
+      cardo: "'Cardo', serif",
+      system: 'system-ui, serif'
+    },
+    grc: {
+      cardo: "'Cardo', 'Gentium Plus', serif",
+      gentium: "'Gentium Plus', 'Cardo', serif",
+      system: 'system-ui, serif'
+    }
+  };
+
+  const koFont = fontFamilies.ko[state.fontKorean] || fontFamilies.ko.pretendard;
+  const enFont = fontFamilies.en[state.fontEnglish] || fontFamilies.en.ebgaramond;
+  const heFont = fontFamilies.he[state.fontHebrew] || fontFamilies.he.notohebrew;
+  const grcFont = fontFamilies.grc[state.fontGreek] || fontFamilies.grc.cardo;
+
+  root.style.setProperty('--font-ko', koFont);
+  root.style.setProperty('--font-en', enFont);
+  root.style.setProperty('--font-he', heFont);
+  root.style.setProperty('--font-grc', grcFont);
+  root.style.setProperty('--preferred-font', enFont + ', ' + koFont);
+
   root.style.setProperty('--reading-leading',displayValue('lineHeight',state.display.lineHeight));
   root.style.setProperty('--verse-gap',displayValue('verseGap',state.display.verseGap)+'px');
   root.style.setProperty('--reading-tracking',displayValue('letterSpace',state.display.letterSpace)+'px');
@@ -3573,36 +3685,55 @@ function displayFields() {
   }).join('')+'</div>';
 }
 function readingPreview() {
-  const id = state.reader.edition;
-  const texts = id ? [1,2,3].map(number=>verseText(id+'/PSA/23/'+number)) :
-    ['오늘 읽을 말씀을 천천히 살펴봐요.','마음에 남는 문장을 묵상 노트에 적어요.','한 줄씩 적으며 하루를 돌아봐요.'];
-  return '<section class="reading-example"><div class="row"><h3>성경 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
-    '<div class="bible-passage preview-passage"><header class="passage-heading"><strong>'+(id?'시편 23편':'글자 설정 예시')+'</strong><span>'+(id?esc(editionLabel(id)):'예시 문장')+'</span></header>'+
-    texts.map((text,index)=>'<div class="verse"><span class="number">'+(index+1)+'</span>'+markedText(text)+'</div>').join('')+'</div></section>';
+  return '<section class="reading-example"><div class="row"><h3>글꼴 실시간 미리보기</h3><span class="live-chip">실시간 적용</span></div>'+
+    '<div class="bible-passage preview-passage">'+
+      '<div class="verse"><span class="number" style="font-size:0.75rem;">한글</span><span style="font-family:var(--font-ko)">여호와는 나의 목자시니 내게 부족함이 없으리로다. (시 23:1)</span></div>'+
+      '<div class="verse"><span class="number" style="font-size:0.75rem;">영어</span><span style="font-family:var(--font-en)">The LORD is my shepherd; I shall not want. (PSA 23:1)</span></div>'+
+      '<div class="verse"><span class="number" style="font-size:0.75rem;">히브리어</span><span lang="he" dir="rtl">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃ (תהלים כג:א)</span></div>'+
+      '<div class="verse"><span class="number" style="font-size:0.75rem;">헬라어</span><span lang="grc">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν. (요 1:1)</span></div>'+
+    '</div></section>';
 }
 function displaySettings() {
   const swatches = Object.entries(palettes).map(([id,label])=>
     '<label class="palette-option"><input type="radio" name="palette" value="'+id+'" '+(state.palette===id?'checked':'')+'>'+
     '<span class="palette-swatch" data-swatch="'+id+'" aria-hidden="true"></span><span>'+label+'</span></label>').join('');
+
+  const ko = state.fontKorean || 'pretendard';
+  const en = state.fontEnglish || 'ebgaramond';
+  const he = state.fontHebrew || 'notohebrew';
+  const grc = state.fontGreek || 'cardo';
+
+  const fontGroupHtml = (categoryKey, currentVal, actionName) => {
+    const cat = fontCategories[categoryKey];
+    const opts = [...cat.options, ...(categoryKey==='ko' && customFont ? [['custom', customFont.name]] : [])];
+    const currentLabel = opts.find(([val]) => val === currentVal)?.[1] || currentVal;
+    return '<div class="font-group-block">'+
+      '<div class="row font-group-header">'+
+        '<span class="font-group-label">'+cat.label+'</span>'+
+        '<span class="font-group-current">'+esc(currentLabel)+'</span>'+
+      '</div>'+
+      '<div class="font-chip-grid">'+
+        opts.map(([val, label]) =>
+          '<button type="button" class="font-chip '+(currentVal===val?'active':'')+'" data-action="'+actionName+'" data-font="'+val+'">'+
+          esc(label)+
+          '</button>').join('')+
+      '</div></div>';
+  };
+
   return '<div class="section-head"><h2>화면 테마</h2></div><section class="card stack appearance-settings">'+
     '<fieldset class="palette-field"><legend>색상 테마</legend><div class="palette-grid">'+swatches+'</div></fieldset>'+
     '<label class="field">화면 모드<select id="appearance">'+options(Object.entries(themes),state.theme)+'</select></label></section>'+
     '<div class="section-head"><h2>글꼴과 읽기</h2></div><section class="card stack reading-settings">'+
-    '<label class="field">앱 글꼴<select id="font-choice">'+options([
-      ['pretendard',fontChoices.pretendard],
-      ['paperlogy',fontChoices.paperlogy],
-      ['notosanskr',fontChoices.notosanskr],
-      ['ebgaramond',fontChoices.ebgaramond],
-      ['cardo',fontChoices.cardo],
-      ['gentium',fontChoices.gentium],
-      ['notohebrew',fontChoices.notohebrew],
-      ['system',fontChoices.system],
-      ...(customFont?[['custom',customFont.name]]:[]),
-    ],state.fontChoice==='custom' && !customFont?'pretendard':state.fontChoice)+'</select></label>'+
-    '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
-    '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
-    '<p class="muted">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요. 글꼴 파일은 백업에 포함되지 않아요.</p>'+
-    '<p class="muted">글자 크기는 성경과 앱 전체에 적용돼요. 줄 간격과 구절 간격은 아래에서 바로 비교해 보세요.</p>'+displayFields()+readingPreview()+
+    fontGroupHtml('ko', ko, 'set-font-ko')+
+    fontGroupHtml('en', en, 'set-font-en')+
+    fontGroupHtml('he', he, 'set-font-he')+
+    fontGroupHtml('grc', grc, 'set-font-grc')+
+    '<div class="row" style="margin-top:6px;">'+
+      '<button class="btn" data-action="choose-font" '+(importingFont?'disabled':'')+'>'+(importingFont?'글꼴 읽는 중…':'내 글꼴 파일 가져오기')+'</button>'+
+      '<input id="custom-font-file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>'+
+    '</div>'+
+    '<p class="muted" style="font-size:0.75rem;">파일 앱에 저장된 TTF, OTF, WOFF, WOFF2를 이 기기에 추가할 수 있어요.</p>'+
+    displayFields()+readingPreview()+
     '<button class="text-action reset-reading" data-action="reset-display">본문 설정 초기화</button></section>'+
     '<div class="section-head"><h2>구절 이동</h2></div><section class="card verse-arrival-settings">'+
     '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+

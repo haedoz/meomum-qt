@@ -2227,4 +2227,81 @@ input[type="date"] {
   color: #fff;
 }
 
+/* 글꼴 언어별 세부 설정 칩 그리드 */
+.font-group-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.font-group-block:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.font-group-header {
+  font-size: 0.8125rem;
+}
+.font-group-label {
+  font-weight: 700;
+  color: var(--ink);
+}
+.font-group-current {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--green);
+}
+.font-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 6px;
+}
+.font-chip {
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.font-chip.active {
+  background: var(--accent-soft, #eaf1fb);
+  border-color: var(--green, #3b5a7c);
+  color: var(--accent-ink, #3b5a7c);
+  font-weight: 750;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+:root[data-appearance="dark"] .font-chip {
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--muted);
+}
+:root[data-appearance="dark"] .font-chip.active {
+  background: #2b394d;
+  border-color: #6d8db5;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+:root {
+  --preferred-font: var(--font-en, 'EB Garamond, serif'), var(--font-ko, Pretendard, sans-serif);
+}
+body {
+  font-family: var(--preferred-font);
+}
+[lang="he"], .original-verse-text[lang="he"], .original-detail-form bdi {
+  font-family: var(--font-he, 'Noto Serif Hebrew, serif') !important;
+}
+[lang="grc"], .original-verse-text[lang="grc"] {
+  font-family: var(--font-grc, 'Cardo, serif') !important;
+}
+
+
 
