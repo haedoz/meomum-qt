@@ -1386,18 +1386,23 @@ function readingPlan(canon,counts,remaining,today) {
   const percent = scope.length ? (progress/scope.length*100).toFixed(1) : '0.0';
 
   let periodMeta = '';
-  if (range?.startDate || range?.targetDate) {
+  if (range?.targetDate) {
     const todayStr = dateKey();
     let dDayText = '';
-    if (range.targetDate) {
-      const diffMs = new Date(range.targetDate).getTime() - new Date(todayStr).getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      if (diffDays > 0) dDayText = 'D-' + diffDays;
-      else if (diffDays === 0) dDayText = 'D-Day';
-      else dDayText = 'D+' + Math.abs(diffDays) + ' (종료)';
-    }
-    const dateRangeStr = (range.startDate ? range.startDate.replace(/-/g,'.') : '시작') + ' ~ ' + (range.targetDate ? range.targetDate.replace(/-/g,'.') : '목표일 미정');
-    periodMeta = '<div class="plan-period-badge"><span>'+icon('calendar')+' '+dateRangeStr+'</span>'+(dDayText ? '<strong>'+dDayText+'</strong>' : '')+'</div>';
+    const diffMs = new Date(range.targetDate).getTime() - new Date(todayStr).getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays > 0) dDayText = 'D-' + diffDays;
+    else if (diffDays === 0) dDayText = 'D-Day';
+    else dDayText = 'D+' + Math.abs(diffDays) + ' (종료)';
+    const dateRangeStr = (range.startDate ? range.startDate.replace(/-/g,'.') : '시작') + ' ~ ' + range.targetDate.replace(/-/g,'.');
+    periodMeta = '<div class="plan-period-badge"><span>'+icon('calendar')+' '+dateRangeStr+'</span><strong>'+dDayText+'</strong></div>';
+  } else {
+    const remaining = queue.length;
+    const estDays = goal > 0 ? Math.ceil(remaining / goal) : 0;
+    const estDate = new Date(Date.now() + estDays * 24 * 60 * 60 * 1000);
+    const estDateStr = estDate.getFullYear() + '.' + String(estDate.getMonth() + 1).padStart(2, '0') + '.' + String(estDate.getDate()).padStart(2, '0');
+    const startStr = range?.startDate ? range.startDate.replace(/-/g,'.') + ' 시작' : '기간 제한 없음';
+    periodMeta = '<div class="plan-period-badge"><span>'+icon('calendar')+' '+startStr+' · 매일 '+goal+'장 페이스</span><strong>남은 '+remaining+'장 · 약 '+estDays+'일 소요 ('+estDateStr+' 완독 예상)</strong></div>';
   }
 
   const historyList = (state.readingHistory || []).map((h, idx) => {
@@ -1436,19 +1441,27 @@ function showReadingRange() {
   const range = state.readingRange ?? {start:canon[0],end:canon.at(-1)};
   const startDate = state.readingRange?.startDate ?? dateKey();
   const targetDate = state.readingRange?.targetDate ?? '';
-  dialog('통독 계획 및 기간 설정','<p class="muted">통독할 성경 범위와 목표 기간을 설정할 수 있어요.</p>'+
+  const hasTarget = Boolean(targetDate);
+  dialog('통독 계획 및 기간 설정','<p class="muted">통독할 성경 범위와 계획 방식을 설정할 수 있어요.</p>'+
     rangeFields('시작',range.start)+rangeFields('끝',range.end)+
-    '<div class="range-date-inputs">'+
-    '<label class="field"><span>시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
+    '<div class="range-date-inputs" style="margin-top:12px;">'+
+    '<label class="field"><span>통독 시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
+    '</div>'+
+    '<div class="card" style="margin-top:10px; padding:12px; background:var(--soft);">'+
+    '<label class="gh-switch" style="margin:0;"><input type="checkbox" id="range-has-target" '+(hasTarget?'checked':'')+' onchange="document.getElementById(\'range-target-wrap\').hidden = !this.checked"><span>목표 완료일 정해두기</span></label>'+
+    '<div id="range-target-wrap" '+(hasTarget?'':'hidden')+' style="margin-top:10px;">'+
     '<label class="field"><span>목표 완료일</span><input type="date" id="range-target-date" value="'+esc(targetDate)+'"></label>'+
+    '</div>'+
+    '<p class="muted" style="margin-top:6px; font-size:0.75rem;">목표일을 끄면 마감 없이 하루 목표 장수 페이스에 맞춰 예상 완독일이 계산돼요.</p>'+
     '</div>'+
     '<p class="range-error" role="status"></p>'+
     '<div class="row" style="margin-top:12px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>');
 }
 function saveReadingRange() {
   const [start,end] = ['시작','끝'].map(side=>modal.querySelector('[data-range-book="'+side+'"]').value+'/'+modal.querySelector('[data-range-chapter="'+side+'"]').value);
-  const startDate = modal.querySelector('#range-start-date')?.value || '';
-  const targetDate = modal.querySelector('#range-target-date')?.value || '';
+  const startDate = modal.querySelector('#range-start-date')?.value || dateKey();
+  const hasTarget = modal.querySelector('#range-has-target')?.checked;
+  const targetDate = hasTarget ? (modal.querySelector('#range-target-date')?.value || '') : '';
   const range = {start,end,startDate,targetDate};
   if (!planChapters(canonChapters(),range).length) {
     modal.querySelector('.range-error').textContent = '끝 장은 시작 장과 같거나 뒤에 있어야 해요.';
