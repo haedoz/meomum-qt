@@ -1639,8 +1639,10 @@ function recordList(rows = recordRows()) {
     '<span>'+String(recordPage+1)+' / '+pages+'</span>'+
     '<button type="button" class="btn" data-record-page="'+(recordPage+1)+'" aria-label="다음 페이지" '+(recordPage+1>=pages?'disabled':'')+'>'+icon('right')+'</button></nav>':'';
   let previousYear;
+  const hasFilter = Object.values(recordSelection).some(Boolean);
   return '<div class="row record-list-tools"><p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건'+
     (pages>1?' · '+(recordPage+1)+' / '+pages+'페이지':'')+'</p>'+
+    (hasFilter ? '<button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 ✕</button>' : '')+
     '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
     (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button></div>'+
     (visible.map(({key,verses,day,mark,noteKey}) => {
@@ -1775,13 +1777,12 @@ function recordsScreen() {
   const counts = {all:rows.length,highlight:0,underline:0,note:0};
   for (const {mark} of rows) for (const kind of markKinds(mark)) counts[kind]++;
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
-  const filterChips = Object.entries(recordPickerLabels).map(([key,[label,all]])=>{
+  const filterChips = Object.entries(recordPickerLabels).map(([key,[label]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
     const isFiltered = Boolean(recordSelection[key]);
-    const valText = selected ? selected[1] : all;
-    return '<button type="button" class="filter-chip '+(isFiltered?'active':'')+'" data-action="pick-record-'+key+'" aria-label="'+label+' 필터 선택">'+
-      '<span class="filter-chip-label">'+label+'</span>'+
-      '<span class="filter-chip-val">'+esc(valText)+'</span>'+
+    const text = isFiltered ? (selected ? selected[1] : label) : label;
+    return '<button type="button" class="filter-chip '+(isFiltered?'active':'')+'" data-action="pick-record-'+key+'" aria-label="'+label+' 필터">'+
+      '<span>'+esc(text)+'</span>'+
       icon('down')+
       '</button>';
   }).join('');
@@ -1804,10 +1805,7 @@ function recordsScreen() {
       '<div class="record-type-tabs" role="group" aria-label="기록 종류">'+
         Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+
       '</div>'+
-      '<div class="record-filter-row">'+
-        filterChips +
-        (activeFilters ? '<button type="button" class="filter-reset-chip" data-action="clear-record-filters" aria-label="필터 초기화">'+icon('close')+'<span>초기화</span></button>' : '')+
-      '</div>'+
+      '<div class="record-filter-row">'+filterChips+'</div>'+
     '</div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
