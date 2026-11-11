@@ -1675,17 +1675,22 @@ function calendarDaySummary(day,items,records) {
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
     (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
-const recordFilters = {all:'전체',highlight:'형광펜',underline:'밑줄',note:'메모'};
+const recordFilters = {all:'전체',highlight:'형광펜·밑줄',note:'메모',journal:'묵상 담기'};
 function markKinds(mark) {
-  return [mark.color || mark.highlight?'highlight':'',mark.underline?'underline':'',mark.note?'note':''].filter(Boolean);
+  const kinds = [];
+  if (mark.color || mark.highlight || mark.underline) kinds.push('highlight');
+  if (mark.note) kinds.push('note');
+  if (mark.journal) kinds.push('journal');
+  return kinds;
 }
 function recordRows() {
   const groups = new Map(), rows = new Map();
-  const add = (key,verses,day,mark,noteKey) => {
-    const id = [key,verses.join(','),day].join('/');
+  const add = (key,verses,day,mark,noteKey,journalDay) => {
+    const id = [key,verses.join(','),day,mark.journal?'journal':mark.note?'note':'mark'].join('/');
     const row = rows.get(id) ?? {key,verses,day,mark:{}};
     Object.assign(row.mark,mark);
     if (noteKey) row.noteKey = noteKey;
+    if (journalDay) row.journalDay = journalDay;
     rows.set(id,row);
   };
   for (const [key,mark] of Object.entries(state.marks)) {
@@ -1700,6 +1705,14 @@ function recordRows() {
     const key = keys[0];
     const {color,highlight,underline,markDay} = state.marks[key];
     add(key,keys.map(verseNumber),markDay,{color,highlight,underline});
+  }
+  for (const [day, entry] of Object.entries(state.journal)) {
+    if (!entry.verses || !entry.verses.length) continue;
+    for (const ref of entry.verses) {
+      if (!validRef(ref)) continue;
+      const vNum = readRef(ref).verse;
+      add(ref, [vNum], day, {journal: true, journalTitle: entry.title}, undefined, day);
+    }
   }
   return [...rows.values()].reverse().sort((left,right)=>(right.day ?? '').localeCompare(left.day ?? ''));
 }
@@ -1721,15 +1734,24 @@ function recordPassage(key,verses) {
   return verses.filter(verse=>passage?.[verse]).map(verse=>[verse,passage[verse]]);
 }
 function renderRecordCard(item) {
-  const {key,verses,day,mark,noteKey} = item;
+  const {key,verses,day,mark,noteKey,journalDay} = item;
   const passage = recordPassage(key,verses);
   const excerpt = passage.length?passage.map(([number,body])=>
     '<span class="record-verse"><span class="record-verse-number">'+number+'절</span>'+markedText(body,mark)+'</span>').join('')
     : markedText(savedVerseText(key),mark);
-  const markKind = mark.note?'메모':mark.underline && !mark.color && !mark.highlight?'밑줄':'형광펜';
-  const kindClass = mark.note?'note':mark.underline && !mark.color && !mark.highlight?'underline':'highlight';
-  const content = mark.note ? '<p class="calendar-quote-body">'+esc(mark.note)+'</p>' :
-    '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>';
+
+  const kindClass = mark.journal ? 'journal' : mark.note ? 'note' : 'highlight';
+  const markKind = mark.journal ? '묵상 담기' : mark.note ? '메모' : '형광펜·밑줄';
+
+  let content;
+  if (mark.journal) {
+    content = '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>'+
+      (mark.journalTitle ? '<p class="record-journal-sub">📖 '+esc(mark.journalTitle)+'</p>' : '');
+  } else if (mark.note) {
+    content = '<p class="calendar-quote-body">'+esc(mark.note)+'</p>';
+  } else {
+    content = '<blockquote class="calendar-quote-body">'+excerpt+'</blockquote>';
+  }
 
   return '<article class="calendar-mark-card tappable-card '+kindClass+'">'+
     (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
@@ -1743,8 +1765,9 @@ function renderRecordCard(item) {
     '<div class="row calendar-mark-footer">'+
     '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
     '<div class="item-actions card-actions">'+
-    (noteKey?'<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>':'')+
-    (verseMark(mark)?highlightDeleteButton(key):'')+
+    (journalDay ? '<button type="button" class="text-action" data-nav="journal/'+journalDay+'">묵상 열기</button>' : '')+
+    (noteKey ? '<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>' : '')+
+    (!mark.journal && verseMark(mark) ? highlightDeleteButton(key) : '')+
     '</div></div></article>';
 }
 function recordList(rows = recordRows()) {
@@ -1764,14 +1787,14 @@ function recordList(rows = recordRows()) {
     if (recordGroupBy === 'date') {
       const dateGroups = new Map();
       for (const item of matching) {
-        const m = item.day ? item.day.slice(0, 7) : 'undated';
-        if (!dateGroups.has(m)) dateGroups.set(m, []);
-        dateGroups.get(m).push(item);
+        const d = item.day || 'undated';
+        if (!dateGroups.has(d)) dateGroups.set(d, []);
+        dateGroups.get(d).push(item);
       }
       const dateKeys = [...dateGroups.keys()].sort((a,b) => oldestRecordsFirst ? a.localeCompare(b) : b.localeCompare(a));
-      groupsHtml = dateKeys.map(m => {
-        const items = dateGroups.get(m);
-        const label = m === 'undated' ? '날짜 미기록' : m.replace('-', '년 ') + '월';
+      groupsHtml = dateKeys.map(d => {
+        const items = dateGroups.get(d);
+        const label = d === 'undated' ? '날짜 미기록' : (d.slice(0,4)+'년 '+Number(d.slice(5,7))+'월 '+Number(d.slice(8,10))+'일 ('+['일','월','화','수','목','금','토'][new Date(d+'T12:00:00').getDay()]+')');
         return '<details class="record-group-accordion" open>'+
           '<summary class="record-group-summary">'+
             '<div class="record-group-info">'+
@@ -1929,8 +1952,8 @@ function recordsScreen() {
   const prayers = state.prayers.filter(item=>item.kind!=='thought');
   const answered = prayers.filter(item=>item.done).length;
   const thoughts = state.prayers.length-prayers.length;
-  const counts = {all:rows.length,highlight:0,underline:0,note:0};
-  for (const {mark} of rows) for (const kind of markKinds(mark)) counts[kind]++;
+  const counts = {all:rows.length,highlight:0,note:0,journal:0};
+  for (const {mark} of rows) for (const kind of markKinds(mark)) if (counts[kind] !== undefined) counts[kind]++;
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
   const filterChips = Object.entries(recordPickerLabels).map(([key,[label]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);

@@ -417,36 +417,43 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 .mark-kind-pill {
   font-size: 0.6875rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 7px;
+  border: 1px solid transparent;
 }
 .mark-kind-pill.highlight {
-  background: color-mix(in srgb, #f59e0b 16%, var(--card));
-  color: #b45309;
-}
-.mark-kind-pill.underline {
-  background: color-mix(in srgb, #10b981 16%, var(--card));
-  color: #047857;
+  background: #fbf5df;
+  color: #826315;
+  border-color: #f1dfa8;
 }
 .mark-kind-pill.note {
-  background: color-mix(in srgb, var(--accent-ink) 16%, var(--card));
-  color: var(--accent-ink);
+  background: #ecf3fd;
+  color: #245284;
+  border-color: #c9ddf7;
+}
+.mark-kind-pill.journal {
+  background: #f6edfc;
+  color: #6a349c;
+  border-color: #e4cbf8;
 }
 :root[data-appearance="dark"] .mark-kind-pill.highlight {
-  background: #78350f44;
-  color: #fcd34d;
-}
-:root[data-appearance="dark"] .mark-kind-pill.underline {
-  background: #064e3b44;
-  color: #6ee7b7;
+  background: #38301a;
+  color: #ebd181;
+  border-color: #554823;
 }
 :root[data-appearance="dark"] .mark-kind-pill.note {
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+  background: #1b2a3c;
+  color: #9ac2ee;
+  border-color: #273e5a;
+}
+:root[data-appearance="dark"] .mark-kind-pill.journal {
+  background: #311c42;
+  color: #d19eee;
+  border-color: #4c2968;
 }
 .calendar-quote-body {
   margin: 0;
-  padding: 5px 9px;
+  padding: 6px 10px;
   border-left: 3px solid var(--accent-ink);
   background: var(--soft);
   border-radius: 0 8px 8px 0;
@@ -456,11 +463,53 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
   letter-spacing: var(--reading-tracking, 0px);
   color: var(--ink);
 }
-.calendar-mark-card.highlight .calendar-quote-body {
-  border-left-color: #f59e0b;
+.calendar-mark-card.highlight {
+  border-color: color-mix(in srgb, #f3de98 45%, var(--line));
 }
-.calendar-mark-card.underline .calendar-quote-body {
-  border-left-color: #10b981;
+.calendar-mark-card.highlight .calendar-quote-body {
+  border-left-color: #e5bd44;
+  background: color-mix(in srgb, #fdfaf0 75%, var(--soft));
+}
+.calendar-mark-card.note {
+  border-color: color-mix(in srgb, #bedbf8 45%, var(--line));
+}
+.calendar-mark-card.note .calendar-quote-body {
+  border-left-color: #72a4db;
+  background: color-mix(in srgb, #f2f7fd 75%, var(--soft));
+}
+.calendar-mark-card.journal {
+  border-color: color-mix(in srgb, #dec7f4 45%, var(--line));
+}
+.calendar-mark-card.journal .calendar-quote-body {
+  border-left-color: #b181db;
+  background: color-mix(in srgb, #f9f4fd 75%, var(--soft));
+}
+.record-journal-sub {
+  font-size: 0.75rem;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+:root[data-appearance="dark"] .calendar-mark-card.highlight {
+  border-color: #4a3e20;
+}
+:root[data-appearance="dark"] .calendar-mark-card.highlight .calendar-quote-body {
+  border-left-color: #caa038;
+  background: #2a2416;
+}
+:root[data-appearance="dark"] .calendar-mark-card.note {
+  border-color: #24354c;
+}
+:root[data-appearance="dark"] .calendar-mark-card.note .calendar-quote-body {
+  border-left-color: #6393c8;
+  background: #172435;
+}
+:root[data-appearance="dark"] .calendar-mark-card.journal {
+  border-color: #3e284f;
+}
+:root[data-appearance="dark"] .calendar-mark-card.journal .calendar-quote-body {
+  border-left-color: #a46ecd;
+  background: #281835;
 }
 .calendar-quote-body p { margin: 0; }
 .calendar-mark-footer {
