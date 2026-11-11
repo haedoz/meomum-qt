@@ -1051,9 +1051,7 @@ function jumpToChapter(form) {
   modal.close();
   if (selection) {
     selection.location = {book,chapter,verse};
-    render();
-    showVerseArrival('study-v-'+verse);
-    return;
+    return render();
   }
   visit([edition,book,chapter,verse].join('/'));
 }
@@ -2231,43 +2229,51 @@ function render(studyFromSelection = false) {
         modal.firstElementChild?.name === 'chapter-jump') {
       modal.close();
     }
+    const isReadingTab = v => v === 'bible' || v === 'commentary' || v === 'original';
+    const leavingReadingTab = isReadingTab(view);
+    const enteringReadingTab = isReadingTab(next);
+
     // 떠나기 전에 현재 읽던 위치 저장
-    if (view === 'commentary' || view === 'original') {
-      const position = currentReadingPosition();
-      if (position) {
+    let currentPos = undefined;
+    if (leavingReadingTab) {
+      currentPos = currentReadingPosition(true);
+      if (currentPos && (view === 'commentary' || view === 'original')) {
         studySelection[view].location = {
-          book: position.book,
-          chapter: position.chapter,
-          verse: position.verse
+          book: currentPos.book,
+          chapter: currentPos.chapter,
+          verse: currentPos.verse
         };
       }
     }
-    // 성경 화면으로 돌아올 때
-    if (next === 'bible') {
-      if (studyFromSelection) {
-        const position = currentReadingPosition(true);
-        if (position) syncBiblePosition(position);
-      } else if (!jumpTo) {
-        const ref = bibleResumeRef();
-        if (ref) jumpTo = 'v-' + verseNumber(ref);
-      }
-    }
-    // 주석 또는 원전분해 화면으로 돌아올 때
-    if (next === 'commentary' || next === 'original') {
-      const selection = studySelection[next];
-      if (studyFromSelection || !selection.location) {
-        const position = currentReadingPosition(
-          studyFromSelection
-        );
-        if (position) {
+
+    // 성경 / 주석 / 원전분해 화면으로 진입할 때 상호 위치 동기화
+    if (enteringReadingTab) {
+      const syncPos = (leavingReadingTab || studyFromSelection) ? currentPos : undefined;
+
+      if (next === 'bible') {
+        if (syncPos) {
+          syncBiblePosition(syncPos);
+        } else if (!jumpTo) {
+          const ref = bibleResumeRef();
+          if (ref) jumpTo = 'v-' + verseNumber(ref);
+        }
+      } else if (next === 'commentary' || next === 'original') {
+        const selection = studySelection[next];
+        if (syncPos) {
           selection.location = {
-            book: position.book,
-            chapter: position.chapter,
-            verse: position.verse
+            book: syncPos.book,
+            chapter: syncPos.chapter,
+            verse: syncPos.verse ?? 1
+          };
+        } else if (!selection.location) {
+          selection.location = {
+            book: state.reader.book,
+            chapter: state.reader.chapter,
+            verse: 1
           };
         }
+        studyJump = selection.location?.verse;
       }
-      studyJump = selection.location?.verse;
     }
     readingArrival = undefined;
     chosen.clear();
@@ -2334,7 +2340,15 @@ function render(studyFromSelection = false) {
   if (view==='bible') jumpTo = undefined;
   if (studyJump!==undefined) {
     const id = 'study-v-'+studyJump;
-    if (studyJump>0 && studyJump<=500 && document.getElementById(id)) arrival = id;
+    if (studyJump>0 && studyJump<=500 && document.getElementById(id)) {
+      arrival = id;
+    } else {
+      const avail = [...main.querySelectorAll('[data-reading-verse]')].map(el=>Number(el.dataset.readingVerse));
+      const closest = avail.find(v=>v>=studyJump) ?? avail.at(-1);
+      if (closest && document.getElementById('study-v-'+closest)) {
+        arrival = 'study-v-'+closest;
+      }
+    }
   }
   if (arrival) {
     showVerseArrival(arrival);
@@ -2351,21 +2365,23 @@ function verseScrollTop(verse) {
   return Math.max(0,verse.getBoundingClientRect().top+document.scrollingElement.scrollTop-readingTop(view)-12);
 }
 function updateVerseScrollRoom(arrival) {
-  const extended = Boolean(state.alignVerseAtTop && (view==='bible' || studySelection[view]));
+  const extended = Boolean((state.alignVerseAtTop!==false || arrival) && (view==='bible' || studySelection[view]));
   main.classList.toggle('verse-scroll-extended',extended);
   if (!extended) {
     main.style.removeProperty('--verse-arrival-room');
+    void main.offsetHeight;
     return;
   }
   const last = Array.from(main.querySelectorAll('[data-reading-verse]')).at(-1);
   const lastVerse = last && studySelection[view]?document.getElementById('study-v-'+last.dataset.readingVerse) ?? last:last;
-  const top = Math.max(lastVerse?verseScrollTop(lastVerse):0,arrival?verseScrollTop(arrival):0);
+  const targetTop = arrival ? verseScrollTop(arrival) : (lastVerse ? verseScrollTop(lastVerse) : 0);
   const page = document.scrollingElement;
   const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
   const naturalEnd = main.getBoundingClientRect().bottom+page.scrollTop-existing;
-  const room = top>0?Math.ceil(top+page.clientHeight-naturalEnd):0;
+  const room = targetTop>0 ? Math.ceil(targetTop+page.clientHeight-naturalEnd + 32) : 0;
   if (room>0) main.style.setProperty('--verse-arrival-room',room+'px');
   else main.style.removeProperty('--verse-arrival-room');
+  void main.offsetHeight;
 }
 function alignVerseArrival(verse) {
   const page = document.scrollingElement;
@@ -2389,10 +2405,20 @@ function showVerseArrival(id) {
   alignVerseArrival(verse);
   arrivedVerse = verse;
   verse.classList.add('verse-arrival');
-  window.requestAnimationFrame(()=>{
-    if (arrivedVerse===verse && verse.isConnected &&
-        Math.abs(document.scrollingElement.scrollTop-readingArrival?.scrollTop)<=2) alignVerseArrival(verse);
-  });
+
+  const targetY = readingTop(view) + 12;
+  const ensureAlignment = () => {
+    if (arrivedVerse===verse && verse.isConnected) {
+      const diff = Math.abs(verse.getBoundingClientRect().top - targetY);
+      if (diff > 2) {
+        alignVerseArrival(verse);
+      }
+    }
+  };
+  window.requestAnimationFrame(ensureAlignment);
+  setTimeout(ensureAlignment, 60);
+  setTimeout(ensureAlignment, 200);
+
   verseArrivalTimer = setTimeout(()=>{
     verse.classList.remove('verse-arrival');
     arrivedVerse = undefined;
@@ -3632,7 +3658,7 @@ function displayValue(key,value) {
 function migrate(input) {
   const result = {...blank(),...input};
   result.commentaryEdition = localEditionId(input.commentaryEdition)?input.commentaryEdition:'';
-  result.alignVerseAtTop = input.alignVerseAtTop===true;
+  result.alignVerseAtTop = input.alignVerseAtTop!==false;
   const oldSize = {regular:17,large:20,largest:23};
   const oldFont = Object.hasOwn(oldSize,input.readingSize) ? oldSize[input.readingSize] : undefined;
   result.display = {};
