@@ -89,7 +89,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
@@ -1292,7 +1292,7 @@ function readingScreen() {
     const yearLabel = year?year+'년':'전체 연도';
     const {counts} = readingProgress([],year);
     const bookLabel = trackerBook?titles[trackerBook]:'책 바로 선택';
-    return heading('READING RECORDS','성경 묵상·통독 체크','연도별 묵상 기록과 전체 일독 진행률을 확인하세요.')+
+    return heading('READING','통독 체크','일독 계획과 성경책별 묵상 기록을 관리해요.')+
       tabs +
       '<div class="reading-book-filters">'+readerPickerField('연도',yearLabel,'pick-tracker-year','연도 선택')+
       readerPickerField('성경책',bookLabel,'pick-tracker-book','성경책 선택')+'</div>'+
@@ -1303,7 +1303,7 @@ function readingScreen() {
   const {counts,rounds,remaining,today} = readingProgress(canon);
   const progress = canon.length-remaining.length;
   const percent = canon.length ? (progress/canon.length*100).toFixed(1) : '0.0';
-  return heading('READING JOURNEY','성경 묵상·통독 체크','연도별 묵상 기록과 전체 일독 진행률을 확인하세요.')+
+  return heading('READING','통독 체크','일독 계획과 성경책별 묵상 기록을 관리해요.')+
     tabs +
     '<section class="card reading-progress"><div class="row"><h2>누적 일독 · '+String(rounds+1)+'회차</h2><span class="reading-badge">일독 완료 '+rounds+'회</span></div>'+
     '<div class="row reading-count"><strong>'+progress+' <small>/ '+canon.length+'장</small></strong><span>'+percent+'%</span></div>'+
@@ -1323,10 +1323,11 @@ function bookChecksScreen() {
   return readingScreen();
 }
 function bookChecksProgress(label,yearLabel,visited,total) {
-  return '<div class="reading-book-progress"><div class="row">'+
+  const percent = total ? (visited/total*100).toFixed(1) : '0.0';
+  return '<section class="card reading-book-progress"><div class="row">'+
     '<div><span class="eyebrow">'+yearLabel+'</span><h2 id="book-checks-heading" tabindex="-1">'+label+'</h2></div>'+
-    '<span class="reading-book-count"><strong>'+visited+'</strong> / '+total+'장</span></div>'+
-    '<progress max="'+total+'" value="'+visited+'" aria-label="'+yearLabel+' '+label+' 묵상 진행률"></progress></div>';
+    '<span class="reading-book-count"><strong>'+visited+'</strong> / '+total+'장 ('+percent+'%)</span></div>'+
+    '<progress max="'+total+'" value="'+visited+'" aria-label="'+yearLabel+' '+label+' 묵상 진행률"></progress></section>';
 }
 function bookChecksOverview(yearLabel,counts) {
   const tabs = '<div class="settings-tabs book-checks-scopes" role="group" aria-label="성경 범위">'+
@@ -1340,11 +1341,18 @@ function bookChecksOverview(yearLabel,counts) {
       const checked = chapterNumbers(book).filter(chapter=>counts.has(book+'/'+chapter)).length;
       visited += checked;
       total += chapterTotal;
-      return '<li><button type="button" class="book-check-row" data-book-check-detail="'+book+'"><span>'+title+'</span>'+
-        '<span class="book-check-row-count">'+checked+' / '+chapterTotal+'장</span>'+icon('right')+'</button></li>';
+      const percent = Math.round((checked / chapterTotal) * 100);
+      const isDone = checked === chapterTotal && chapterTotal > 0;
+      return '<button type="button" class="book-check-tile '+(isDone?'done':'')+'" data-book-check-detail="'+book+'">'+
+        '<div class="book-check-tile-main">'+
+          '<strong>'+title+'</strong>'+
+          '<span class="book-check-tile-count">'+checked+'/'+chapterTotal+'</span>'+
+        '</div>'+
+        '<div class="book-check-mini-bar"><div class="book-check-mini-fill" style="width:'+percent+'%"></div></div>'+
+        '</button>';
     });
-    return '<section class="card book-check-list"><h3>'+trackerScopes[scope]+' <small>'+rows.length+'권</small></h3>'+
-      '<ul>'+rows.join('')+'</ul></section>';
+    return '<section class="card book-check-group"><header class="row book-check-group-header"><h3>'+trackerScopes[scope]+' <small>'+rows.length+'권</small></h3><span class="muted">'+visited+' / '+total+'장</span></header>'+
+      '<div class="book-check-grid">'+rows.join('')+'</div></section>';
   }).join('');
   return tabs+bookChecksProgress(trackerScopes[trackerScope],yearLabel,visited,total)+list;
 }
@@ -1358,28 +1366,63 @@ function bookChecksDetail(book,yearLabel,counts) {
       '<strong>'+chapter+'장</strong><span>'+(count?'✓ '+count+'회':'—')+'</span></button>';
   }).join('');
   return '<button type="button" class="text-action book-checks-back" data-action="tracker-overview">'+icon('left')+
-    '책 목록</button><section class="card reading-chapters book-checks">'+bookChecksProgress(titles[book],yearLabel,visited,chapters.length)+
-    (!visited?'<p class="muted">이 기간에 체크한 장이 없어요.</p>':'')+
+    '책 목록으로 돌아가기</button>'+
+    bookChecksProgress(titles[book],yearLabel,visited,chapters.length)+
+    '<section class="card reading-chapters book-checks">'+
+    (!visited?'<p class="muted" style="margin-bottom:12px;">이 기간에 아직 체크한 장이 없어요. 장을 누르면 해당 본문으로 바로 이동해요.</p>':'<p class="muted" style="margin-bottom:12px;">장을 누르면 성경 본문으로 이동해요. 완독한 장은 체크 표시돼요.</p>')+
     '<div class="chapter-grid">'+chapterButtons+'</div></section>';
 }
 function readingPlan(canon,counts,remaining,today) {
   const planned = planChapters(canon,state.readingRange);
   const scope = planned.length ? planned : canon;
-  const range = planned.length ? state.readingRange : null;
+  const range = state.readingRange;
   const queue = range ? scope.filter(key=>!counts.has(key)) : remaining;
   const checkedToday = scope.filter(key=>today.has(key)).length;
   const goal = state.readingGoal, slots = Math.max(0,goal-checkedToday);
   const suggestions = queue.slice(0,slots).map(key=>
     '<button class="reading-suggestion" data-open-chapter="'+key+'">'+chapterLabel(key)+' '+icon('arrow')+'</button>').join('');
-  const label = range ? chapterLabel(range.start)+(range.start===range.end?'':' ~ '+chapterLabel(range.end)) : '성경 전체';
+  const label = range ? chapterLabel(range.start)+(range.start===range.end?'':' ~ '+chapterLabel(range.end)) : '성경 전체 (1,189장)';
   const progress = scope.length-queue.length;
-  return '<section class="card reading-plan"><div class="row"><h2>나의 묵상 계획</h2><span class="reading-badge">오늘 '+checkedToday+'장 체크</span></div>'+
-    '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">범위 진행 '+progress+' / '+scope.length+'장</p></div><button class="btn" data-action="edit-reading-range">범위 설정</button></div>'+
+  const percent = scope.length ? (progress/scope.length*100).toFixed(1) : '0.0';
+
+  let periodMeta = '';
+  if (range?.startDate || range?.targetDate) {
+    const todayStr = dateKey();
+    let dDayText = '';
+    if (range.targetDate) {
+      const diffMs = new Date(range.targetDate).getTime() - new Date(todayStr).getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) dDayText = 'D-' + diffDays;
+      else if (diffDays === 0) dDayText = 'D-Day';
+      else dDayText = 'D+' + Math.abs(diffDays) + ' (종료)';
+    }
+    const dateRangeStr = (range.startDate ? range.startDate.replace(/-/g,'.') : '시작') + ' ~ ' + (range.targetDate ? range.targetDate.replace(/-/g,'.') : '목표일 미정');
+    periodMeta = '<div class="plan-period-badge"><span>'+icon('calendar')+' '+dateRangeStr+'</span>'+(dDayText ? '<strong>'+dDayText+'</strong>' : '')+'</div>';
+  }
+
+  const historyList = (state.readingHistory || []).map((h, idx) => {
+    const dates = (h.startDate ? h.startDate.replace(/-/g,'.') : '') + (h.endDate ? ' ~ ' + h.endDate.replace(/-/g,'.') : '');
+    return '<article class="card row reading-history-item">'+
+      '<div><strong>'+esc(h.title || (idx + 1) + '회차 완독')+'</strong>'+
+      '<p class="muted">'+esc(h.rangeLabel)+' · '+(h.chaptersCount || 0)+'장 완독'+(dates ? '<br>' + dates : '')+'</p></div>'+
+      '<span class="reading-badge done">완료</span>'+
+      '</article>';
+  }).join('');
+
+  return '<section class="card reading-plan"><div class="row"><h2>나의 통독 계획</h2><span class="reading-badge">오늘 '+checkedToday+'장 체크</span></div>'+
+    '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획·기간 설정</button></div>'+
+    periodMeta +
+    '<div class="plan-progress-bar"><progress max="'+Math.max(1,scope.length)+'" value="'+progress+'" aria-label="통독 진행률"></progress></div>'+
     '<label class="field reading-goal"><span class="row">하루 분량 <output id="reading-goal-value">'+goal+'장</output></span>'+
     '<input type="range" id="reading-goal" min="1" max="30" step="1" value="'+goal+'" aria-label="하루 분량" aria-valuetext="'+goal+'장"><span class="row muted"><span>1장</span><span>30장</span></span></label>'+
-    (range && !queue.length?'<p class="muted">정한 범위의 묵상을 모두 마쳤어요.</p>':
-      suggestions?'<div class="reading-suggestions"><p class="muted">범위에서 이어 읽을 장</p>'+suggestions+'</div>':
-      '<p class="muted">'+(slots?'성경 본문을 불러오면 추천 장을 볼 수 있어요.':'오늘 목표를 채웠어요.')+'</p>')+'</section>';
+    (progress >= scope.length ?
+      '<div class="plan-finish-banner"><p>🎉 계획하신 성경 통독을 모두 마쳤어요!</p><button type="button" class="btn primary" data-action="archive-reading-plan">통독 완료 기록 보관 & 새 계획</button></div>' :
+      '<div class="row" style="margin-top:10px;"><button type="button" class="text-action" data-action="archive-reading-plan" style="font-size:0.8rem; color:var(--muted);">현재 계획 완료 처리 및 기록 보관</button></div>')+
+    (suggestions?'<div class="reading-suggestions"><p class="muted">범위에서 이어 읽을 장</p>'+suggestions+'</div>':
+      '<p class="muted">'+(slots?'성경 본문을 불러오면 추천 장을 볼 수 있어요.':'오늘 목표를 채웠어요.')+'</p>')+'</section>'+
+    (historyList ?
+      '<div class="section-head"><h2>지난 통독 기록</h2></div>'+
+      '<div class="reading-history-group">'+historyList+'</div>' : '');
 }
 function rangeFields(side,key) {
   const [book,chapter] = key.split('/');
@@ -1391,13 +1434,22 @@ function showReadingRange() {
   const canon = canonChapters();
   if (!canon.length) return notify('성경 본문을 먼저 불러와 주세요.');
   const range = state.readingRange ?? {start:canon[0],end:canon.at(-1)};
-  dialog('묵상 범위 설정','<p class="muted">책 전체나 원하는 장 사이를 계획할 수 있어요.</p>'+
-    rangeFields('시작',range.start)+rangeFields('끝',range.end)+'<p class="range-error" role="status"></p>'+
-    '<div class="row"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">범위 저장</button></div>');
+  const startDate = state.readingRange?.startDate ?? dateKey();
+  const targetDate = state.readingRange?.targetDate ?? '';
+  dialog('통독 계획 및 기간 설정','<p class="muted">통독할 성경 범위와 목표 기간을 설정할 수 있어요.</p>'+
+    rangeFields('시작',range.start)+rangeFields('끝',range.end)+
+    '<div class="range-date-inputs">'+
+    '<label class="field"><span>시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
+    '<label class="field"><span>목표 완료일</span><input type="date" id="range-target-date" value="'+esc(targetDate)+'"></label>'+
+    '</div>'+
+    '<p class="range-error" role="status"></p>'+
+    '<div class="row" style="margin-top:12px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>');
 }
 function saveReadingRange() {
   const [start,end] = ['시작','끝'].map(side=>modal.querySelector('[data-range-book="'+side+'"]').value+'/'+modal.querySelector('[data-range-chapter="'+side+'"]').value);
-  const range = {start,end};
+  const startDate = modal.querySelector('#range-start-date')?.value || '';
+  const targetDate = modal.querySelector('#range-target-date')?.value || '';
+  const range = {start,end,startDate,targetDate};
   if (!planChapters(canonChapters(),range).length) {
     modal.querySelector('.range-error').textContent = '끝 장은 시작 장과 같거나 뒤에 있어야 해요.';
     return;
@@ -1793,7 +1845,7 @@ function recordsScreen() {
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
-      ['reading','check','묵상·통독 체크','일독 진행 · 성경책별 기록'],
+      ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
       '<article class="card row"><button type="button" class="record-open" data-open-verse-bundle="'+bundle.id+'">'+
@@ -2352,7 +2404,15 @@ function validatedBackup(payload) {
   }
   if (input.readingRange!=null) {
     if (!isObject(input.readingRange) || !planChapters(canonChapters(),input.readingRange).length) throw Error('reading range');
-    result.readingRange = {start:input.readingRange.start,end:input.readingRange.end};
+    result.readingRange = {
+      start: input.readingRange.start,
+      end: input.readingRange.end,
+      startDate: input.readingRange.startDate || '',
+      targetDate: input.readingRange.targetDate || ''
+    };
+  }
+  if (Array.isArray(input.readingHistory)) {
+    result.readingHistory = input.readingHistory;
   }
   if (input.editionLabels!==undefined) {
     if (!isObject(input.editionLabels)) throw Error('edition labels');
@@ -2433,6 +2493,48 @@ const actions = {
   },
   'choose-font'() { document.querySelector('#custom-font-file').click(); },
   'choose-bdb'() { document.querySelector('#bdb-files').click(); },
+  'reset-reading-range'() {
+    const canon = canonChapters();
+    if (!canon.length) return;
+    modal.querySelector('[data-range-book="시작"]').value = canon[0].split('/')[0];
+    modal.querySelector('[data-range-chapter="시작"]').value = canon[0].split('/')[1];
+    modal.querySelector('[data-range-book="끝"]').value = canon.at(-1).split('/')[0];
+    modal.querySelector('[data-range-chapter="끝"]').value = canon.at(-1).split('/')[1];
+  },
+  'archive-reading-plan'() {
+    const canon = canonChapters();
+    const planned = planChapters(canon,state.readingRange);
+    const scope = planned.length ? planned : canon;
+    const range = state.readingRange;
+    const label = range ? chapterLabel(range.start)+(range.start===range.end?'':' ~ '+chapterLabel(range.end)) : '성경 전체 (1,189장)';
+    dialog('통독 기록 보관',
+      '<p>현재 통독 계획을 <strong>지난 통독 기록</strong>에 영구 보관하고 새로운 통독 계획을 시작하시겠어요?</p>'+
+      '<p class="muted">보관할 범위: ' + esc(label) + ' (' + scope.length + '장)</p>'+
+      '<div class="row" style="margin-top:12px;"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-action="confirm-archive-plan">보관하고 새 계획 시작</button></div>'
+    );
+  },
+  'confirm-archive-plan'() {
+    if (!state.readingHistory) state.readingHistory = [];
+    const canon = canonChapters();
+    const planned = planChapters(canon,state.readingRange);
+    const scope = planned.length ? planned : canon;
+    const range = state.readingRange;
+    const label = range ? chapterLabel(range.start)+(range.start===range.end?'':' ~ '+chapterLabel(range.end)) : '성경 전체 (1,189장)';
+    state.readingHistory.unshift({
+      id: 'plan-' + Date.now(),
+      title: (state.readingHistory.length + 1) + '회차 성경 통독',
+      rangeLabel: label,
+      startDate: range?.startDate || '',
+      endDate: dateKey(),
+      completedAt: dateKey(),
+      chaptersCount: scope.length
+    });
+    state.readingRange = null;
+    modal.close();
+    save();
+    render();
+    notify('통독 기록을 보관함에 저장했어요!');
+  },
   'edit-reading-range'() { showReadingRange(); },
   'save-reading-range'() { saveReadingRange(); },
   'reset-reading-range'() { setReadingRange(null); },
