@@ -2956,7 +2956,8 @@ const actions = {
     notify(checked ? '클라우드 자동 동기화를 켰어요.' : '클라우드 자동 동기화를 껐어요.');
     render();
   },
-  async 'gh-backup'(silent = false) {
+  async 'gh-backup'(btnOrSilent = false) {
+    const silent = btnOrSilent === true;
     const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
     if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
     const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
@@ -3062,7 +3063,8 @@ const actions = {
       if (!silent) notify('백업 실패: ' + e.message);
     }
   },
-  async 'gh-restore'(silent = false) {
+  async 'gh-restore'(btnOrSilent = false) {
+    const silent = btnOrSilent === true;
     const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
     if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
     const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
