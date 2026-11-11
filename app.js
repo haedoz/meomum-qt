@@ -2661,8 +2661,10 @@ const actions = {
       const jsonStr = new TextDecoder().decode(bytes);
       const payload = JSON.parse(jsonStr);
 
+      const currentDisplay = {...state.display};
       const imported = validatedBackup(payload);
       state = imported;
+      state.display = currentDisplay;
       lastMarkerEdit = undefined;
       pendingImport = undefined;
       const nowStr = new Date().toLocaleString('ko-KR');
@@ -3999,14 +4001,15 @@ async function checkGhAutoSync() {
     const remoteTime = payload?.data?.backup || '';
     const localTime = state?.backup || '';
     if (remoteTime && (!localTime || remoteTime > localTime)) {
+      const currentDisplay = {...state.display};
       const imported = validatedBackup(payload);
       state = imported;
+      state.display = currentDisplay;
       lastMarkerEdit = undefined;
       pendingImport = undefined;
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
       await storeLocal('journal', state);
-      notify('GitHub에서 최신 묵상 기록을 자동 동기화했어요.');
       render();
     }
   } catch {
