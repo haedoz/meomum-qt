@@ -3084,9 +3084,9 @@ const actions = {
 
     if (!silent) notify('깃허브에서 기록을 가져오는 중이에요…');
     try {
-      const filePath = `${user}.json`;
-      const url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
-      const res = await fetch(url, {
+      let filePath = `${user}.json`;
+      let url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+      let res = await fetch(url, {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -3094,6 +3094,35 @@ const actions = {
           'Cache-Control': 'no-cache'
         }
       });
+      if (!res.ok && res.status === 404) {
+        const listRes = await fetch(`https://api.github.com/repos/${repo}/contents?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        if (listRes.ok) {
+          const files = await listRes.json();
+          const target = user.toLowerCase() + '.json';
+          const match = Array.isArray(files) && files.find(f => f.name.toLowerCase() === target);
+          if (match) {
+            filePath = match.name;
+            const correctUser = match.name.replace(/\.json$/i, '');
+            localStorage.setItem('logbible-gh-user', correctUser);
+            url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+            res = await fetch(url, {
+              cache: 'no-store',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github+json',
+                'Cache-Control': 'no-cache'
+              }
+            });
+          }
+        }
+      }
       if (!res.ok) {
         if (res.status === 404) throw new Error('저장소에 백업 파일(' + filePath + ')이 아직 없어요. 먼저 [지금 백업]을 눌러주세요.');
         const err = await res.json().catch(() => ({}));
@@ -4681,9 +4710,9 @@ async function checkGhAutoSync() {
     const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
     const user = localStorage.getItem('logbible-gh-user')?.trim();
     if (!user) return;
-    const filePath = `${user}.json`;
-    const url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
-    const res = await fetch(url, {
+    let filePath = `${user}.json`;
+    let url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+    let res = await fetch(url, {
       cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -4691,6 +4720,35 @@ async function checkGhAutoSync() {
         'Cache-Control': 'no-cache'
       }
     });
+    if (!res.ok && res.status === 404) {
+      const listRes = await fetch(`https://api.github.com/repos/${repo}/contents?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      if (listRes.ok) {
+        const files = await listRes.json();
+        const target = user.toLowerCase() + '.json';
+        const match = Array.isArray(files) && files.find(f => f.name.toLowerCase() === target);
+        if (match) {
+          filePath = match.name;
+          const correctUser = match.name.replace(/\.json$/i, '');
+          localStorage.setItem('logbible-gh-user', correctUser);
+          url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+          res = await fetch(url, {
+            cache: 'no-store',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json',
+              'Cache-Control': 'no-cache'
+            }
+          });
+        }
+      }
+    }
     if (!res.ok) return;
     const fileData = await res.json();
     const binary = atob(fileData.content.replace(/\s/g, ''));
