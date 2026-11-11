@@ -77,9 +77,13 @@ const settings = {
 const themes = {system:'시스템 설정',light:'라이트',dark:'다크'};
 const palettes = {slate:'미스트 블루',lavender:'모브 그레이',oat:'오트 베이지',gray:'라이트 그레이'};
 const fontChoices = {
-  pretendard: '프리텐다드',
+  pretendard: '프리텐다드 (기본)',
   paperlogy: '페이퍼로지',
   notosanskr: '노토 산스 KR',
+  ebgaramond: 'EB Garamond (클래식 영문)',
+  cardo: 'Cardo (성경 원어·헬라어·영문)',
+  gentium: 'Gentium Plus (헬라어·그리스어)',
+  notohebrew: 'Noto Serif Hebrew (히브리어 원어)',
   system: '기기 기본 글꼴',
   custom: '가져온 글꼴'
 };
@@ -1444,24 +1448,29 @@ function showReadingRange() {
   const hasTarget = Boolean(targetDate);
   dialog('통독 계획 및 기간 설정','<p class="muted">통독할 성경 범위와 계획 방식을 설정할 수 있어요.</p>'+
     rangeFields('시작',range.start)+rangeFields('끝',range.end)+
-    '<div class="range-date-inputs" style="margin-top:12px;">'+
-    '<label class="field"><span>통독 시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
+    '<div class="plan-mode-tabs" role="tablist">'+
+      '<button type="button" class="plan-mode-tab '+(hasTarget?'':'active')+'" data-action="plan-mode-daily">매일 꾸준히 (자유)</button>'+
+      '<button type="button" class="plan-mode-tab '+(hasTarget?'active':'')+'" data-action="plan-mode-target">목표 기간 정하기</button>'+
     '</div>'+
-    '<div class="card" style="margin-top:10px; padding:12px; background:var(--soft);">'+
-    '<label class="gh-switch" style="margin:0;"><input type="checkbox" id="range-has-target" '+(hasTarget?'checked':'')+' onchange="document.getElementById(\'range-target-wrap\').hidden = !this.checked"><span>목표 완료일 정해두기</span></label>'+
-    '<div id="range-target-wrap" '+(hasTarget?'':'hidden')+' style="margin-top:10px;">'+
-    '<label class="field"><span>목표 완료일</span><input type="date" id="range-target-date" value="'+esc(targetDate)+'"></label>'+
+    '<div id="plan-mode-daily-panel" '+(hasTarget?'hidden':'')+'>'+
+      '<label class="field"><span>통독 시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
+      '<p class="muted" style="margin-top:6px; font-size:0.8rem;">마감 날짜 없이 매일 읽는 하루 분량에 맞춰 예상 완독일이 계산돼요.</p>'+
     '</div>'+
-    '<p class="muted" style="margin-top:6px; font-size:0.75rem;">목표일을 끄면 마감 없이 하루 목표 장수 페이스에 맞춰 예상 완독일이 계산돼요.</p>'+
+    '<div id="plan-mode-target-panel" '+(hasTarget?'':'hidden')+'>'+
+      '<div class="range-fields">'+
+        '<label class="field"><span>시작일</span><input type="date" id="range-start-date-target" value="'+esc(startDate)+'"></label>'+
+        '<label class="field"><span>목표 완료일</span><input type="date" id="range-target-date" value="'+esc(targetDate)+'"></label>'+
+      '</div>'+
+      '<p class="muted" style="margin-top:6px; font-size:0.8rem;">목표일까지 남은 D-Day와 일정에 맞춰 진행률이 표시돼요.</p>'+
     '</div>'+
     '<p class="range-error" role="status"></p>'+
-    '<div class="row" style="margin-top:12px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>');
+    '<div class="row" style="margin-top:16px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>');
 }
 function saveReadingRange() {
   const [start,end] = ['시작','끝'].map(side=>modal.querySelector('[data-range-book="'+side+'"]').value+'/'+modal.querySelector('[data-range-chapter="'+side+'"]').value);
-  const startDate = modal.querySelector('#range-start-date')?.value || dateKey();
-  const hasTarget = modal.querySelector('#range-has-target')?.checked;
-  const targetDate = hasTarget ? (modal.querySelector('#range-target-date')?.value || '') : '';
+  const isTargetMode = modal.querySelector('.plan-mode-tab[data-action="plan-mode-target"]')?.classList.contains('active');
+  const startDate = (isTargetMode ? modal.querySelector('#range-start-date-target')?.value : modal.querySelector('#range-start-date')?.value) || dateKey();
+  const targetDate = isTargetMode ? (modal.querySelector('#range-target-date')?.value || '') : '';
   const range = {start,end,startDate,targetDate};
   if (!planChapters(canonChapters(),range).length) {
     modal.querySelector('.range-error').textContent = '끝 장은 시작 장과 같거나 뒤에 있어야 해요.';
@@ -2548,6 +2557,20 @@ const actions = {
     render();
     notify('통독 기록을 보관함에 저장했어요!');
   },
+  'plan-mode-daily'() {
+    modal.querySelectorAll('.plan-mode-tab').forEach(t=>t.classList.toggle('active',t.dataset.action==='plan-mode-daily'));
+    const dailyPanel = modal.querySelector('#plan-mode-daily-panel');
+    const targetPanel = modal.querySelector('#plan-mode-target-panel');
+    if (dailyPanel) dailyPanel.hidden = false;
+    if (targetPanel) targetPanel.hidden = true;
+  },
+  'plan-mode-target'() {
+    modal.querySelectorAll('.plan-mode-tab').forEach(t=>t.classList.toggle('active',t.dataset.action==='plan-mode-target'));
+    const dailyPanel = modal.querySelector('#plan-mode-daily-panel');
+    const targetPanel = modal.querySelector('#plan-mode-target-panel');
+    if (dailyPanel) dailyPanel.hidden = true;
+    if (targetPanel) targetPanel.hidden = false;
+  },
   'edit-reading-range'() { showReadingRange(); },
   'save-reading-range'() { saveReadingRange(); },
   'reset-reading-range'() { setReadingRange(null); },
@@ -3506,6 +3529,10 @@ function displaySettings() {
       ['pretendard',fontChoices.pretendard],
       ['paperlogy',fontChoices.paperlogy],
       ['notosanskr',fontChoices.notosanskr],
+      ['ebgaramond',fontChoices.ebgaramond],
+      ['cardo',fontChoices.cardo],
+      ['gentium',fontChoices.gentium],
+      ['notohebrew',fontChoices.notohebrew],
       ['system',fontChoices.system],
       ...(customFont?[['custom',customFont.name]]:[]),
     ],state.fontChoice==='custom' && !customFont?'pretendard':state.fontChoice)+'</select></label>'+

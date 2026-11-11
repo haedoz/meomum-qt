@@ -1143,6 +1143,30 @@ select, .filters .pill { font-size: 0.875rem; }
 :root[data-font="notosanskr"] {
   --preferred-font: NotoSansKR;
 }
+
+:root[data-font="ebgaramond"] {
+  --preferred-font: 'EB Garamond', Pretendard, var(--sans);
+}
+
+:root[data-font="cardo"] {
+  --preferred-font: 'Cardo', Pretendard, var(--serif);
+}
+
+:root[data-font="gentium"] {
+  --preferred-font: 'Gentium Plus', 'Cardo', Pretendard, var(--serif);
+}
+
+:root[data-font="notohebrew"] {
+  --preferred-font: 'Noto Serif Hebrew', 'Cardo', Pretendard, var(--serif);
+}
+
+[lang="he"], .original-verse-text[lang="he"], .original-detail-form bdi {
+  font-family: 'Noto Serif Hebrew', 'Cardo', var(--preferred-font), serif;
+}
+
+[lang="grc"], .original-verse-text[lang="grc"] {
+  font-family: 'Cardo', 'Gentium Plus', var(--preferred-font), serif;
+}
 :root {
   --paper: #f5f7fa; --card: #fff; --soft: #f0f3f8; --line: #e4e9f0;
   --ink: #202733; --muted: #596372;
@@ -2035,3 +2059,38 @@ textarea { --input-line-gap: var(--verse-gap, 0px); }
 #main:has(.settings-tabs) .gh-card {
   gap: max(12px, var(--verse-gap, 14px));
 }
+
+/* 통독 계획 방식 애플 스타일 세그먼트 탭 */
+.plan-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--soft);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  margin: 14px 0 14px;
+  border: 1px solid var(--line);
+}
+.plan-mode-tab {
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.plan-mode-tab.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+:root[data-appearance="dark"] .plan-mode-tab.active {
+  background: #2b3543;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
