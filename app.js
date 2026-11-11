@@ -2965,17 +2965,21 @@ const actions = {
     const userInput = document.querySelector('#gh-user-input')?.value.trim();
     if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
-    const token = localStorage.getItem('logbible-gh-token');
-    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!token) {
+    const rawToken = localStorage.getItem('logbible-gh-token');
+    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
+    if (!rawToken) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
       return;
     }
-    if (!user) {
+    if (!rawUser) {
       if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
       return;
     }
+
+    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
+    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
+    const user = rawUser.trim().replace(/\.json$/i, '').trim();
 
     if (!silent) notify('깃허브에 백업 중이에요…');
     try {
@@ -2989,7 +2993,8 @@ const actions = {
       const contentBase64 = btoa(binary);
 
       const filePath = `${user}.json`;
-      const url = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+      const encodedPath = encodeURIComponent(filePath);
+      const url = `https://api.github.com/repos/${repo}/contents/${encodedPath}`;
 
       let sha;
       const getRes = await fetch(`${url}?_t=${Date.now()}`, {
@@ -3072,22 +3077,27 @@ const actions = {
     const userInput = document.querySelector('#gh-user-input')?.value.trim();
     if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
-    const token = localStorage.getItem('logbible-gh-token');
-    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!token) {
+    const rawToken = localStorage.getItem('logbible-gh-token');
+    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
+    if (!rawToken) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
       return;
     }
-    if (!user) {
+    if (!rawUser) {
       if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
       return;
     }
 
+    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
+    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
+    const user = rawUser.trim().replace(/\.json$/i, '').trim();
+
     if (!silent) notify('깃허브에서 기록을 가져오는 중이에요…');
     try {
       let filePath = `${user}.json`;
-      let url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+      let encodedPath = encodeURIComponent(filePath);
+      let url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
       let res = await fetch(url, {
         cache: 'no-store',
         headers: {
@@ -3113,7 +3123,8 @@ const actions = {
             filePath = match.name;
             const correctUser = match.name.replace(/\.json$/i, '');
             localStorage.setItem('logbible-gh-user', correctUser);
-            url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+            encodedPath = encodeURIComponent(filePath);
+            url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
             res = await fetch(url, {
               cache: 'no-store',
               headers: {
@@ -4702,18 +4713,24 @@ let lastGhCheckTime = 0;
 let isGhSyncing = false;
 async function checkGhAutoSync() {
   if (isGhSyncing) return;
-  const token = localStorage.getItem('logbible-gh-token');
+  const rawToken = localStorage.getItem('logbible-gh-token');
   const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
-  if (!token || !auto) return;
+  if (!rawToken || !auto) return;
   if (Date.now() - lastGhCheckTime < 2500) return;
   lastGhCheckTime = Date.now();
   isGhSyncing = true;
   try {
-    const repo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
-    const user = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!user) return;
+    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
+    if (!rawUser) return;
+
+    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
+    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
+    const user = rawUser.trim().replace(/\.json$/i, '').trim();
+
     let filePath = `${user}.json`;
-    let url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+    let encodedPath = encodeURIComponent(filePath);
+    let url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
     let res = await fetch(url, {
       cache: 'no-store',
       headers: {
@@ -4739,7 +4756,8 @@ async function checkGhAutoSync() {
           filePath = match.name;
           const correctUser = match.name.replace(/\.json$/i, '');
           localStorage.setItem('logbible-gh-user', correctUser);
-          url = `https://api.github.com/repos/${repo}/contents/${filePath}?_t=${Date.now()}`;
+          encodedPath = encodeURIComponent(filePath);
+          url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
           res = await fetch(url, {
             cache: 'no-store',
             headers: {
@@ -4787,7 +4805,7 @@ setInterval(() => {
 
 main.addEventListener('input', event => {
   const target = event.target;
-  if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim());
-  if (target.id === 'gh-repo-input') localStorage.setItem('logbible-gh-repo', target.value.trim());
-  if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim());
+  if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim().replace(/[^\x21-\x7E]/g, ''));
+  if (target.id === 'gh-repo-input') localStorage.setItem('logbible-gh-repo', target.value.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim());
+  if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim().replace(/\.json$/i, '').trim());
 });
