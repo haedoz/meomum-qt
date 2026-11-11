@@ -490,6 +490,57 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
   color: var(--muted);
   font-weight: 500;
 }
+.journal-bundled-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.journal-bundled-verse {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  line-height: var(--reading-leading, 1.5);
+}
+.journal-bundled-verse .record-verse-number {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.journal-bundled-verse .verse-text {
+  font-size: var(--reading-size, 0.9375rem);
+  color: var(--ink);
+}
+.record-note-content {
+  margin-top: 6px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: color-mix(in srgb, #f2f7fd 70%, var(--soft));
+  border: 1px dashed color-mix(in srgb, #bedbf8 65%, var(--line));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.record-note-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #245284;
+}
+.record-note-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+  white-space: pre-wrap;
+}
+:root[data-appearance="dark"] .record-note-content {
+  background: #172435;
+  border-color: #273e5a;
+}
+:root[data-appearance="dark"] .record-note-label {
+  color: #92bceb;
+}
 :root[data-appearance="dark"] .calendar-mark-card.highlight {
   border-color: #4a3e20;
 }
