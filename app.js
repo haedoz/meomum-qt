@@ -69,7 +69,8 @@ const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
 const markerColors = {gold:'#e6bc43',sage:'#7cb668',rose:'#dc7d9c',blue:'#6d9ddf'};
 let lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
 const settings = {
-  fontSize:{label:'글자 크기',min:12,max:48,step:1,unit:'px',initial:15},
+  fontSize:{label:'한글 본문 크기',min:12,max:48,step:1,unit:'px',initial:15},
+  originalFontSize:{label:'원어(히브리어·헬라어) 크기',min:14,max:56,step:1,unit:'px',initial:22},
   lineHeight:{label:'줄 간격',min:1.2,max:3,step:.05,unit:'배',initial:1.25},
   verseGap:{label:'구절 사이 간격',min:0,max:48,step:1,unit:'px',initial:0},
   letterSpace:{label:'글자 사이 간격',min:-1,max:5,step:.1,unit:'px',initial:0},
@@ -219,7 +220,10 @@ function registerLocalEdition(edition) {
   }
   editions[edition.id] = edition.label;
   data[edition.id] = edition.verses;
-  localLanguages[edition.id] = /[가-힣]/.test(edition.verses.GEN?.[1]?.[1] ?? '')?'ko':'en';
+  const sample = (edition.verses?.GEN?.[1]?.[1] ?? edition.verses?.MAT?.[1]?.[1] ?? edition.verses?.PSA?.[23]?.[1] ?? '');
+  localLanguages[edition.id] = /[가-힣]/.test(sample) ? 'ko' :
+    /[\u0590-\u05ff]/.test(sample) || /BHS/i.test(edition.label) ? 'he' :
+    /[\u0370-\u03ff]/.test(sample) || /LXX/i.test(edition.label) ? 'grc' : 'en';
 }
 function localEditionId(id) {
   return /^local-[0-9a-f]{16}$/.test(id);
@@ -3806,6 +3810,8 @@ function applyDisplay() {
   const root = document.documentElement;
   const size = displayValue('fontSize',state.display.fontSize);
   root.style.setProperty('--reading-size',size+'px');
+  const originalSize = displayValue('originalFontSize',state.display.originalFontSize);
+  root.style.setProperty('--original-reading-size',originalSize+'px');
   const uiSize = Math.max(14,Math.min(24,16+(size-settings.fontSize.initial)*0.6));
   root.style.fontSize = uiSize+'px';
   root.style.setProperty('--ui-size-offset',(uiSize-16)+'px');
@@ -3880,11 +3886,11 @@ function readingPreview() {
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">📜 히브리어 (구약 원어)</span><span class="muted" style="font-size:0.75rem;">시 23:1</span></div>'+
-        '<p class="verse-copy" lang="he" dir="rtl" style="font-family:var(--font-he); font-size:1.18em; margin:2px 0;">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃</p>'+
+        '<p class="verse-copy" lang="he" dir="rtl" style="font-family:var(--font-he); font-size:var(--original-reading-size, 22px); margin:2px 0;">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃</p>'+
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">🏛️ 헬라어 (신약 원어)</span><span class="muted" style="font-size:0.75rem;">요 1:1</span></div>'+
-        '<p class="verse-copy" lang="grc" style="font-family:var(--font-grc); font-size:1.06em; margin:2px 0;">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν</p>'+
+        '<p class="verse-copy" lang="grc" style="font-family:var(--font-grc); font-size:var(--original-reading-size, 22px); margin:2px 0;">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν</p>'+
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">📖 영어</span><span class="muted" style="font-size:0.75rem;">Ps 23:1</span></div>'+

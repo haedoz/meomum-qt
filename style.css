@@ -2657,6 +2657,29 @@ bdi[lang="grc"] {
   font-family: var(--font-en, "EB Garamond", serif);
 }
 
+/* 원어 (히브리어 BHSStp, 헬라어 LXXStp 등) 전용 글자 크기 */
+.original-verse-text,
+.original-word-text,
+.original-detail-form bdi,
+.verse[lang="he"],
+.verse[lang="grc"],
+.verse[lang="he"] .verse-content,
+.verse[lang="grc"] .verse-content,
+[lang="he"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body),
+[lang="grc"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
+  font-size: var(--original-reading-size, 22px) !important;
+  line-height: 1.45;
+}
+
+.original-word-head bdi.original-word-text {
+  font-size: var(--original-reading-size, 22px) !important;
+  line-height: 1.35;
+}
+
+.original-detail-form bdi {
+  font-size: calc(var(--original-reading-size, 22px) * 1.25) !important;
+}
+
 
 
 
