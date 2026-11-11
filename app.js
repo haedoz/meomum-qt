@@ -2173,11 +2173,15 @@ function currentReadingPosition(useSelection = false) {
   const {book,chapter} = location;
   const selected = useSelection && view==='bible'?chosen.values().next().value:undefined;
   if (selected) return readRef(selected);
+  if (arrivedVerse && arrivedVerse.isConnected) {
+    const v = Number(arrivedVerse.id.split('-').at(-1));
+    if (Number.isFinite(v) && v > 0) return {book,chapter,verse:v};
+  }
   if (readingArrival?.book===book && readingArrival.chapter===chapter &&
-      Math.abs(readingArrival.scrollTop-document.scrollingElement.scrollTop)<=2) return readingArrival;
+      Math.abs(readingArrival.scrollTop-document.scrollingElement.scrollTop)<=4) return readingArrival;
   const rows = [...main.querySelectorAll('[data-reading-verse]')];
-  const top = readingTop(view);
-  const row = rows.find(element=>element.getBoundingClientRect().bottom>top+12) ?? rows.at(-1);
+  const threshold = readingTop(view) + 20;
+  const row = rows.find(element=>element.getBoundingClientRect().bottom >= threshold) ?? rows[0];
   return {book,chapter,verse:row?Number(row.dataset.readingVerse):location.verse};
 }
 function syncBiblePosition({book,chapter,verse}) {
@@ -2373,7 +2377,8 @@ function render(studyFromSelection = false) {
   if (view==='bible') lastBibleScrollTop = document.scrollingElement.scrollTop;
 }
 function verseScrollTop(verse) {
-  return Math.max(0,verse.getBoundingClientRect().top+document.scrollingElement.scrollTop-readingTop(view)-12);
+  const target = verse.closest('.verse-pair') ?? verse;
+  return Math.max(0, Math.round(target.getBoundingClientRect().top + document.scrollingElement.scrollTop - readingTop(view) - 8));
 }
 function updateVerseScrollRoom(arrival) {
   const extended = Boolean((state.alignVerseAtTop!==false || arrival) && (view==='bible' || studySelection[view]));
@@ -2389,7 +2394,7 @@ function updateVerseScrollRoom(arrival) {
   const page = document.scrollingElement;
   const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
   const naturalEnd = main.getBoundingClientRect().bottom+page.scrollTop-existing;
-  const room = targetTop>0 ? Math.ceil(targetTop+page.clientHeight-naturalEnd + 32) : 0;
+  const room = targetTop>0 ? Math.ceil(targetTop+page.clientHeight-naturalEnd + 40) : 0;
   if (room>0) main.style.setProperty('--verse-arrival-room',room+'px');
   else main.style.removeProperty('--verse-arrival-room');
   void main.offsetHeight;
@@ -2408,27 +2413,24 @@ function showVerseArrival(id) {
   clearTimeout(verseArrivalTimer);
   arrivedVerse?.classList.remove('verse-arrival');
   if (arrivedVerse===verse) void verse.offsetWidth;
-  if (!verse.classList.contains('verse-arrival-focus')) {
-    verse.classList.add('verse-arrival-focus');
-    verse.addEventListener('blur',()=>verse.classList.remove('verse-arrival-focus'),{once:true});
-  }
-  verse.focus({preventScroll:true});
+
   alignVerseArrival(verse);
   arrivedVerse = verse;
   verse.classList.add('verse-arrival');
 
-  const targetY = readingTop(view) + 12;
+  const targetEl = verse.closest('.verse-pair') ?? verse;
   const ensureAlignment = () => {
     if (arrivedVerse===verse && verse.isConnected) {
-      const diff = Math.abs(verse.getBoundingClientRect().top - targetY);
-      if (diff > 2) {
+      const expectedY = readingTop(view) + 8;
+      const currentY = Math.round(targetEl.getBoundingClientRect().top);
+      if (Math.abs(currentY - expectedY) > 2) {
         alignVerseArrival(verse);
       }
     }
   };
   window.requestAnimationFrame(ensureAlignment);
-  setTimeout(ensureAlignment, 60);
-  setTimeout(ensureAlignment, 200);
+  setTimeout(ensureAlignment, 50);
+  setTimeout(ensureAlignment, 150);
 
   verseArrivalTimer = setTimeout(()=>{
     verse.classList.remove('verse-arrival');
@@ -3543,6 +3545,7 @@ window.addEventListener('scroll',()=>{
     lastBibleScrollTop = scrollTop;
     if (readingBookmarkTimer===undefined) readingBookmarkTimer = setTimeout(flushReadingBookmark,160);
   }
+  if (arrivedVerse) return;
   const pos = currentReadingPosition();
   if (pos && pos.book && pos.chapter) {
     studySelection.commentary.location = {book:pos.book, chapter:pos.chapter, verse:pos.verse ?? 1};
