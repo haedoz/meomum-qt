@@ -2614,18 +2614,43 @@ input[type="date"] {
   border-color: var(--line);
   color: var(--muted);
 }
-/* 성경 본문 및 언어별 글꼴 적용 */
-body, .bible-passage, .passage-title, .reader-view {
-  font-family: var(--font-ko, Pretendard, -apple-system, sans-serif);
+/* 성경 본문 및 기본 앱 글꼴 (한글 본문 글꼴 적용) */
+body, #main, .card, .bible-passage, .passage-title, .reader-view, .commentary-page, .original-body, .original-word, .original-gloss, .original-grammar, .original-caption {
+  font-family: var(--font-ko, var(--sans, Pretendard, -apple-system, sans-serif));
 }
 
-[lang="he"], [dir="rtl"], .original-verse-text[lang="he"], .original-body[lang="he"] bdi, .original-word-head[lang="he"] bdi, bdi[lang="he"], .original-lemma[lang="he"], [data-lang="he"] {
+/* 히브리어 구약 원어 및 단어 표기 (에즈라 SIL 등) */
+.original-verse-text[lang="he"],
+.original-word-text[lang="he"],
+.original-detail-form bdi[lang="he"],
+bdi[lang="he"] {
   font-family: var(--font-he, "Ezra SIL", "Noto Serif Hebrew", serif) !important;
-  direction: rtl;
+  direction: rtl !important;
+  unicode-bidi: isolate;
 }
 
-[lang="grc"], .original-verse-text[lang="grc"], .original-body[lang="grc"] bdi, .original-word-head[lang="grc"] bdi, bdi[lang="grc"], .original-lemma[lang="grc"], [data-lang="grc"] {
+/* 헬라어 신약 원어 및 단어 표기 */
+.original-verse-text[lang="grc"],
+.original-word-text[lang="grc"],
+.original-detail-form bdi[lang="grc"],
+bdi[lang="grc"] {
   font-family: var(--font-grc, "Cardo", "Gentium Plus", serif) !important;
+  direction: ltr !important;
+  unicode-bidi: isolate;
+}
+
+/* 원전분해 내부의 한국어 설명은 항상 한글 글꼴(페이퍼로지 등) 강제 적용 */
+.original-caption,
+.original-gloss,
+.original-grammar,
+.original-source-note,
+.original-code,
+.dictionary-detail,
+.dictionary-sense,
+.original-detail dt,
+.original-detail dd {
+  font-family: var(--font-ko, var(--sans, Paperlogy, Pretendard, sans-serif)) !important;
+  direction: ltr !important;
 }
 
 [lang="en"], .english-edition, [data-lang="en"] {

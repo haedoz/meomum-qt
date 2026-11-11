@@ -1103,12 +1103,13 @@ function originalVerseReading(body,verse,source,chapter) {
     '<p class="original-verse-text" lang="'+source.language+'" dir="'+source.direction+'">'+esc(text)+'</p>':'';
   const breakdown = words.map(({line,form,lemma,grammar,gloss})=>{
     if (line) return '<p>'+originalCodes(line)+'</p>';
-    return '<div class="original-word"><div class="original-word-head"><bdi lang="'+source.language+'" dir="'+source.direction+'">'+esc(form)+'</bdi>'+
-      (gloss?'<span class="original-gloss">'+esc(gloss)+'</span>':'')+'</div>'+
-      (grammar?'<div class="muted original-grammar">'+esc(grammar)+'</div>':'')+
-      (lemma?'<div class="original-lemma" lang="'+source.language+'" dir="'+source.direction+'">'+originalCodes(lemma)+'</div>':'')+'</div>';
+    return '<div class="original-word"><div class="original-word-head">'+
+      '<bdi class="original-word-text" lang="'+source.language+'" dir="'+source.direction+'">'+esc(form)+'</bdi>'+
+      (gloss?'<span class="original-gloss" lang="ko">'+esc(gloss)+'</span>':'')+'</div>'+
+      (grammar?'<div class="muted original-grammar" lang="ko">'+esc(grammar)+'</div>':'')+
+      (lemma?'<div class="original-lemma">'+originalCodes(lemma)+'</div>':'')+'</div>';
   }).join('');
-  return '<div class="original-body" lang="'+source.language+'" dir="'+source.direction+'">'+original+(breakdown?'<h4 class="original-caption">단어별 풀이</h4>'+breakdown:'')+'</div>';
+  return '<div class="original-body">'+original+(breakdown?'<h4 class="original-caption">단어별 풀이</h4>'+breakdown:'')+'</div>';
 }
 function showOriginalMeaning(button) {
   const code = button.dataset.strongCode;
@@ -3846,10 +3847,12 @@ function applyDisplay() {
   const enFont = (state.fontEnglish==='custom' && customFonts.en) ? fontFamilies.en.custom : (fontFamilies.en[state.fontEnglish] || (customFonts.en ? fontFamilies.en.custom : fontFamilies.en.ebgaramond));
 
   root.style.setProperty('--font-ko', koFont);
+  root.style.setProperty('--sans', koFont);
   root.style.setProperty('--font-en', enFont);
   root.style.setProperty('--font-he', heFont);
   root.style.setProperty('--font-grc', grcFont);
   root.style.setProperty('--preferred-font', koFont);
+  root.style.fontFamily = koFont;
 
   root.style.setProperty('--reading-leading',displayValue('lineHeight',state.display.lineHeight));
   root.style.setProperty('--verse-gap',displayValue('verseGap',state.display.verseGap)+'px');
