@@ -132,22 +132,22 @@ button:focus-visible, a:focus-visible { outline-color: var(--green); }
 }
 #toast { background: var(--green); color: var(--on-primary); }
 .nav-inner { grid-template-columns: repeat(5,minmax(0,1fr)); }
-.reader-view { width: min(calc(100% - 32px), 724px); }
+.reader-view { width: min(calc(100% - 20px), 724px); }
 .bible-passage {
   display: grid;
   row-gap: var(--verse-gap, 0px);
-  padding: 10px 5px;
+  padding: 10px 4px;
   border-radius: 13px;
 }
 .bible-passage {
-  --verse-num-width: 2.2rem;
-  --verse-number-gap: 6px;
+  --verse-num-width: minmax(1.8ch, max-content);
+  --verse-number-gap: 5px;
 }
 .bible-passage .verse {
   grid-template-columns: var(--verse-num-width) minmax(0, 1fr) auto;
   column-gap: var(--verse-number-gap);
   min-height: 0;
-  padding: 0 2px;
+  padding: 0;
   font-size: var(--reading-size, 15px);
   line-height: var(--reading-leading, 1.25);
   box-sizing: border-box;
@@ -159,7 +159,14 @@ button:focus-visible, a:focus-visible { outline-color: var(--green); }
 }
 .bible-passage .number, .bible-passage .mark {
   align-self: start;
+  text-align: right;
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
   line-height: calc(var(--reading-size, 15px) * var(--reading-leading, 1.25));
+}
+.bible-passage .number {
+  min-width: 1.5ch;
+  letter-spacing: -0.02em;
 }
 .bible-passage .mark { font-size: 0.5rem; }
 .verse-copy { min-width: 0; overflow-wrap: anywhere; }
@@ -220,7 +227,7 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
   display: grid;
   grid-template-columns: var(--verse-num-width) minmax(0, 1fr);
   column-gap: var(--verse-number-gap);
-  padding: 0 2px;
+  padding: 0;
   border: 1px solid transparent;
   width: 100%;
   box-sizing: border-box;
@@ -855,7 +862,7 @@ input[type="date"] { min-height: 44px; width: 100%; min-width: 0; border: 1px so
 .post-writing textarea { padding-block: 10px 5px; }
 @media (max-width: 360px) {
   .frame:not(.reader-view) { width: calc(100% - 32px); }
-  .reader-view { width: calc(100% - 28px); }
+  .reader-view { width: calc(100% - 16px); }
 }
 
 /* Keep the touch targets while making select and toggle text more compact. */
@@ -1272,7 +1279,7 @@ select, .filters .pill { font-size: 0.875rem; }
 .chapter-arrow svg { width: 17px; height: 17px; }
 
 .reader-view .bible-passage {
-  border: 0; box-shadow: none; border-radius: var(--surface-radius); background: var(--reading-surface, var(--card)); padding-inline: clamp(8px, 2.5vw, 16px);
+  border: 0; box-shadow: none; border-radius: var(--surface-radius); background: var(--reading-surface, var(--card)); padding-inline: 4px;
   touch-action: pan-y;
 }
 .record-filters { grid-template-columns: repeat(3,minmax(0,1fr)); }
