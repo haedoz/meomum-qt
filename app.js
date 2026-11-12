@@ -3851,9 +3851,9 @@ function migrate(input) {
     Object.hasOwn(legacyPalettes,input.palette)?legacyPalettes[input.palette]:'slate';
   result.fontChoice = Object.hasOwn(fontChoices,input.fontChoice)?input.fontChoice:'pretendard';
   result.fontKorean = input.fontKorean ?? input.fontChoice ?? 'pretendard';
-  result.fontEnglish = input.fontEnglish ?? 'ebgaramond';
-  result.fontHebrew = input.fontHebrew ?? 'notohebrew';
-  result.fontGreek = input.fontGreek ?? 'cardo';
+  result.fontEnglish = (input.fontEnglish === 'custom' && customFonts.en) ? 'custom' : 'system';
+  result.fontHebrew = (input.fontHebrew === 'custom' && customFonts.he) ? 'custom' : (input.fontHebrew === 'ezra' ? 'ezra' : 'system');
+  result.fontGreek = (input.fontGreek === 'custom' && customFonts.grc) ? 'custom' : 'system';
   result.quickMarkers = Array.isArray(input.quickMarkers) && input.quickMarkers.length===3 ? input.quickMarkers : ['#e6bc43','#7cb668','#dc7d9c'];
   const menuOrder = Array.isArray(input.menuOrder) ? input.menuOrder.filter(route=>menuItems.has(route)) : [];
   result.menuOrder = [...new Set([...menuOrder,...menuItems.keys()])];
@@ -3947,24 +3947,17 @@ function applyDisplay() {
       custom: customFonts.ko ? `"${customFonts.ko.family}", Pretendard, sans-serif` : 'Pretendard, sans-serif'
     },
     he: {
-      ezra: '"Ezra SIL", "Ezra SIL SR", "SBL Hebrew", serif',
-      notohebrew: '"Noto Serif Hebrew", "Ezra SIL", serif',
-      sblhebrew: '"SBL Hebrew", "Ezra SIL", serif',
+      ezra: '"Ezra SIL", "Ezra SIL SR", serif',
       system: 'system-ui, serif',
       custom: customFonts.he ? `"${customFonts.he.family}", "Ezra SIL", serif` : '"Ezra SIL", serif'
     },
     grc: {
-      cardo: '"Cardo", "Gentium Plus", serif',
-      gentium: '"Gentium Plus", "Cardo", serif',
-      sblgreek: '"SBL Greek", "Cardo", serif',
       system: 'system-ui, serif',
-      custom: customFonts.grc ? `"${customFonts.grc.family}", "Cardo", serif` : '"Cardo", serif'
+      custom: customFonts.grc ? `"${customFonts.grc.family}", serif` : 'system-ui, serif'
     },
     en: {
-      ebgaramond: '"EB Garamond", serif',
-      cardo: '"Cardo", serif',
       system: '-apple-system, BlinkMacSystemFont, serif',
-      custom: customFonts.en ? `"${customFonts.en.family}", "EB Garamond", serif` : '"EB Garamond", serif'
+      custom: customFonts.en ? `"${customFonts.en.family}", serif` : '-apple-system, BlinkMacSystemFont, serif'
     }
   };
 
@@ -3974,21 +3967,17 @@ function applyDisplay() {
 
   const enFont = (state.fontEnglish === 'custom' && customFonts.en)
     ? fontFamilies.en.custom
-    : (state.fontEnglish === 'system' || !state.fontEnglish)
-      ? koFont
-      : (fontFamilies.en[state.fontEnglish] || koFont);
+    : koFont;
 
   const heFont = (state.fontHebrew === 'custom' && customFonts.he)
     ? fontFamilies.he.custom
-    : (state.fontHebrew === 'system')
-      ? `${koFont}, "Ezra SIL", system-ui, serif`
-      : (fontFamilies.he[state.fontHebrew] || (customFonts.he ? fontFamilies.he.custom : fontFamilies.he.ezra));
+    : (state.fontHebrew === 'ezra')
+      ? fontFamilies.he.ezra
+      : `${koFont}, "Ezra SIL", system-ui, serif`;
 
   const grcFont = (state.fontGreek === 'custom' && customFonts.grc)
     ? fontFamilies.grc.custom
-    : (state.fontGreek === 'system')
-      ? `${koFont}, "Cardo", system-ui, serif`
-      : (fontFamilies.grc[state.fontGreek] || (customFonts.grc ? fontFamilies.grc.custom : fontFamilies.grc.cardo));
+    : `${koFont}, system-ui, serif`;
 
   root.style.setProperty('--font-ko', koFont);
   root.style.setProperty('--sans', koFont);
@@ -4051,28 +4040,21 @@ function displaySettings() {
   const heChips = [
     ...(customFonts.he ? [['custom', customFonts.he.name]] : []),
     ['ezra', '에즈라 SIL'],
-    ['notohebrew', 'Noto Serif'],
-    ['sblhebrew', 'SBL Hebrew'],
     ['system', '기기 기본']
   ];
   const grcChips = [
     ...(customFonts.grc ? [['custom', customFonts.grc.name]] : []),
-    ['cardo', 'Cardo'],
-    ['gentium', 'Gentium Plus'],
-    ['sblgreek', 'SBL Greek'],
     ['system', '기기 기본']
   ];
   const enChips = [
     ...(customFonts.en ? [['custom', customFonts.en.name]] : []),
-    ['system', '기기 기본 (한글 글꼴과 동일)'],
-    ['ebgaramond', 'EB Garamond'],
-    ['cardo', 'Cardo']
+    ['system', '기기 기본 (한글 글꼴과 동일)']
   ];
 
   const curKo = state.fontKorean || 'pretendard';
-  const curHe = state.fontHebrew || (customFonts.he ? 'custom' : 'ezra');
-  const curGrc = state.fontGreek || (customFonts.grc ? 'custom' : 'cardo');
-  const curEn = state.fontEnglish || (customFonts.en ? 'custom' : 'ebgaramond');
+  const curHe = (state.fontHebrew === 'custom' && customFonts.he) ? 'custom' : (state.fontHebrew === 'ezra' ? 'ezra' : 'system');
+  const curGrc = (state.fontGreek === 'custom' && customFonts.grc) ? 'custom' : 'system';
+  const curEn = (state.fontEnglish === 'custom' && customFonts.en) ? 'custom' : 'system';
 
   const curKoLabel = koChips.find(([val]) => val === curKo)?.[1] || curKo;
   const curHeLabel = heChips.find(([val]) => val === curHe)?.[1] || curHe;
@@ -4787,7 +4769,7 @@ try {
     try {
       const lower = (fontLegacy.name || '').toLowerCase();
       const targetLang = (lower.includes('ezra') || lower.includes('sil') || lower.includes('heb')) ? 'he' :
-                         (lower.includes('greek') || lower.includes('grc') || lower.includes('sblg')) ? 'grc' : 'ko';
+                         (lower.includes('greek') || lower.includes('grc')) ? 'grc' : 'ko';
       const family = 'CustomFont_' + targetLang;
       const face = await new FontFace(family, fontLegacy.bytes).load();
       activateCustomFont(targetLang, fontLegacy.name, family, face);
