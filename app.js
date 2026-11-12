@@ -1735,9 +1735,9 @@ function calendarDaySummary(day,items,records) {
         '<span class="chapter-arrow">'+icon('arrow')+'</span>'+
         '</button>').join('')+'</div>'):'')+
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',recordDetails(notes,true)):'')+
-    (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
+    (highlights.length?calendarDetail('marker','형광펜',highlights.length+'건',recordDetails(highlights,false)):'')+'</section>';
 }
-const recordFilters = {all:'전체',highlight:'형광펜·밑줄',note:'메모',journal:'묵상 노트'};
+const recordFilters = {all:'전체',highlight:'형광펜',note:'메모',journal:'묵상 노트'};
 function markKinds(mark) {
   const kinds = [];
   if (mark.color || mark.highlight || mark.underline) kinds.push('highlight');
@@ -1819,28 +1819,33 @@ function renderRecordCard(item) {
   const {key,verses,day,mark,noteKey,journalDay} = item;
 
   const kindClass = mark.journal ? 'journal' : mark.note ? 'note' : 'highlight';
-  const markKind = mark.journal ? '묵상 노트' : mark.note ? '메모' : '형광펜·밑줄';
+  const markKind = mark.journal ? '묵상 노트' : mark.note ? '메모' : '형광펜';
 
   let content = '';
   let badgeTitle = '';
 
   if (mark.journal) {
     const hasRefs = Boolean(mark.allRefs?.length);
-    const refCount = hasRefs ? ' (' + mark.allRefs.length + '구절)' : '';
-    badgeTitle = hasRefs
-      ? esc(mark.combinedRefTitle || selectionReference(key,verses)) + refCount + ' · ' + esc(editionLabel(readRef(key).edition))
-      : (mark.journalTitle ? esc(mark.journalTitle) : '나의 묵상');
+    if (hasRefs) {
+      const firstRef = mark.allRefs[0];
+      const {book, chapter} = readRef(firstRef);
+      const bTitle = titles[book] || book;
+      if (mark.allRefs.length > 2) {
+        badgeTitle = `${esc(bTitle)} ${chapter}장 (${mark.allRefs.length}구절) · ${esc(editionLabel(readRef(key).edition))}`;
+      } else {
+        badgeTitle = esc(mark.combinedRefTitle || selectionReference(key,verses)) + ' · ' + esc(editionLabel(readRef(key).edition));
+      }
+    } else {
+      badgeTitle = mark.journalTitle ? esc(mark.journalTitle) : '나의 묵상';
+    }
 
     let versesHtml = '';
     if (hasRefs) {
-      versesHtml = '<blockquote class="calendar-quote-body journal-bundled-quote">' +
+      versesHtml = '<blockquote class="calendar-quote-body">' +
         mark.allRefs.map(ref => {
-          const {book, chapter, verse} = readRef(ref);
+          const {verse} = readRef(ref);
           const body = verseText(ref) || savedVerseText(ref);
-          return '<div class="journal-bundled-verse">'+
-            '<span class="record-verse-number">'+esc(titles[book] || book)+' '+chapter+':'+verse+'</span>'+
-            '<span class="verse-text">'+esc(body)+'</span>'+
-          '</div>';
+          return '<span class="record-verse"><span class="record-verse-number">'+verse+'절</span>'+esc(body)+'</span>';
         }).join('') +
       '</blockquote>';
     }
@@ -1853,7 +1858,7 @@ function renderRecordCard(item) {
       '</div>';
     } else if (mark.journalTitle) {
       reflectionHtml = '<div class="record-journal-content">'+
-        '<h4 class="record-journal-title" style="margin:0;">'+esc(mark.journalTitle)+'</h4>'+
+        '<h4 class="record-journal-title">'+esc(mark.journalTitle)+'</h4>'+
       '</div>';
     }
 

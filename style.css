@@ -436,19 +436,22 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 }
 .calendar-mark-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 3px;
+  gap: 8px;
+  margin-bottom: 5px;
+  min-width: 0;
 }
 .calendar-mark-header .reading-badge {
   font-weight: 700;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   letter-spacing: -0.01em;
   min-width: 0;
-  flex: 1 1 auto;
-  word-break: keep-all;
-  overflow-wrap: break-word;
+  max-width: calc(100% - 130px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  flex: 0 1 auto;
 }
 .calendar-mark-meta {
   display: flex;
@@ -456,6 +459,7 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
   gap: 5px;
   flex-shrink: 0 !important;
   white-space: nowrap !important;
+  margin-left: auto;
 }
 .mark-kind-pill {
   font-size: 0.6875rem;
@@ -527,7 +531,44 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 }
 .calendar-mark-card.journal .calendar-quote-body {
   border-left-color: #b181db;
-  background: color-mix(in srgb, #f9f4fd 75%, var(--soft));
+  background: color-mix(in srgb, #fbf7fd 75%, var(--soft));
+}
+.calendar-mark-card.journal .record-verse-number {
+  color: #7a4ba6;
+}
+:root[data-appearance="dark"] .calendar-mark-card.journal .record-verse-number {
+  color: #d19eee;
+}
+.record-journal-content {
+  margin-top: 6px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: color-mix(in srgb, #fbf7fd 75%, var(--card));
+  border: 1px dashed color-mix(in srgb, #dec7f4 75%, var(--line));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.record-journal-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #6a349c;
+  margin: 0;
+  line-height: 1.35;
+}
+.record-journal-text {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+:root[data-appearance="dark"] .record-journal-content {
+  background: #241630;
+  border-color: #3f2752;
+}
+:root[data-appearance="dark"] .record-journal-title {
+  color: #cf9eeb;
 }
 .record-journal-sub {
   font-size: 0.75rem;
@@ -2798,42 +2839,6 @@ bdi[lang="grc"] {
   background: var(--soft);
   padding: 8px 12px;
   border-radius: 0 8px 8px 0;
-}
-.journal-bundled-verse {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 8px;
-  align-items: baseline;
-  margin-block: 4px;
-  font-size: var(--reading-size, 0.9375rem);
-  line-height: var(--reading-leading, 1.4);
-}
-.journal-bundled-verse .record-verse-number {
-  font-weight: 700;
-  color: #7a4ba6;
-  white-space: nowrap;
-}
-:root[data-appearance="dark"] .journal-bundled-verse .record-verse-number {
-  color: #d19eee;
-}
-.record-journal-content {
-  margin-top: 6px;
-  padding: 8px 12px;
-  background: var(--soft);
-  border-left: 3px solid #c8a5e8;
-  border-radius: 0 8px 8px 0;
-}
-.record-journal-title {
-  margin: 0 0 4px;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-.record-journal-text {
-  font-size: var(--reading-size, 0.875rem);
-  line-height: var(--reading-leading, 1.5);
-  white-space: pre-wrap;
-  color: var(--ink);
 }
 
 
