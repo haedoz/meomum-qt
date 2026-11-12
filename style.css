@@ -139,16 +139,20 @@ button:focus-visible, a:focus-visible { outline-color: var(--green); }
   padding: 10px 5px;
   border-radius: 13px;
 }
-.bible-passage { --verse-number-gap: 3px; }
+.bible-passage {
+  --verse-num-width: 2.2rem;
+  --verse-number-gap: 6px;
+}
 .bible-passage .verse {
-  grid-template-columns: 2ch minmax(0, 1fr) auto;
+  grid-template-columns: var(--verse-num-width) minmax(0, 1fr) auto;
   column-gap: var(--verse-number-gap);
   min-height: 0;
   padding: 0 2px;
   font-size: var(--reading-size, 15px);
   line-height: var(--reading-leading, 1.25);
+  box-sizing: border-box;
 }
-.bible-passage .verse:not(:has(> .mark)) { grid-template-columns: 2ch minmax(0, 1fr); }
+.bible-passage .verse:not(:has(> .mark)) { grid-template-columns: var(--verse-num-width) minmax(0, 1fr); }
 .bible-passage .verse-copy {
   line-height: var(--reading-leading, 1.25);
   letter-spacing: var(--reading-tracking, 0px);
@@ -213,12 +217,33 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
 .verse-pair { display: grid; gap: 5px; padding-block: 5px 9px; border-bottom: 1px solid var(--line); }
 .verse-pair:last-child { border-bottom: 0; }
 .bible-passage .verse-support {
-  display: grid; grid-template-columns: 2ch minmax(0,1fr); column-gap: var(--verse-number-gap); padding: 0 2px; border: 1px solid transparent;
-  font-size: var(--reading-size); line-height: var(--reading-leading);
+  display: grid;
+  grid-template-columns: var(--verse-num-width) minmax(0, 1fr);
+  column-gap: var(--verse-number-gap);
+  padding: 0 2px;
+  border: 1px solid transparent;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: var(--reading-size);
+  line-height: var(--reading-leading);
 }
 .verse-support > .verse-content {
-  grid-column: 2; padding: 5px 9px 7px; border-inline-start: 2px solid var(--accent-ink);
-  background: var(--soft); border-radius: 0 7px 7px 0;
+  grid-column: 2;
+  padding: 6px 12px 8px;
+  border-left: 3px solid var(--accent-ink) !important;
+  border-right: none !important;
+  background: var(--soft);
+  border-radius: 0 8px 8px 0;
+  box-sizing: border-box;
+  width: 100%;
+  direction: ltr;
+}
+.verse-support[lang="he"] .verse-content {
+  text-align: right;
+}
+.verse-support[lang="he"] .comparison-edition {
+  text-align: left;
+  direction: ltr;
 }
 .bible-passage .verse-with-note .verse-support { padding-inline-end: 2px; }
 .verse-with-note .verse-support > .verse-content { padding-inline-end: 34px; }
@@ -404,15 +429,26 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
 }
 .calendar-mark-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 1px;
+  gap: 10px;
+  margin-bottom: 3px;
 }
 .calendar-mark-header .reading-badge {
   font-weight: 700;
   font-size: 0.8125rem;
   letter-spacing: -0.01em;
+  min-width: 0;
+  flex: 1 1 auto;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.calendar-mark-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 .mark-kind-pill {
   font-size: 0.6875rem;
@@ -420,6 +456,8 @@ dialog form > .row:first-child h2 { flex: 1 1 auto; }
   padding: 2px 7px;
   border-radius: 7px;
   border: 1px solid transparent;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 .mark-kind-pill.highlight {
   background: #fbf5df;
@@ -2657,27 +2695,138 @@ bdi[lang="grc"] {
   font-family: var(--font-en, "EB Garamond", serif);
 }
 
-/* 원어 (히브리어 BHSStp, 헬라어 LXXStp 등) 전용 글자 크기 */
+/* 원어 및 각 언어별 전용 글자 크기 */
+.verse[lang="ko"] .verse-content {
+  font-size: var(--font-size-ko, 15px);
+}
+.verse[lang="en"] .verse-content {
+  font-size: var(--font-size-en, 15px);
+}
 .original-verse-text,
 .original-word-text,
 .original-detail-form bdi,
 .verse[lang="he"],
-.verse[lang="grc"],
 .verse[lang="he"] .verse-content,
+[lang="he"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
+  font-size: var(--font-size-he, 22px) !important;
+  line-height: 1.45;
+}
+
+.verse[lang="grc"],
 .verse[lang="grc"] .verse-content,
-[lang="he"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body),
 [lang="grc"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
-  font-size: var(--original-reading-size, 22px) !important;
+  font-size: var(--font-size-grc, 20px) !important;
   line-height: 1.45;
 }
 
 .original-word-head bdi.original-word-text {
-  font-size: var(--original-reading-size, 22px) !important;
+  font-size: var(--font-size-he, 22px) !important;
   line-height: 1.35;
 }
 
 .original-detail-form bdi {
-  font-size: calc(var(--original-reading-size, 22px) * 1.25) !important;
+  font-size: calc(var(--font-size-he, 22px) * 1.25) !important;
+}
+
+/* 묵상 노트 작성 화면: 묵상에 담은 말씀 통합 카드 */
+.journal-verses-card {
+  margin-block: 8px 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.journal-verses-header {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.journal-verses-list {
+  display: grid;
+  gap: 10px;
+}
+.journal-verse-row {
+  display: grid;
+  gap: 3px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+.journal-verse-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.journal-verse-head {
+  justify-content: space-between;
+  align-items: center;
+}
+.journal-verse-text {
+  margin: 0;
+  font-size: var(--reading-size, 0.9375rem);
+  line-height: var(--reading-leading, 1.45);
+  color: var(--ink);
+}
+
+/* 묵상 모아보기 피드: 담긴 말씀 본문 표시 */
+.journal-feed-quote {
+  border-left: 3px solid #c8a5e8 !important;
+  background: var(--soft);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+  margin-block: 4px 6px;
+}
+.journal-feed-verse-item {
+  margin-block: 4px;
+  font-size: var(--reading-size, 0.9375rem);
+  line-height: var(--reading-leading, 1.45);
+}
+.journal-feed-verse-item .note-link {
+  font-weight: 700;
+  color: var(--accent-ink);
+  margin-right: 4px;
+}
+
+/* 말씀 기록: 묵상 묶음 카드 전용 스타일 */
+.journal-bundled-quote {
+  border-left: 3px solid #c8a5e8 !important;
+  background: var(--soft);
+  padding: 8px 12px;
+  border-radius: 0 8px 8px 0;
+}
+.journal-bundled-verse {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: baseline;
+  margin-block: 4px;
+  font-size: var(--reading-size, 0.9375rem);
+  line-height: var(--reading-leading, 1.4);
+}
+.journal-bundled-verse .record-verse-number {
+  font-weight: 700;
+  color: #7a4ba6;
+  white-space: nowrap;
+}
+:root[data-appearance="dark"] .journal-bundled-verse .record-verse-number {
+  color: #d19eee;
+}
+.record-journal-content {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--soft);
+  border-left: 3px solid #c8a5e8;
+  border-radius: 0 8px 8px 0;
+}
+.record-journal-title {
+  margin: 0 0 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.record-journal-text {
+  font-size: var(--reading-size, 0.875rem);
+  line-height: var(--reading-leading, 1.5);
+  white-space: pre-wrap;
+  color: var(--ink);
 }
 
 

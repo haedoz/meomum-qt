@@ -70,7 +70,9 @@ const markerColors = {gold:'#e6bc43',sage:'#7cb668',rose:'#dc7d9c',blue:'#6d9ddf
 let lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
 const settings = {
   fontSize:{label:'한글 본문 크기',min:12,max:48,step:1,unit:'px',initial:15},
-  originalFontSize:{label:'원어(히브리어·헬라어) 크기',min:14,max:56,step:1,unit:'px',initial:22},
+  fontSizeEn:{label:'영어 성경 크기',min:12,max:48,step:1,unit:'px',initial:15},
+  fontSizeHe:{label:'히브리어 원어 크기',min:12,max:56,step:1,unit:'px',initial:22},
+  fontSizeGrc:{label:'헬라어 원어 크기',min:12,max:56,step:1,unit:'px',initial:20},
   lineHeight:{label:'줄 간격',min:1.2,max:3,step:.05,unit:'배',initial:1.25},
   verseGap:{label:'구절 사이 간격',min:0,max:48,step:1,unit:'px',initial:0},
   letterSpace:{label:'글자 사이 간격',min:-1,max:5,step:.1,unit:'px',initial:0},
@@ -494,15 +496,51 @@ function writingHeader(symbol,label,title,meta = '') {
 function journalScreen() {
   const day = selectedDay;
   const entry = state.journal[day] ?? {verses:[]};
-  const refs = entry.verses.map(ref => '<div class="post-quote"><div class="row"><button class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'+
-    '<button class="text-action" data-remove="'+ref+'" data-date="'+day+'" aria-label="묵상에서 '+esc(reference(ref))+' 빼기">빼기</button></div><p>'+esc(savedVerseText(ref))+'</p></div>').join('');
+  const validRefs = (entry.verses || []).filter(validRef);
+  let refs = '';
+  if (validRefs.length) {
+    const chMap = new Map();
+    for (const ref of validRefs) {
+      const {edition, book, chapter, verse} = readRef(ref);
+      const chKey = [edition, book, chapter].join('/');
+      if (!chMap.has(chKey)) chMap.set(chKey, []);
+      chMap.get(chKey).push(verse);
+    }
+    const chSummaries = [...chMap.entries()].map(([chKey, vNums]) => {
+      vNums.sort((a,b) => a - b);
+      return selectionReference(chKey + '/' + vNums[0], vNums);
+    });
+    const combinedRefTitle = chSummaries.join(', ');
+
+    refs = '<section class="journal-verses-card card">'+
+      '<div class="journal-verses-header row">'+
+        '<div class="row" style="gap:6px; align-items:center;">'+
+          '<span class="kicker" style="margin:0;">📖 묵상에 담은 말씀</span>'+
+          '<span class="pill" style="font-size:0.75rem; padding:1px 8px;">'+validRefs.length+'구절</span>'+
+        '</div>'+
+        '<span class="muted" style="font-size:0.8125rem;">'+esc(combinedRefTitle)+'</span>'+
+      '</div>'+
+      '<div class="journal-verses-list">'+
+        validRefs.map(ref => {
+          const body = savedVerseText(ref) || verseText(ref);
+          return '<div class="journal-verse-row">'+
+            '<div class="row journal-verse-head">'+
+              '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'+
+              '<button type="button" class="text-action destructive" data-remove="'+ref+'" data-date="'+day+'" aria-label="묵상에서 '+esc(reference(ref))+' 빼기">빼기</button>'+
+            '</div>'+
+            '<p class="journal-verse-text">'+esc(body)+'</p>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+    '</section>';
+  }
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
     (writeError?'저장 실패':'기기에 자동 저장')+'</span></div>')+
     '<div class="journal-editor-fields writing-panel">'+
     editorField('제목','title',entry.title,'text','aria-label="묵상 제목" data-journal-field="title" maxlength="150" placeholder="제목을 입력하세요 (선택)"')+
-    (refs?'<div class="writing-quotes">'+refs+'</div>':'')+
+    refs+
     editorField('묵상 내용','reflection',entry.reflection,'textarea','aria-label="묵상 본문" data-journal-field="reflection" rows="5" placeholder="마음에 남은 말씀과 생각을 적어보세요."')+
     '</div><footer class="post-actions">'+
     '<button class="text-action destructive" data-delete-journal="'+day+'" '+(!hasJournalContent(entry)?'hidden':'')+'>묵상 삭제</button>'+
@@ -525,16 +563,26 @@ function journalsScreen() {
   const count = entries.length;
   const cards = entries.map(([day, entry]) => {
     const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
-    const refs = (entry.verses || []).map(ref =>
-      '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'
-    ).join(' ');
+    const validRefs = (entry.verses || []).filter(validRef);
+    let versesHtml = '';
+    if (validRefs.length) {
+      versesHtml = '<blockquote class="calendar-quote-body journal-feed-quote">'+
+        validRefs.map(ref => {
+          const body = savedVerseText(ref) || verseText(ref);
+          return '<div class="journal-feed-verse-item">'+
+            '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button> '+
+            '<span class="verse-text">'+esc(body)+'</span>'+
+          '</div>';
+        }).join('')+
+      '</blockquote>';
+    }
 
     return '<article class="card stack journal-feed-card" style="gap:10px">'+
       '<div class="row"><time datetime="'+day+'" class="kicker">'+esc(date)+'</time>'+
       (entry.done ? '<span class="pill" style="font-size:0.75rem;min-height:28px;padding:2px 10px;background:var(--light);color:var(--green)">✓ QT 완료</span>' : '')+
       '</div>'+
       (entry.title ? '<h2 style="font-size:1.1875rem;margin:2px 0">'+esc(entry.title)+'</h2>' : '')+
-      (refs ? '<div class="post-quote" style="margin:2px 0">'+refs+'</div>' : '')+
+      versesHtml+
       (entry.reflection ? '<div class="record-text" style="white-space:pre-wrap;margin:4px 0;line-height:var(--reading-leading, 1.65)">'+esc(entry.reflection)+'</div>' : '')+
       '<div class="row" style="margin-top:6px;justify-content:flex-end">'+
       '<button type="button" class="btn" data-nav="journal/'+day+'">묵상 열기 '+icon('right')+'</button>'+
@@ -1834,7 +1882,7 @@ function renderRecordCard(item) {
     (verseText(key)?cardHit('본문에서 읽기','data-visit="'+key+'"'):'')+
     '<div class="row calendar-mark-header">'+
     '<span class="reading-badge">'+badgeTitle+'</span>'+
-    '<div class="row" style="gap:5px; align-items:center;">'+
+    '<div class="row calendar-mark-meta" style="gap:5px; align-items:center; flex-shrink:0; white-space:nowrap;">'+
     (day?'<time class="muted" style="font-size:0.75rem;" datetime="'+day+'">'+shortDate(day)+'</time>':'')+
     '<span class="mark-kind-pill '+kindClass+'">'+markKind+'</span>'+
     '</div></div>'+
@@ -3001,8 +3049,7 @@ const actions = {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'Cache-Control': 'no-cache'
+          'Accept': 'application/vnd.github+json'
         }
       });
       if (getRes.ok) {
@@ -3021,8 +3068,7 @@ const actions = {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
       });
@@ -3032,8 +3078,7 @@ const actions = {
           cache: 'no-store',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'Cache-Control': 'no-cache'
+            'Accept': 'application/vnd.github+json'
           }
         });
         if (freshGet.ok) {
@@ -3045,8 +3090,7 @@ const actions = {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/vnd.github+json',
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache'
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(body)
           });
@@ -3062,8 +3106,10 @@ const actions = {
       localStorage.setItem('logbible-gh-last-sync', nowStr);
       state.backup = timestamp;
       await storeLocal('journal', state);
-      if (!silent) notify('깃허브에 안전하게 백업했어요!');
-      render();
+      if (!silent) {
+        notify('깃허브에 안전하게 백업했어요!');
+        render();
+      }
     } catch (e) {
       if (!silent) notify('백업 실패: ' + e.message);
     }
@@ -3102,8 +3148,7 @@ const actions = {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'Cache-Control': 'no-cache'
+          'Accept': 'application/vnd.github+json'
         }
       });
       if (!res.ok && res.status === 404) {
@@ -3111,8 +3156,7 @@ const actions = {
           cache: 'no-store',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'Cache-Control': 'no-cache'
+            'Accept': 'application/vnd.github+json'
           }
         });
         if (listRes.ok) {
@@ -3129,8 +3173,7 @@ const actions = {
               cache: 'no-store',
               headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github+json',
-                'Cache-Control': 'no-cache'
+                'Accept': 'application/vnd.github+json'
               }
             });
           }
@@ -3148,15 +3191,28 @@ const actions = {
       const jsonStr = new TextDecoder().decode(bytes);
       const payload = JSON.parse(jsonStr);
 
+      const currentReader = {...state.reader};
       const currentDisplay = {...state.display};
+      const currentFonts = {
+        fontKorean: state.fontKorean,
+        fontHebrew: state.fontHebrew,
+        fontGreek: state.fontGreek,
+        fontEnglish: state.fontEnglish,
+        fontChoice: state.fontChoice,
+        palette: state.palette,
+        theme: state.theme
+      };
       const imported = validatedBackup(payload);
       state = imported;
+      state.reader = currentReader;
       state.display = currentDisplay;
+      Object.assign(state, currentFonts);
       lastMarkerEdit = undefined;
       pendingImport = undefined;
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
       await storeLocal('journal', state);
+      applyDisplay();
       if (!silent) notify('깃허브에서 최신 기록을 성공적으로 복원했어요!');
       render();
     } catch (e) {
@@ -3545,6 +3601,7 @@ modal.addEventListener('keydown',event=>{
   event.preventDefault();
   addYearReference(field.form);
 });
+let journalSaveTimer;
 main.addEventListener('input',event => {
   const field = event.target;
   updateDraft(field.form);
@@ -3553,13 +3610,23 @@ main.addEventListener('input',event => {
   if (field.dataset.journalField) {
     const entry = journalEntry(selectedDay);
     entry[field.dataset.journalField] = field.value;
-    main.querySelector('[data-delete-journal]').hidden = !hasJournalContent(entry);
+    const delBtn = main.querySelector('[data-delete-journal]');
+    if (delBtn) delBtn.hidden = !hasJournalContent(entry);
     if (field.tagName==='TEXTAREA') resizeWriting(field);
-    save();
+    clearTimeout(journalSaveTimer);
+    journalSaveTimer = setTimeout(() => {
+      save();
+    }, 600);
   }
   if (field.id==='reading-goal') {
     document.getElementById('reading-goal-value').textContent = field.value+'장';
     field.setAttribute('aria-valuetext',field.value+'장');
+  }
+});
+main.addEventListener('focusout', event => {
+  if (event.target.dataset?.journalField) {
+    clearTimeout(journalSaveTimer);
+    save();
   }
 });
 main.addEventListener('toggle',event=>{
@@ -3769,10 +3836,14 @@ function migrate(input) {
   const oldFont = Object.hasOwn(oldSize,input.readingSize) ? oldSize[input.readingSize] : undefined;
   result.display = {};
   for (const key of Object.keys(settings)) {
-    const value = input.display?.[key] ?? (key==='fontSize'?oldFont:undefined);
-    if (value != null && value !== '' && Number.isFinite(Number(value))) {
-      result.display[key] = displayValue(key,value);
+    let value = input.display?.[key];
+    if (value == null || value === '' || !Number.isFinite(Number(value))) {
+      if (key === 'fontSize') value = oldFont;
+      else if (key === 'fontSizeEn') value = input.display?.fontSize ?? 15;
+      else if (key === 'fontSizeHe') value = input.display?.originalFontSize ?? 22;
+      else if (key === 'fontSizeGrc') value = input.display?.originalFontSize ?? 20;
     }
+    result.display[key] = displayValue(key,value);
   }
   result.theme = Object.hasOwn(themes,input.theme)?input.theme:'system';
   const legacyPalettes = {rose:'lavender',coral:'oat',linen:'oat',sage:'gray',navy:'slate'};
@@ -3851,11 +3922,18 @@ async function importCustomFont(file, lang = 'he') {
 
 function applyDisplay() {
   const root = document.documentElement;
-  const size = displayValue('fontSize',state.display.fontSize);
-  root.style.setProperty('--reading-size',size+'px');
-  const originalSize = displayValue('originalFontSize',state.display.originalFontSize);
-  root.style.setProperty('--original-reading-size',originalSize+'px');
-  const uiSize = Math.max(14,Math.min(24,16+(size-settings.fontSize.initial)*0.6));
+  const sizeKo = displayValue('fontSize',state.display.fontSize);
+  const sizeEn = displayValue('fontSizeEn',state.display.fontSizeEn ?? sizeKo);
+  const sizeHe = displayValue('fontSizeHe',state.display.fontSizeHe ?? state.display.originalFontSize ?? 22);
+  const sizeGrc = displayValue('fontSizeGrc',state.display.fontSizeGrc ?? state.display.originalFontSize ?? 20);
+
+  root.style.setProperty('--reading-size',sizeKo+'px');
+  root.style.setProperty('--font-size-ko',sizeKo+'px');
+  root.style.setProperty('--font-size-en',sizeEn+'px');
+  root.style.setProperty('--font-size-he',sizeHe+'px');
+  root.style.setProperty('--font-size-grc',sizeGrc+'px');
+  root.style.setProperty('--original-reading-size',sizeHe+'px');
+  const uiSize = Math.max(14,Math.min(24,16+(sizeKo-settings.fontSize.initial)*0.6));
   root.style.fontSize = uiSize+'px';
   root.style.setProperty('--ui-size-offset',(uiSize-16)+'px');
   root.dataset.palette = state.palette;
@@ -3890,10 +3968,27 @@ function applyDisplay() {
     }
   };
 
-  const koFont = fontFamilies.ko[state.fontKorean] || fontFamilies.ko.pretendard;
-  const heFont = (state.fontHebrew==='custom' && customFonts.he) ? fontFamilies.he.custom : (fontFamilies.he[state.fontHebrew] || (customFonts.he ? fontFamilies.he.custom : fontFamilies.he.ezra));
-  const grcFont = (state.fontGreek==='custom' && customFonts.grc) ? fontFamilies.grc.custom : (fontFamilies.grc[state.fontGreek] || (customFonts.grc ? fontFamilies.grc.custom : fontFamilies.grc.cardo));
-  const enFont = (state.fontEnglish==='custom' && customFonts.en) ? fontFamilies.en.custom : (fontFamilies.en[state.fontEnglish] || (customFonts.en ? fontFamilies.en.custom : fontFamilies.en.ebgaramond));
+  const koFont = (state.fontKorean === 'custom' && customFonts.ko)
+    ? fontFamilies.ko.custom
+    : (fontFamilies.ko[state.fontKorean] || fontFamilies.ko.pretendard);
+
+  const enFont = (state.fontEnglish === 'custom' && customFonts.en)
+    ? fontFamilies.en.custom
+    : (state.fontEnglish === 'system' || !state.fontEnglish)
+      ? koFont
+      : (fontFamilies.en[state.fontEnglish] || koFont);
+
+  const heFont = (state.fontHebrew === 'custom' && customFonts.he)
+    ? fontFamilies.he.custom
+    : (state.fontHebrew === 'system')
+      ? `${koFont}, "Ezra SIL", system-ui, serif`
+      : (fontFamilies.he[state.fontHebrew] || (customFonts.he ? fontFamilies.he.custom : fontFamilies.he.ezra));
+
+  const grcFont = (state.fontGreek === 'custom' && customFonts.grc)
+    ? fontFamilies.grc.custom
+    : (state.fontGreek === 'system')
+      ? `${koFont}, "Cardo", system-ui, serif`
+      : (fontFamilies.grc[state.fontGreek] || (customFonts.grc ? fontFamilies.grc.custom : fontFamilies.grc.cardo));
 
   root.style.setProperty('--font-ko', koFont);
   root.style.setProperty('--sans', koFont);
@@ -3925,19 +4020,19 @@ function readingPreview() {
     '<div class="bible-passage preview-passage">'+
       '<div class="preview-lang-box">'+
         '<div class="row preview-lang-header"><span class="kicker">🇰🇷 한글</span><span class="muted" style="font-size:0.75rem;">시 23:1</span></div>'+
-        '<p class="verse-copy" style="font-family:var(--font-ko); margin:2px 0;">여호와는 나의 목자시니 내게 부족함이 없으리로다</p>'+
+        '<p class="verse-copy" style="font-family:var(--font-ko); font-size:var(--font-size-ko, 15px); margin:2px 0;">여호와는 나의 목자시니 내게 부족함이 없으리로다</p>'+
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">📜 히브리어 (구약 원어)</span><span class="muted" style="font-size:0.75rem;">시 23:1</span></div>'+
-        '<p class="verse-copy" lang="he" dir="rtl" style="font-family:var(--font-he); font-size:var(--original-reading-size, 22px); margin:2px 0;">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃</p>'+
+        '<p class="verse-copy" lang="he" dir="rtl" style="font-family:var(--font-he); font-size:var(--font-size-he, 22px); margin:2px 0;">יְהוָ֥ה רֹ֝עִ֗י לֹ֣א אֶחְסָֽר׃</p>'+
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">🏛️ 헬라어 (신약 원어)</span><span class="muted" style="font-size:0.75rem;">요 1:1</span></div>'+
-        '<p class="verse-copy" lang="grc" style="font-family:var(--font-grc); font-size:var(--original-reading-size, 22px); margin:2px 0;">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν</p>'+
+        '<p class="verse-copy" lang="grc" style="font-family:var(--font-grc); font-size:var(--font-size-grc, 20px); margin:2px 0;">Ἐν ἀρχῇ ἦν ὁ λόγος, καὶ ὁ λόγος ἦν πρὸς τὸν θεόν</p>'+
       '</div>'+
       '<div class="preview-lang-box" style="margin-top:8px;">'+
         '<div class="row preview-lang-header"><span class="kicker">📖 영어</span><span class="muted" style="font-size:0.75rem;">Ps 23:1</span></div>'+
-        '<p class="verse-copy" lang="en" style="font-family:var(--font-en); margin:2px 0;">The LORD is my shepherd; I shall not want.</p>'+
+        '<p class="verse-copy" lang="en" style="font-family:var(--font-en); font-size:var(--font-size-en, 15px); margin:2px 0;">The LORD is my shepherd; I shall not want.</p>'+
       '</div>'+
     '</div></section>';
 }
@@ -3969,9 +4064,9 @@ function displaySettings() {
   ];
   const enChips = [
     ...(customFonts.en ? [['custom', customFonts.en.name]] : []),
+    ['system', '기기 기본 (한글 글꼴과 동일)'],
     ['ebgaramond', 'EB Garamond'],
-    ['cardo', 'Cardo'],
-    ['system', '기기 기본']
+    ['cardo', 'Cardo']
   ];
 
   const curKo = state.fontKorean || 'pretendard';
@@ -4735,8 +4830,7 @@ async function checkGhAutoSync() {
       cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'Cache-Control': 'no-cache'
+        'Accept': 'application/vnd.github+json'
       }
     });
     if (!res.ok && res.status === 404) {
@@ -4744,8 +4838,7 @@ async function checkGhAutoSync() {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'Cache-Control': 'no-cache'
+          'Accept': 'application/vnd.github+json'
         }
       });
       if (listRes.ok) {
@@ -4762,8 +4855,7 @@ async function checkGhAutoSync() {
             cache: 'no-store',
             headers: {
               'Authorization': `Bearer ${token}`,
-              'Accept': 'application/vnd.github+json',
-              'Cache-Control': 'no-cache'
+              'Accept': 'application/vnd.github+json'
             }
           });
         }
@@ -4782,14 +4874,29 @@ async function checkGhAutoSync() {
     localStorage.setItem('logbible-gh-last-sync', nowStr);
 
     if (remoteTime && (!localTime || remoteTime > localTime)) {
+      const currentReader = {...state.reader};
       const currentDisplay = {...state.display};
+      const currentFonts = {
+        fontKorean: state.fontKorean,
+        fontHebrew: state.fontHebrew,
+        fontGreek: state.fontGreek,
+        fontEnglish: state.fontEnglish,
+        fontChoice: state.fontChoice,
+        palette: state.palette,
+        theme: state.theme
+      };
       const imported = validatedBackup(payload);
       state = imported;
+      state.reader = currentReader;
       state.display = currentDisplay;
+      Object.assign(state, currentFonts);
       lastMarkerEdit = undefined;
       pendingImport = undefined;
       await storeLocal('journal', state);
-      render();
+      applyDisplay();
+      if (!document.activeElement?.matches('input, textarea')) {
+        render();
+      }
     }
   } catch {
     /* Silent background check */
