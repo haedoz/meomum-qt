@@ -730,7 +730,7 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   const mark = state.marks[key];
   const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'"'+
     (!secondary && !state.comparison.length?' data-reading-verse="'+num+'"':'')+' lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
-    '<span class="number">'+(secondary?'':num)+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span>':'')+markedText(content,marker)+'</span></button>';
+    '<span class="number" '+(secondary?'aria-hidden="true" style="visibility:hidden"':'')+'>'+num+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span>':'')+markedText(content,marker)+'</span></button>';
   return mark?.note?'<div class="verse-with-note">'+verse+
     '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
 }
@@ -3197,6 +3197,7 @@ const actions = {
       const payload = JSON.parse(jsonStr);
 
       const currentReader = {...state.reader};
+      const currentComparison = Array.isArray(state.comparison) ? [...state.comparison] : [];
       const currentDisplay = {...state.display};
       const currentFonts = {
         fontKorean: state.fontKorean,
@@ -3210,6 +3211,7 @@ const actions = {
       const imported = validatedBackup(payload);
       state = imported;
       state.reader = currentReader;
+      state.comparison = comparisonEditions(currentComparison, state.reader.edition);
       state.display = currentDisplay;
       Object.assign(state, currentFonts);
       lastMarkerEdit = undefined;
@@ -4862,6 +4864,7 @@ async function checkGhAutoSync() {
 
     if (remoteTime && (!localTime || remoteTime > localTime)) {
       const currentReader = {...state.reader};
+      const currentComparison = Array.isArray(state.comparison) ? [...state.comparison] : [];
       const currentDisplay = {...state.display};
       const currentFonts = {
         fontKorean: state.fontKorean,
@@ -4875,6 +4878,7 @@ async function checkGhAutoSync() {
       const imported = validatedBackup(payload);
       state = imported;
       state.reader = currentReader;
+      state.comparison = comparisonEditions(currentComparison, state.reader.edition);
       state.display = currentDisplay;
       Object.assign(state, currentFonts);
       lastMarkerEdit = undefined;

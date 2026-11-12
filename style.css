@@ -228,11 +228,18 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
   grid-template-columns: var(--verse-num-width) minmax(0, 1fr);
   column-gap: var(--verse-number-gap);
   padding: 0;
-  border: 1px solid transparent;
+  border: 0 !important;
   width: 100%;
   box-sizing: border-box;
-  font-size: var(--reading-size);
+  font-size: var(--reading-size, 15px) !important;
+  font-family: var(--font-ko, Pretendard, -apple-system, sans-serif) !important;
   line-height: var(--reading-leading);
+}
+.verse-support .number {
+  visibility: hidden !important;
+  pointer-events: none;
+  font-size: var(--reading-size, 15px) !important;
+  font-family: var(--font-ko, Pretendard, -apple-system, sans-serif) !important;
 }
 .verse-support > .verse-content {
   grid-column: 2;
@@ -245,12 +252,35 @@ body:has(.selection) #main { padding-bottom: calc(228px + env(safe-area-inset-bo
   width: 100%;
   direction: ltr;
 }
-.verse-support[lang="he"] .verse-content {
+.verse-support[lang="he"] > .verse-content {
+  font-size: var(--font-size-he, 22px) !important;
+  font-family: var(--font-he, "Ezra SIL", serif) !important;
   text-align: right;
+  line-height: 1.45;
 }
-.verse-support[lang="he"] .comparison-edition {
+.verse-support[lang="grc"] > .verse-content {
+  font-size: var(--font-size-grc, 20px) !important;
+  font-family: var(--font-grc, serif) !important;
   text-align: left;
-  direction: ltr;
+  line-height: 1.45;
+}
+.verse-support[lang="en"] > .verse-content {
+  font-size: var(--font-size-en, 15px) !important;
+  font-family: var(--font-en, serif) !important;
+  text-align: left;
+}
+.verse-support[lang="ko"] > .verse-content {
+  font-size: var(--font-size-ko, 15px) !important;
+  font-family: var(--font-ko, Pretendard, sans-serif) !important;
+  text-align: left;
+}
+.verse-support .comparison-edition {
+  margin-bottom: 2px;
+  color: var(--accent-ink);
+  font: 700 0.6875rem/1.45 var(--sans) !important;
+  letter-spacing: 0;
+  direction: ltr !important;
+  text-align: left !important;
 }
 .bible-passage .verse-with-note .verse-support { padding-inline-end: 2px; }
 .verse-with-note .verse-support > .verse-content { padding-inline-end: 34px; }
@@ -2753,16 +2783,16 @@ bdi[lang="grc"] {
 .original-verse-text,
 .original-word-text,
 .original-detail-form bdi,
-.verse[lang="he"],
+.verse:not(.verse-support)[lang="he"],
 .verse[lang="he"] .verse-content,
-[lang="he"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
+[lang="he"]:not(.verse-support):not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
   font-size: var(--font-size-he, 22px) !important;
   line-height: 1.45;
 }
 
-.verse[lang="grc"],
+.verse:not(.verse-support)[lang="grc"],
 .verse[lang="grc"] .verse-content,
-[lang="grc"]:not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
+[lang="grc"]:not(.verse-support):not(.original-caption):not(.original-gloss):not(.original-grammar):not(.original-word):not(.original-body) {
   font-size: var(--font-size-grc, 20px) !important;
   line-height: 1.45;
 }
