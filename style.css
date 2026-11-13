@@ -2892,3 +2892,8 @@ bdi[lang="grc"] {
 .gh-device i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--muted); }
 .gh-device.online i { background: #35a968; box-shadow: 0 0 0 3px #35a96818, 0 0 7px #35a96860; }
 .gh-input:focus { outline: 1px solid var(--line); outline-offset: 1px; }
+
+.journal-feed-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.journal-feed-actions .destructive { margin-inline-end: auto; }
+.journal-feed-actions .btn { min-height: 44px; padding-inline: 12px; }
+.journal-feed-actions svg { width: 16px; height: 16px; }

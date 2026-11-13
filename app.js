@@ -647,9 +647,11 @@ function journalsScreen() {
       (entry.title ? '<h2 style="font-size:1.1875rem;margin:2px 0">'+esc(entry.title)+'</h2>' : '')+
       versesHtml+
       (entry.reflection ? '<div class="record-text" style="white-space:pre-wrap;margin:4px 0;line-height:var(--reading-leading, 1.65)">'+esc(entry.reflection)+'</div>' : '')+
-      '<div class="row" style="margin-top:6px;justify-content:flex-end">'+
+      '<footer class="journal-feed-actions">'+
+      '<button type="button" class="text-action destructive" data-delete-journal="'+day+'" aria-label="'+esc(date)+' 묵상 삭제">삭제</button>'+
+      '<button type="button" class="btn" data-edit-journal="'+day+'" aria-label="'+esc(date)+' 묵상 수정">'+icon('edit')+' 수정</button>'+
       '<button type="button" class="btn" data-nav="journal/'+day+'">묵상 열기 '+icon('right')+'</button>'+
-      '</div>'+
+      '</footer>'+
       '</article>';
   }).join('');
 
@@ -3562,6 +3564,12 @@ document.addEventListener('click',event => {
   if (target.delete) return confirmItemRemoval(target.delete,editId);
   if (target.deletePrayer) return confirmItemRemoval('prayer',target.deletePrayer);
   if (target.deleteDailyNote) return confirmItemRemoval('dailyNote',target.deleteDailyNote);
+  if (target.editJournal) {
+    if (!validDay(target.editJournal) || !state.journal[target.editJournal]) return;
+    navigate('journal/'+target.editJournal);
+    main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
+    return;
+  }
   if (target.deleteJournal) return confirmItemRemoval('journal',target.deleteJournal);
   if (target.deleteComment) return confirmItemRemoval('comment',target.deleteComment,target.date);
   if (target.commentDay) return showCommentEditor(target.commentDay,target.commentId);
