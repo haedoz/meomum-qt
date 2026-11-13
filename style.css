@@ -2876,3 +2876,19 @@ bdi[lang="grc"] {
 
 
 
+
+/* Cloud connection status */
+.gh-card { padding: clamp(12px, 3vw, 20px); }
+.gh-header { flex-wrap: wrap; gap: 6px 10px; }
+.gh-header h3 { font-size: .95rem; }
+.gh-badge { flex-shrink: 0; white-space: nowrap; font-size: .7rem; }
+.gh-switch { justify-content: space-between; padding: 9px 12px; }
+.gh-switch span { white-space: nowrap; }
+.gh-switch input[type=checkbox] { flex: 0 0 18px; min-width: 18px; min-height: 18px; padding: 0; }
+.gh-device-list { min-width: 0; }
+.gh-device-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.gh-device { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 10px; background: var(--soft); font-size: .8rem; white-space: nowrap; }
+.gh-device small { color: var(--muted); font-size: .72em; }
+.gh-device i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--muted); }
+.gh-device.online i { background: #35a968; box-shadow: 0 0 0 3px #35a96818, 0 0 7px #35a96860; }
+.gh-input:focus { outline: 1px solid var(--line); outline-offset: 1px; }

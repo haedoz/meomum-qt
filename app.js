@@ -2,6 +2,69 @@ import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
 
+const ghCloudRepo = 'haedoz/logbible-data';
+let ghDevices = [], ghDeviceScope = '', ghDeviceChecked = 0, ghDeviceBusy = false;
+function ghDeviceName() {
+  const ua = navigator.userAgent;
+  if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1)) return '아이패드';
+  if (/iPhone/i.test(ua)) return '아이폰';
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua)?'안드로이드 폰':'안드로이드 태블릿';
+  if (/Mac/i.test(ua)) return 'Mac';
+  if (/Windows/i.test(ua)) return 'Windows PC';
+  return '이 기기';
+}
+function ghDeviceMarkup() {
+  const user = (localStorage.getItem('logbible-gh-user') || '').replace(/\.json$/i,'').trim();
+  if (!user || ghDeviceScope!==user || !ghDevices.length) return '<p class="muted">동기화 접속이 확인된 기기가 아직 없어요.</p>';
+  const active = localStorage.getItem('logbible-gh-auto') !== 'false';
+  return '<p class="muted">동기화 기기</p><div class="gh-device-chips">'+ghDevices.map(device=>{
+    const recent = active && Date.now()-device.seen<120000;
+    return '<span class="gh-device '+(recent?'online':'')+'"><i aria-hidden="true"></i><span>'+esc(device.name)+'</span><small>'+(recent?'최근 접속':'마지막 '+esc(new Date(device.seen).toLocaleDateString('ko-KR')))+'</small></span>';
+  }).join('')+'</div>';
+}
+async function refreshGhDevices(force = false) {
+  const token = localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
+  const user = localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
+  if (!token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy || (!force && Date.now()-ghDeviceChecked<45000)) return;
+  ghDeviceBusy = true;
+  const scope = user;
+  try {
+    let id = localStorage.getItem('logbible-gh-device-id');
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('logbible-gh-device-id',id); }
+    const path = 'sync-devices/'+encodeURIComponent(user)+'/'+id+'.json';
+    const headers = {Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
+    const url = 'https://api.github.com/repos/'+ghCloudRepo+'/contents/';
+    let response = await fetch(url+path,{headers,cache:'no-store'});
+    if (!response.ok && response.status!==404) throw Error('device');
+    const previous = response.ok?await response.json():null;
+    const device = {name:ghDeviceName(),seen:Date.now()};
+    const bytes = new TextEncoder().encode(JSON.stringify(device));
+    const content = btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''));
+    response = await fetch(url+path,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Update sync device',content,...(previous?.sha?{sha:previous.sha}:{})})});
+    if (!response.ok) throw Error('device');
+    response = await fetch(url+'sync-devices/'+encodeURIComponent(user),{headers,cache:'no-store'});
+    if (!response.ok) throw Error('devices');
+    const files = await response.json();
+    const devices = await Promise.all(files.filter(file=>file.type==='file' && /\.json$/.test(file.name)).slice(0,30).map(async file=>{
+      const result = await fetch(url+file.path.split('/').map(encodeURIComponent).join('/'),{headers,cache:'no-store'});
+      if (!result.ok) return null;
+      const entry = await result.json();
+      try {
+        const text = atob(entry.content.replace(/\s/g,''));
+        const item = JSON.parse(new TextDecoder().decode(Uint8Array.from(text,c=>c.charCodeAt(0))));
+        return typeof item.name==='string' && Number.isFinite(item.seen)?item:null;
+      } catch { return null; }
+    }));
+    if (localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim()!==scope) return;
+    ghDevices = devices.filter(Boolean).sort((a,b)=>b.seen-a.seen);
+    ghDeviceScope = scope;
+    ghDeviceChecked = Date.now();
+    const panel = document.getElementById('gh-device-list');
+    if (panel) panel.innerHTML = ghDeviceMarkup();
+  } catch { ghDeviceChecked = Date.now(); }
+  finally { ghDeviceBusy = false; }
+}
+
 const icons = {
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
@@ -2125,28 +2188,28 @@ function settingsScreen() {
 }
 function backupSettings() {
   const ghToken = localStorage.getItem('logbible-gh-token') || '';
-  const ghRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+  const ghRepo = ghCloudRepo;
   const ghUser = localStorage.getItem('logbible-gh-user') || '';
   const ghLastSync = localStorage.getItem('logbible-gh-last-sync') || (state.backup ? new Date(state.backup).toLocaleString('ko-KR') : '');
   const ghAuto = localStorage.getItem('logbible-gh-auto') !== 'false';
-  const isConnected = Boolean(ghToken && ghRepo);
+  const isConnected = Boolean(ghToken && ghUser && ghAuto);
 
   return '<div class="section-head"><h2>기록 백업</h2></div><section class="card stack"><p>백업 파일에 묵상, 날짜별 오늘의 말씀, 말씀 묵상, 기도, 새해 말씀, 구절 표시와 구절 모음, 장별 묵상 체크, 일독 계획과 화면 설정이 담겨요. 직접 가져온 성경 본문은 별도로 다시 가져와야 해요. 새 기기에서는 같은 웹앱을 열고 이 파일을 가져오세요.</p><p class="muted">마지막 내보내기 · '+(state.backup?esc(new Date(state.backup).toLocaleString('ko-KR')):'아직 내보낸 기록이 없어요')+'</p><button class="btn primary" data-action="export">전체 백업 내보내기</button><button class="btn" data-action="import">백업 파일 가져오기</button><input id="backup-file" type="file" accept=".json,application/json" hidden><p class="muted">백업 파일에는 개인 묵상이 들어 있어요. 나만 접근할 수 있는 곳에 보관해 주세요.</p></section>'+
     '<div class="section-head"><h2>클라우드 자동 동기화</h2></div>'+
     '<section class="gh-card">'+
-    '<div class="gh-header"><div><h3>GitHub 비공개 클라우드</h3><p class="muted">아이폰·아이패드 실시간 자동 연동</p></div>'+
-    '<span class="gh-badge '+(isConnected?'':'off')+'">'+(isConnected?'● 자동 동기화 활성':'○ 토큰 미입력')+'</span></div>'+
+    '<div class="gh-header"><div><h3>GitHub 비공개 클라우드</h3></div>'+
+    '<span class="gh-badge '+(isConnected?'':'off')+'">'+(isConnected?'자동 동기화 켜짐':!ghToken || !ghUser?'연결 설정 필요':'자동 동기화 꺼짐')+'</span></div>'+
     '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input class="gh-input" id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
-    '<div class="field"><span>저장소 (owner/repo)</span><input class="gh-input" id="gh-repo-input" type="text" placeholder="haedoz/logbible-data" value="'+esc(ghRepo)+'" autocomplete="off" spellcheck="false"></div>'+
+    '<div id="gh-device-list" class="gh-device-list" aria-live="polite">'+ghDeviceMarkup()+'</div>'+
     '<div class="field"><span>사용자 파일명</span><input class="gh-input" id="gh-user-input" type="text" placeholder="사용하실 이름 영문 입력" value="'+esc(ghUser)+'" autocomplete="off" spellcheck="false"><p class="muted">기록 구분을 위한 영문 이름을 입력하세요. 같은 이름을 쓰는 기기끼리 자동으로 이어져요.</p></div>'+
-    '<label class="gh-switch"><input type="checkbox" id="gh-auto-toggle" '+(ghAuto?'checked':'')+' data-action="gh-toggle-auto"><span>묵상 저장 시 자동 백업 & 앱 열 때 자동 동기화</span></label>'+
+    '<label class="gh-switch"><input type="checkbox" id="gh-auto-toggle" '+(ghAuto?'checked':'')+' data-action="gh-toggle-auto"><span>자동 동기화</span></label>'+
     (ghLastSync ? '<p class="muted">마지막 동기화 · '+esc(ghLastSync)+'</p>' : '')+
     '<div class="gh-actions">'+
     '<button type="button" class="btn primary" data-action="gh-backup">☁️ 지금 백업</button>'+
     '<button type="button" class="btn" data-action="gh-restore">🔄 지금 동기화</button>'+
     '</div>'+
     '<p class="muted" style="font-size:0.8rem; margin-top:8px;">💡 <strong>첫 등록 시:</strong> 새 이름으로 처음 시작할 때는 <strong>[지금 백업]</strong>을 한 번 눌러 깃허브에 첫 파일을 생성해 주세요. 다른 기기에서 이어받을 때는 <strong>[지금 동기화]</strong>를 누르면 바로 가져와요.</p>'+
-    '<p class="muted">입력한 내용은 기기에 즉시 자동 저장되며, 비밀 토큰은 내 기기 브라우저에만 암호처럼 안전하게 보관돼요.</p>'+
+    '<p class="muted">입력한 내용은 기기에 즉시 자동 저장되며, 토큰은 이 기기 브라우저에 저장돼요.</p>'+
     '</section>';
 }
 function menuOrderItem(route) {
@@ -3008,18 +3071,17 @@ const actions = {
     localStorage.setItem('logbible-gh-auto', checked ? 'true' : 'false');
     notify(checked ? '클라우드 자동 동기화를 켰어요.' : '클라우드 자동 동기화를 껐어요.');
     render();
+    refreshGhDevices(true);
   },
   async 'gh-backup'(btnOrSilent = false) {
     const silent = btnOrSilent === true;
     const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
     if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
-    const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
-    if (repoInput) localStorage.setItem('logbible-gh-repo', repoInput);
     const userInput = document.querySelector('#gh-user-input')?.value.trim();
     if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
     const rawToken = localStorage.getItem('logbible-gh-token');
-    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawRepo = ghCloudRepo;
     const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
     if (!rawToken) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
@@ -3109,6 +3171,7 @@ const actions = {
 
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
+      refreshGhDevices(true);
       state.backup = timestamp;
       await storeLocal('journal', state);
       if (!silent) {
@@ -3123,13 +3186,11 @@ const actions = {
     const silent = btnOrSilent === true;
     const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
     if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
-    const repoInput = document.querySelector('#gh-repo-input')?.value.trim();
-    if (repoInput) localStorage.setItem('logbible-gh-repo', repoInput);
     const userInput = document.querySelector('#gh-user-input')?.value.trim();
     if (userInput) localStorage.setItem('logbible-gh-user', userInput);
 
     const rawToken = localStorage.getItem('logbible-gh-token');
-    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawRepo = ghCloudRepo;
     const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
     if (!rawToken) {
       if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
@@ -3218,6 +3279,7 @@ const actions = {
       pendingImport = undefined;
       const nowStr = new Date().toLocaleString('ko-KR');
       localStorage.setItem('logbible-gh-last-sync', nowStr);
+      refreshGhDevices(true);
       await storeLocal('journal', state);
       applyDisplay();
       if (!silent) notify('깃허브에서 최신 기록을 성공적으로 복원했어요!');
@@ -4803,8 +4865,9 @@ async function checkGhAutoSync() {
   if (Date.now() - lastGhCheckTime < 2500) return;
   lastGhCheckTime = Date.now();
   isGhSyncing = true;
+  refreshGhDevices();
   try {
-    const rawRepo = localStorage.getItem('logbible-gh-repo') || 'haedoz/logbible-data';
+    const rawRepo = ghCloudRepo;
     const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
     if (!rawUser) return;
 
@@ -4898,12 +4961,13 @@ async function checkGhAutoSync() {
 
 window.addEventListener('focus', checkGhAutoSync);
 setInterval(() => {
+  const devicePanel = document.getElementById('gh-device-list');
+  if (devicePanel && !document.hidden) devicePanel.innerHTML = ghDeviceMarkup();
   if (!document.hidden) checkGhAutoSync();
 }, 7000);
 
 main.addEventListener('input', event => {
   const target = event.target;
   if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim().replace(/[^\x21-\x7E]/g, ''));
-  if (target.id === 'gh-repo-input') localStorage.setItem('logbible-gh-repo', target.value.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim());
   if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim().replace(/\.json$/i, '').trim());
 });
