@@ -2960,3 +2960,57 @@ bdi[lang="grc"] {
 .atlas-color-dot { display:inline-block; width:8px; height:8px; flex:0 0 8px; border-radius:50%; }
 .atlas-layer-pin { stroke:var(--card); stroke-width:1px; vector-effect:non-scaling-stroke; }
 .atlas-detail[hidden], .atlas-stop-list[hidden] { display:none; }
+
+/* Atlas revision — a fixed geographic palette keeps sea and land distinct. */
+.atlas-map { background:#a9d7e7; }
+.atlas-land { fill:#f8efd9; stroke:#839c9d; stroke-width:1px; }
+.atlas-lakes { fill:#a9d7e7; stroke:#78adbe; stroke-width:.7px; vector-effect:non-scaling-stroke; }
+.atlas-place-label { fill:#173a4d; stroke:#fffdf5; stroke-width:3px; font-weight:650; }
+.atlas-region-label { fill:#426a7a; stroke:#ffffff80; stroke-width:2px; }
+.atlas-label-leader { stroke:#51676e90; stroke-width:.6px; vector-effect:non-scaling-stroke; fill:none; pointer-events:none; }
+.atlas-route { stroke-width:2.3px; stroke-dasharray:7 4; }
+.atlas-pin circle:not(.atlas-hit) { fill:#fffdf5; stroke:#1e516b; }
+.atlas-pin.active circle:not(.atlas-hit) { fill:#1e516b; }
+.atlas-pin text { fill:#1e516b; }
+.atlas-pin.active text { fill:white; }
+.atlas-mode-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; margin-bottom:12px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:14px; }
+.atlas-mode-tabs button { min-width:0; min-height:42px; padding:6px; border-radius:10px; font-size:.8rem; }
+.atlas-mode-tabs [aria-pressed=true] { background:var(--accent-soft); color:var(--accent-ink); font-weight:700; }
+.atlas-selection-panel { border:1px solid var(--line); border-radius:16px; background:var(--card); padding:12px; margin-bottom:12px; }
+.atlas-selection-panel > .row { flex-wrap:wrap; margin-bottom:9px; }
+.atlas-selection-panel h2 { font-size:.95rem; }
+.atlas-selection-panel p { color:var(--muted); font-size:.74rem; margin-top:3px; }
+.atlas-selection-panel .atlas-groups { border:0; padding:0; margin-bottom:8px; }
+.atlas-choices { display:grid; grid-template-columns:minmax(0,1fr); gap:5px; }
+.atlas-choice { display:flex; align-items:center; gap:5px; padding:3px 6px; border:1px solid var(--line); border-radius:11px; }
+.atlas-toggle { display:flex; align-items:center; gap:7px; flex:1; min-width:0; min-height:42px; text-align:start; font-size:.83rem; }
+.atlas-toggle > span:last-child { overflow-wrap:anywhere; }
+.atlas-choice-check { display:grid; place-items:center; width:19px; height:19px; flex:none; border:1px solid var(--line); border-radius:3px; color:var(--muted); }
+.atlas-toggle[aria-pressed=true] .atlas-choice-check { background:var(--accent-soft); color:var(--accent-ink); border-color:var(--accent-ink); }
+.atlas-choice .text-action { font-size:.73rem; padding-inline:5px; }
+.atlas-layer-chip { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+.atlas-layer-chip > button { border:0; border-radius:0; }
+.atlas-layer-chip > button:last-child { padding:4px 9px; border-inline-start:1px solid var(--line); }
+.atlas-layer-list:empty { display:none; }
+.atlas-layer-list { margin:9px 0 0; }
+.atlas-map-card > header { padding:9px 12px; }
+.atlas-map-card > header p { font-size:.75rem; color:var(--muted); margin-top:4px; }
+.atlas-map-card .atlas-map { height:clamp(360px,60vh,620px); }
+.atlas-map-key { display:inline-flex; align-items:center; gap:4px; color:var(--muted); font-size:.7rem; }
+.atlas-map-key i { width:10px; height:10px; border:1px solid #6b8799; border-radius:2px; }
+.atlas-map-key .sea { background:#a9d7e7; }
+.atlas-map-key .land { background:#f8efd9; margin-left:6px; }
+.atlas-reading-guide { display:grid; gap:8px; }
+.atlas-reading-guide h2 { font-size:.95rem; }
+.atlas-reading-guide p { color:var(--muted); font-size:var(--reading-size,15px); line-height:var(--reading-leading,1.25); overflow-wrap:anywhere; }
+.atlas-scripture-links { display:flex; flex-wrap:wrap; gap:5px; }
+.atlas-scripture-links .btn { min-height:38px; font-size:.76rem; padding:5px 8px; }
+.atlas-confidence { justify-self:start; color:var(--muted); background:var(--soft); padding:3px 7px; border-radius:6px; font-size:.72rem; }
+.atlas-credit { padding:5px 12px 10px; font-size:.65rem; color:var(--muted); }
+.atlas-credit a { color:inherit; }
+.atlas-history-map { background:#b9dce6; }
+.atlas-modern-region { stroke:#6d7882; stroke-width:.9px; vector-effect:non-scaling-stroke; fill:#f5e8d3; }
+.atlas-modern-region.israel { fill:#75b8df; stroke:#2776a3; stroke-width:1.5px; }
+.atlas-modern-region.palestine { fill:#c2addb; stroke:#79649b; stroke-dasharray:4 2; }
+.atlas-modern-city { fill:#243e52; }
+@media(min-width:740px) { .atlas-mode-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); } .atlas-choices { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -1,81 +1,115 @@
 import {books} from './books.js';
-import {places,journeys} from './atlas-data.js';
-import {landRings} from './atlas-land.js';
-const reference = ref => { const [book,chapter,verse]=ref.split('/'); return (Object.fromEntries(books)[book] ?? book)+' '+chapter+':'+verse; };
-const safe = value => String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-let selected = journeys[0].id, group = journeys[0].group, step = 0, borders = false, viewport;
-const enabled = new Set([selected]);
-const routeColors = ['#3977b7','#a55a36','#718638','#9b5da7','#3d8c86','#be526c','#8c7643','#5261b0','#257f65','#a04e83','#9a722b','#677caa','#9c4545','#3c929d'];
-const colorFor = id => routeColors[journeys.findIndex(route=>route.id===id)%routeColors.length];
-const project = ([lon,lat])=>[lon,-lat*1.25];
-const pathFor = points => points.map((point,index)=>(index?'L':'M')+project(point).join(',')).join(' ')+' Z';
-const land = landRings.map(pathFor).join(' ');
+import {places,journeys,placeNotes} from './atlas-data.js?v=2';
+import {landRings,lakeRings,modernRegions} from './atlas-geography.js';
+const titles=Object.fromEntries(books);
+const reference=ref=>{const [book,chapter,verse]=ref.split('/');return titles[book]+' '+chapter+':'+verse;};
+const safe=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const routes=journeys.filter(item=>item.id!=='borders');
+let selected=routes[0].id,group=routes[0].group,step=0,viewport,mode='journeys';
+let minMapWidth=.03,maxMapWidth=65;
+const enabled=new Set([selected]);
+const colors=['#176db1','#b6532e','#648528','#8b52ab','#16887b','#c14673','#a07b1b','#485fc3','#008357','#a44693','#a66013','#596da2','#af3e3e'];
+const colorFor=id=>colors[routes.findIndex(item=>item.id===id)%colors.length];
+const project=([x,y])=>[x,-y*1.25];
+const pathFor=points=>points.map((p,i)=>(i?'L':'M')+project(p).join(',')).join(' ')+' Z';
+const mapUnit=()=>Math.max(viewport[2]/Math.max(280,Math.min(760,(globalThis.innerWidth ?? 390)-48)),viewport[3]/460);
+const land=landRings.map(pathFor).join(' '),lakes=lakeRings.map(pathFor).join(' ');
+const mapModes=[['journeys','성경 여정'],['tribes','12지파'],['kingdoms','남유다·북이스라엘'],['modern','현대 이스라엘']];
+const history={
+ tribes:{title:'12지파의 땅 분배',size:[2168,3300],file:'tribes-ko.svg',description:'여호수아 13–19장에 따른 전통적인 분배 재구성도입니다. 실제 점령 범위와 일치한다는 뜻은 아닙니다. 단의 북쪽 이동 이전을 나타냅니다.',ref:'JOS/13/7',credit:'Janz · Richardprins 외, 한국어판 정리 · CC BY-SA 3.0',url:'https://commons.wikimedia.org/wiki/File:12_Tribes_of_Israel_Map.svg'},
+ kingdoms:{title:'남유다와 북이스라엘 · 기원전 8세기',size:[2369,3070],file:'kingdoms-ko.svg',description:'기원전 8세기를 대상으로 한 역사 재구성도입니다. 두 왕국의 범위는 시대에 따라 변했으므로 모든 시대를 대표하는 고정 경계로 읽지 않습니다.',ref:'1KI/12/20',credit:'Tobias Schäfer 87 · Finkelstein (2013), p.2 기반 · CC BY 4.0 · 한국어 표기 편집',url:'https://commons.wikimedia.org/wiki/File:Kingdoms_of_Israel_and_Judah_(8th_century_BCE).svg'}
+};
 export function atlasAction(target) {
-  if (target.atlasGroup) { group=target.atlasGroup; return true; }
-  if (target.atlasJourney && journeys.some(route=>route.id===target.atlasJourney)) {
-    const id=target.atlasJourney;
-    if(enabled.has(id)) enabled.delete(id);
-    else { enabled.add(id);selected=id;step=0; }
-    if(!enabled.has(selected) && enabled.size) {selected=[...enabled].at(-1);step=0;}
-    viewport=undefined;return true;
+ if(target.atlasMode && mapModes.some(([id])=>id===target.atlasMode)){mode=target.atlasMode;viewport=undefined;return true;}
+ if(target.atlasGroup){group=target.atlasGroup;return true;}
+ if(target.atlasJourney && routes.some(item=>item.id===target.atlasJourney)) {
+  const id=target.atlasJourney;
+  if(enabled.has(id))enabled.delete(id);else{enabled.add(id);selected=id;step=0;}
+  if(!enabled.has(selected) && enabled.size){selected=[...enabled].at(-1);step=0;}
+  viewport=undefined;return true;
+ }
+ if(target.atlasOnly && routes.some(item=>item.id===target.atlasOnly)){selected=target.atlasOnly;step=0;enabled.clear();enabled.add(selected);viewport=undefined;return true;}
+ if(target.atlasFocus && enabled.has(target.atlasFocus)){selected=target.atlasFocus;step=0;return true;}
+ if(target.atlasClear){enabled.clear();viewport=undefined;return true;}
+ if('atlasStep' in target){const r=routes.find(item=>item.id===selected);step=Math.max(0,Math.min(r.steps.length-1,step+Number(target.atlasStep)));return true;}
+ if(target.atlasReset){viewport=undefined;return true;}
+ if(target.atlasLocate){const p=project(places[routes.find(r=>r.id===selected).steps[step].place].slice(1));viewport=[p[0]-1.1,p[1]-1.3,2.2,2.6];return true;}
+ return false;
+}
+function fit(points){
+ const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+ const x1=Math.min(...xs),x2=Math.max(...xs),y1=Math.min(...ys),y2=Math.max(...ys);
+ const w=Math.max(2,(x2-x1)*1.30),h=Math.max(2.7,(y2-y1)*1.32);
+ return [(x1+x2-w)/2,(y1+y2-h)/2,w,h];
+}
+function mapControls(){return '<div class="atlas-controls"><span class="muted">밀어서 이동 · 두 손가락 확대/축소</span><button class="btn" type="button" data-atlas-reset="all">전체 보기</button></div>';}
+function chooser(visible){
+ const groups=[...new Set(routes.map(r=>r.group))];
+ return '<section class="atlas-selection-panel"><div class="row"><div><h2>함께 볼 여정</h2><p>체크하면 지도에 추가돼요. 여러 개를 선택할 수 있어요.</p></div><span class="reading-badge">'+visible.length+'개 표시</span></div>'+
+ '<nav class="atlas-groups" aria-label="여정 분류">'+groups.map(name=>'<button type="button" data-atlas-group="'+name+'" aria-pressed="'+(group===name)+'">'+name+'</button>').join('')+'</nav>'+
+ '<div class="atlas-choices">'+routes.filter(r=>r.group===group).map(r=>'<div class="atlas-choice"><button type="button" class="atlas-toggle" data-atlas-journey="'+r.id+'" aria-pressed="'+enabled.has(r.id)+'"><span class="atlas-choice-check" aria-hidden="true">'+(enabled.has(r.id)?'✓':'＋')+'</span><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span><span>'+safe(r.title)+'</span></button><button type="button" class="text-action" data-atlas-only="'+r.id+'">단독 보기</button></div>').join('')+'</div>'+
+ '<div class="atlas-layer-list" aria-label="표시 중인 여정">'+visible.map(r=>'<div class="atlas-layer-chip"><button type="button" data-atlas-focus="'+r.id+'" aria-pressed="'+(selected===r.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span>'+safe(r.title)+'</button><button type="button" data-atlas-journey="'+r.id+'" aria-label="'+safe(r.title)+' 숨기기">×</button></div>').join('')+'</div></section>';
+}
+function labelsFor(route,frameWidth){
+ const seen=new Set(),pins=[];
+ route.steps.forEach((entry,index)=>{if(!seen.has(entry.place)){seen.add(entry.place);pins.push({entry,index});}});
+ const font=mapUnit()*12,radius=mapUnit()*7,used=[];
+ return pins.map(({entry,index})=>{
+  const [x,y]=project(places[entry.place].slice(1)),name=places[entry.place][0];
+  const number=route.steps.map((stop,i)=>stop.place===entry.place?i+1:null).filter(Boolean).join('·');
+  const width=Math.min(name.length,22)*font*.57;
+  let label={x:x+radius*1.7,y:y-radius*1.6};
+  const offsets=[[1.7,-1.6],[1.7,2.8],[-1.7,-1.6],[-1.7,2.8],[1.7,-4.6],[1.7,5.8],[-1.7,-7.6],[1.7,8.8]];
+  for(const [dx,dy] of offsets){
+   const test={x:x+radius*dx-(dx<0?width:0),y:y+radius*dy};
+   if(!used.some(b=>test.x<b.x+b.w && test.x+width>b.x && test.y-font<b.y && test.y>b.y-font*1.1)){label=test;break;}
   }
-  if(target.atlasFocus && enabled.has(target.atlasFocus)) { selected=target.atlasFocus;step=0;return true; }
-  const route=journeys.find(route=>route.id===selected);
-  if ('atlasStep' in target) {step=Math.max(0,Math.min(route.steps.length-1,step+Number(target.atlasStep)));viewport=undefined;return true;}
-  if (target.atlasReset) {viewport=undefined;return true;}
-  if (target.atlasBorder) {borders=!borders;return true;}
-  return false;
+  used.push({...label,w:width});
+  const active=route.steps[step].place===entry.place;
+  return '<g class="atlas-pin '+(active?'active':'')+'" data-atlas-pin="'+index+'" role="button" tabindex="0" aria-label="'+safe(name)+'" transform="translate('+x+','+y+')"><circle class="atlas-hit" r="'+radius*2.8+'"/><circle r="'+radius+'"/><text dy=".35em" text-anchor="middle" font-size="'+font*.62+'">'+(index+1)+'</text></g>'+
+   '<path class="atlas-label-leader" d="M'+x+','+y+' L'+label.x+','+(label.y-font*.35)+'"/>'+
+   '<text class="atlas-place-label" x="'+label.x+'" y="'+label.y+'" font-size="'+font+'">'+safe(name)+(number.includes('·')?' ('+number+')':'')+'</text>';
+ }).join('');
 }
-export function atlasScreen() {
-  const route=journeys.find(route=>route.id===selected);
-  const groups=[...new Set(journeys.map(item=>item.group))];
-  const points=route.steps.map(item=>project(places[item.place].slice(1)));
-  const visible=journeys.filter(item=>enabled.has(item.id));
-  const extent=visible.length?visible.flatMap(item=>item.steps.map(stop=>project(places[stop.place].slice(1)))):points;
-  const minX=Math.min(...extent.map(p=>p[0])),maxX=Math.max(...extent.map(p=>p[0]));
-  const minY=Math.min(...extent.map(p=>p[1])),maxY=Math.max(...extent.map(p=>p[1]));
-  const width=Math.max(2,(maxX-minX)*1.32),height=Math.max(2.4,(maxY-minY)*1.32,width*.65);
-  if(!viewport) {
-    const w=Math.max(width,height*1.3),h=Math.max(height,width*.65);
-    viewport=[(minX+maxX-w)/2,(minY+maxY-h)/2,w,h];
-  }
-  const viewBox=viewport.join(' '),frameWidth=viewport[2];
-  const radius=frameWidth/68,font=frameWidth/48;
-  const active=route.steps[step],place=places[active.place];
-  // The envelope is a general north–south overview, never a modern border claim.
-  const envelope=[[35.65,33.25],[35.85,32.6],[35.55,31.6],[34.80,31.25],[34.5,31.5],[34.95,32.3],[35.1,33.1]];
-  const pinGroups=route.steps.map((entry,index)=>{
-    const p=points[index];
-    return '<g class="atlas-pin '+(index===step?'active':'')+'" data-atlas-pin="'+index+'" role="button" tabindex="0" aria-label="'+(index+1)+'. '+safe(places[entry.place][0])+'" transform="translate('+p.join(',')+')">'+
-      '<circle r="'+radius*3.4+'" class="atlas-hit"/><circle r="'+radius+'"/><text text-anchor="middle" dy=".34em" font-size="'+font*.63+'">'+(index+1)+'</text></g>';
-  });
-  // Put the active pin last so repeat visits at the same coordinates remain selectable.
-  const activePin=pinGroups.splice(step,1)[0];
-  const geography=[[33,34,'지중해'],[32,39,'소아시아'],[43,34,'메소포타미아'],[30,28,'애굽'],[35.5,30.8,'가나안'],[13,42,'이탈리아'],[23,41.4,'마게도냐']].map(([x,y,label])=>'<text class="atlas-region-label" x="'+x+'" y="'+(-y*1.25)+'" text-anchor="middle" font-size="'+font*.8+'">'+label+'</text>').join('');
-  return '<header class="page-heading"><p class="eyebrow">BIBLE ATLAS</p><h1>성경 지도</h1><p class="lead">지도를 밀어 이동하고 두 손가락으로 확대하세요. 여러 여정을 켜서 함께 볼 수 있어요.</p></header>'+
-    '<nav class="atlas-groups" aria-label="지도 주제">'+groups.map(name=>'<button type="button" data-atlas-group="'+safe(name)+'" aria-pressed="'+(group===name)+'">'+safe(name)+'</button>').join('')+'</nav>'+
-    '<nav class="atlas-journeys" aria-label="여정 선택">'+journeys.filter(item=>item.group===group).map(item=>'<button type="button" class="btn" data-atlas-journey="'+item.id+'" aria-pressed="'+enabled.has(item.id)+'">'+'<span class="atlas-color-dot" style="background:'+colorFor(item.id)+'"></span>'+safe(item.title)+'</button>').join('')+'</nav>'+
-    '<div class="atlas-layer-list" aria-label="표시 중인 여정">'+visible.map(item=>'<button type="button" data-atlas-focus="'+item.id+'" aria-pressed="'+(selected===item.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(item.id)+'"></span>'+safe(item.title)+'</button>').join('')+'</div>'+
-    '<section class="atlas-map-card"><header class="row"><h2>'+(visible.length?visible.length+'개 여정 표시':'표시할 여정을 골라주세요')+'</h2><button type="button" class="text-action" data-atlas-border="toggle" aria-pressed="'+(borders || selected==='borders')+'">경계 개요</button></header>'+
-    '<svg class="atlas-map" viewBox="'+viewBox+'" role="group" aria-label="'+safe(route.title)+' 지도"><title>'+safe(route.title)+'</title><path class="atlas-land" d="'+land+'"/>'+geography+
-    ((borders || selected==='borders')?'<path class="atlas-boundary" d="'+pathFor(envelope)+'"/>':'')+
-    visible.map(item=>'<polyline class="atlas-route" style="stroke:'+colorFor(item.id)+'" points="'+item.steps.map(stop=>project(places[stop.place].slice(1)).join(',')).join(' ')+'"/>'+ (item.id===selected?'':item.steps.map(stop=>'<circle class="atlas-layer-pin" style="fill:'+colorFor(item.id)+'" cx="'+places[stop.place][1]+'" cy="'+(-places[stop.place][2]*1.25)+'" r="'+radius*.55+'"/>').join(''))).join('')+
-    (enabled.has(selected)?pinGroups.join('')+activePin+'<text class="atlas-place-label" x="'+points[step][0]+'" y="'+(points[step][1]-radius*1.7)+'" text-anchor="middle" font-size="'+font+'">'+safe(place[0])+'</text>':'')+'</svg>'+
-    '<div class="atlas-controls"><span class="muted">드래그 · 두 손가락 확대/축소 · 마우스 휠</span><button type="button" class="btn" data-atlas-reset="all">전체 보기</button></div>'+
-    '<p class="atlas-legend"><span>● 장소</span><span>┄ 대표 이동 순서 · 점선은 실제 도로·항로를 확정하지 않음</span></p></section>'+
-    '<section '+(!enabled.has(selected)?'hidden ':'')+'class="card atlas-detail" aria-live="polite"><div class="row"><span class="reading-badge">'+(step+1)+' / '+route.steps.length+'</span><span class="muted">'+safe(route.group)+'</span></div><h2>'+safe(place[0])+'</h2><p>'+safe(active.text)+'</p><button type="button" class="note-link" data-atlas-ref="'+active.ref+'">'+safe(reference(active.ref))+' 읽기 →</button><div class="row atlas-pagination"><button class="btn" data-atlas-step="-1" '+(step===0?'disabled':'')+'>← 이전 장소</button><button class="btn" data-atlas-step="1" '+(step===route.steps.length-1?'disabled':'')+'>다음 장소 →</button></div></section>'+
-    '<details '+(!enabled.has(selected)?'hidden ':'')+'class="atlas-stop-list"><summary>전체 장소 목록 · '+route.steps.length+'곳</summary>'+route.steps.map((entry,index)=>'<button type="button" data-atlas-go="'+index+'" aria-current="'+(step===index?'step':'false')+'">'+(index+1)+'. '+safe(places[entry.place][0])+'</button>').join('')+'</details>';
+function geography(frameWidth){
+ const labels=[[31.6,34.4,'지중해'],[32,39.1,'소아시아'],[43.1,34.8,'메소포타미아'],[30.2,28.8,'애굽'],[36.1,31.2,'가나안'],[13.2,42.0,'이탈리아'],[23,41.4,'마게도냐'],[34.1,27.9,'홍해']];
+ return labels.map(([x,y,name])=>'<text class="atlas-region-label" x="'+x+'" y="'+(-y*1.25)+'" font-size="'+mapUnit()*14+'" text-anchor="middle">'+name+'</text>').join('');
 }
-export function mountAtlas(root,redraw) {
-  enableMapGestures(root.querySelector('.atlas-map'),redraw);
-  const choose=index=>{step=Number(index);redraw();root.querySelector('.atlas-detail h2')?.scrollIntoView({block:'nearest'});};
-  root.querySelectorAll('[data-atlas-pin]').forEach(pin=>{
-    pin.addEventListener('click',()=>{if(Date.now()>=ignorePinUntil)choose(pin.dataset.atlasPin);});
-    pin.addEventListener('keydown',event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();choose(pin.dataset.atlasPin);}});
-  });
-  root.querySelectorAll('[data-atlas-go]').forEach(button=>button.addEventListener('click',()=>choose(button.dataset.atlasGo)));
+function journeyScreen(){
+ const visible=routes.filter(r=>enabled.has(r.id)),route=routes.find(r=>r.id===selected),active=route.steps[step];
+ const points=(visible.length?visible:[route]).flatMap(r=>r.segments.flat().map(project));
+ if(!viewport)viewport=fit(points);
+ minMapWidth=.03;maxMapWidth=65;
+ const paths=visible.map(r=>r.segments.map(segment=>'<polyline class="atlas-route" style="stroke:'+colorFor(r.id)+'" points="'+segment.map(project).map(p=>p.join(',')).join(' ')+'"/>').join('')+
+ (r.id===selected?'':r.steps.map(stop=>{const [x,y]=project(places[stop.place].slice(1));return '<circle class="atlas-layer-pin" cx="'+x+'" cy="'+y+'" r="'+viewport[2]/150+'" style="fill:'+colorFor(r.id)+'"/>';}).join(''))).join('');
+ const detail=enabled.has(selected)?'<section class="card atlas-detail" aria-live="polite"><div class="row"><span class="reading-badge">'+safe(route.title)+' · '+(step+1)+' / '+route.steps.length+'</span><button class="text-action" type="button" data-atlas-locate="true">이 장소 확대</button></div><h2>'+safe(places[active.place][0])+'</h2><p>'+safe(active.text)+'</p><span class="atlas-confidence">'+safe(placeNotes[active.place]?.confidence ?? '위치 추정')+'</span><button type="button" class="note-link" data-atlas-ref="'+active.ref+'">'+safe(reference(active.ref))+' 읽기 →</button><div class="row atlas-pagination"><button class="btn" data-atlas-step="-1" '+(!step?'disabled':'')+'>← 이전 사건</button><button class="btn" data-atlas-step="1" '+(step===route.steps.length-1?'disabled':'')+'>다음 사건 →</button></div></section>'+
+ '<section class="card atlas-reading-guide"><h2>이 여정을 읽는 방법</h2><p>'+safe(route.description)+'</p><div class="atlas-scripture-links">'+[...new Set([route.steps[0].ref,route.steps.find(s=>s.place==='egypt')?.ref,route.steps.at(-1).ref].filter(Boolean))].map(ref=>'<button type="button" class="btn" data-atlas-ref="'+ref+'">'+safe(reference(ref))+'</button>').join('')+'</div></section>':'';
+ return chooser(visible)+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도"><path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+'<p class="atlas-legend">점선은 방문 순서를 잇는 개략적 이동권입니다. 성경에 기록되지 않은 중간 이동로는 확정 경로로 표시하지 않습니다.</p></section>'+detail;
 }
-
+function historyScreen(){
+ const info=history[mode];minMapWidth=info.size[0]*.02;maxMapWidth=info.size[0]*2;
+ if(!viewport)viewport=[0,0,...info.size];
+ const extra=mode==='tribes'?'레위는 연속된 땅 대신 여러 지파 안의 성읍을 받았습니다. 요셉의 몫은 에브라임과 므낫세로 표시하며, 므낫세의 땅은 요단 동·서에 나뉩니다.':'북이스라엘은 파란색, 남유다는 황토색 영역입니다. 사마리아와 예루살렘을 각각의 중심 도시로 확인해 보세요.';
+ return '<section class="atlas-map-card atlas-history-card"><header><h2>'+safe(info.title)+'</h2><p>'+safe(info.description)+'</p></header><svg class="atlas-map atlas-history-map" viewBox="'+viewport.join(' ')+'" role="img" aria-label="'+safe(info.title)+'"><image href="./maps/'+info.file+'" x="0" y="0" width="'+info.size[0]+'" height="'+info.size[1]+'"/></svg>'+mapControls()+'<p class="atlas-credit"><a target="_blank" rel="noopener" href="'+info.url+'">'+safe(info.credit)+'</a></p></section><section class="card atlas-reading-guide"><h2>지도에서 살펴보기</h2><p>'+extra+'</p><button type="button" class="note-link" data-atlas-ref="'+info.ref+'">'+safe(reference(info.ref))+' 읽기 →</button></section>';
+}
+function modernScreen(){
+ minMapWidth=.03;maxMapWidth=25;if(!viewport)viewport=[33.5,-42.2,3.6,6.1];
+ const shapes=modernRegions.map(region=>'<path class="atlas-modern-region '+(region.id==='Israel'?'israel':region.id==='Palestine'?'palestine':'neighbor')+'" d="'+region.rings.map(pathFor).join(' ')+'"/>').join('');
+ const towns=[[34.78,32.08,'텔아비브'],[35.23,31.78,'예루살렘'],[34.99,32.82,'하이파'],[34.95,29.56,'에일라트'],[34.84,31.24,'브엘세바'],[35.93,31.95,'암만'],[35.51,33.89,'베이루트']];
+ const labels=towns.map(([x,y,name])=>'<circle class="atlas-modern-city" cx="'+x+'" cy="'+(-y*1.25)+'" r="'+viewport[2]/190+'"/><text class="atlas-place-label" x="'+(x+viewport[2]/80)+'" y="'+(-y*1.25)+'" font-size="'+mapUnit()*12+'">'+name+'</text>').join('');
+ return '<section class="atlas-map-card"><header><h2>현대 이스라엘과 주변 지역</h2><p>현대 지리 비교용 · Natural Earth 5.1.2의 행정구역 구분</p></header><svg class="atlas-map atlas-modern-map" viewBox="'+viewport.join(' ')+'" role="img" aria-label="현대 이스라엘과 팔레스타인 및 주변국"><path class="atlas-land" d="'+land+'"/>'+shapes+'<path class="atlas-lakes" d="'+lakes+'"/>'+labels+'<text class="atlas-region-label" x="34.2" y="-40.8" font-size="'+mapUnit()*17+'">지중해</text></svg>'+mapControls()+'<p class="atlas-legend">파랑 · 이스라엘 / 보라 · 팔레스타인(서안·가자). 분쟁 지역의 법적 지위나 실시간 통제선을 확정하는 지도가 아닙니다.</p><p class="atlas-credit"><a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noopener">Natural Earth v5.1.2 · Public domain</a></p></section>';
+}
+export function atlasScreen(){
+ return '<header class="page-heading"><p class="eyebrow">BIBLE ATLAS</p><h1>성경 지도</h1><p class="lead">여정과 시대별 지리를 비교해 보세요.</p></header><nav class="atlas-mode-tabs" aria-label="지도 종류">'+mapModes.map(([id,title])=>'<button type="button" data-atlas-mode="'+id+'" aria-pressed="'+(mode===id)+'">'+title+'</button>').join('')+'</nav>'+(mode==='journeys'?journeyScreen():mode==='modern'?modernScreen():historyScreen());
+}
+export function mountAtlas(root,redraw){
+ enableMapGestures(root.querySelector('.atlas-map'),redraw);
+ root.querySelectorAll('[data-atlas-pin]').forEach(pin=>{
+  const choose=()=>{step=Number(pin.dataset.atlasPin);redraw();};
+  pin.addEventListener('click',()=>{if(Date.now()>=ignorePinUntil)choose();});
+  pin.addEventListener('keydown',event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();choose();}});
+ });
+}
 let ignorePinUntil=0;
 function enableMapGestures(map,redraw) {
   const pointers=new Map();
@@ -93,7 +127,7 @@ function enableMapGestures(map,redraw) {
     const origin=new DOMPoint(start.x,start.y).matrixTransform(start.inverse);
     const current=new DOMPoint(center.x,center.y).matrixTransform(start.inverse);
     const [x,y,w,h]=start.frame;
-    const scale=Math.max(.03,Math.min(40,w/factor))/w;
+    const scale=Math.max(minMapWidth,Math.min(maxMapWidth,w/factor))/w;
     viewport=[origin.x-(current.x-x)*scale,origin.y-(current.y-y)*scale,w*scale,h*scale];
     map.setAttribute('viewBox',viewport.join(' '));
   };
