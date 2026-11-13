@@ -49,7 +49,7 @@ function eventInfo(event) {
 }
 export function hebrewOptions() {
  return '<section class="hebrew-options"><button type="button" class="btn" data-hebrew-toggle="true" aria-pressed="'+enabled+'">히브리력 '+(enabled?'표시 중':'표시')+'</button>'+
- (enabled?'<div class="hebrew-scheme" role="group" aria-label="절기 기준"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 공동체</button></div>':'')+'</section>';
+ (enabled?'<div class="hebrew-scheme" role="group" aria-label="절기 기준"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 유대 공동체</button></div>':'')+'</section>';
 }
 export function hebrewDayCell(day) {
  if(!enabled)return '';
@@ -62,7 +62,7 @@ export function hebrewDayDetail(day) {
  return '<section class="card hebrew-day-detail"><header class="row"><h2>'+h.month+' '+h.day+'일</h2><span class="reading-badge">'+h.year+'년</span></header>'+
  '<p class="muted">'+(israel?'이스라엘':'해외 유대 공동체')+' 기준 · 해당 양력일 낮의 히브리 날짜</p>'+
  (events.length?events.map(info=>'<article><h3>'+safe(info.title)+(info.eve?' 전날':'')+'</h3><p class="muted">'+safe(info.english)+'</p><p>'+safe(info.detail)+'</p>'+(info.ref?'<button type="button" class="note-link" data-atlas-ref="'+info.ref+'">'+safe(reference(info.ref))+' 읽기 →</button>':'')+'</article>').join(''):'<p>이날은 등록된 절기나 특별 기념일이 없어요.</p>')+
- '<details><summary>날짜와 절기 안내</summary><p>유대력의 하루는 전날 일몰에 시작합니다. 달력 칸은 양력일 낮에 해당하는 날짜이며, 일몰 시각은 계산하지 않습니다. 성경 절기와 후대 유대교 기념일을 함께 표시합니다.</p><p><a href="https://www.hebcal.com/home/195/jewish-calendar-rest-api" target="_blank" rel="noopener">계산 자료 · Hebcal</a></p></details></section>';
+ '</section>';
 }
 export function hebrewAction(target) {
  if(target.hebrewToggle){enabled=!enabled;try{localStorage.setItem('logbible-hebrew-calendar',String(enabled));}catch{}return true;}

@@ -1,5 +1,5 @@
-import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=1';
-import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=1';
+import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=2';
+import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=2';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
@@ -3842,6 +3842,7 @@ document.addEventListener('touchstart',event=>{
   overlayTouchY = event.touches[0]?.clientY;
 },{passive:true});
 document.addEventListener('touchmove',event=>{
+  if (event.target.closest?.('.atlas-map')) return;
   if (event.touches.length>1) return preventPageZoom(event);
   if (event.touches.length!==1) return;
   const y = event.touches[0].clientY;

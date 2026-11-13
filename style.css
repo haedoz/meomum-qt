@@ -2949,3 +2949,14 @@ bdi[lang="grc"] {
 @media (max-width:360px) { .hebrew-cell-date { font-size:9px !important; } .atlas-groups { gap:2px; } .atlas-groups button { padding-inline:7px; } }
 
 .atlas-region-label { fill:var(--muted); font-family:var(--sans); stroke:var(--card); stroke-width:2px; paint-order:stroke; vector-effect:non-scaling-stroke; pointer-events:none; }
+
+.atlas-map { touch-action:none; user-select:none; -webkit-user-select:none; cursor:grab; }
+.atlas-map:active { cursor:grabbing; }
+.atlas-controls { align-items:center; justify-content:space-between; }
+.atlas-controls > .muted { font-size:.7rem; }
+.atlas-layer-list { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:9px; }
+.atlas-layer-list button { display:inline-flex; align-items:center; gap:5px; padding:6px 9px; min-height:36px; border:1px solid var(--line); border-radius:9px; background:var(--card); font-size:.74rem; }
+.atlas-layer-list [aria-pressed=true] { background:var(--accent-soft); }
+.atlas-color-dot { display:inline-block; width:8px; height:8px; flex:0 0 8px; border-radius:50%; }
+.atlas-layer-pin { stroke:var(--card); stroke-width:1px; vector-effect:non-scaling-stroke; }
+.atlas-detail[hidden], .atlas-stop-list[hidden] { display:none; }
