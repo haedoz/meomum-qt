@@ -2899,3 +2899,53 @@ bdi[lang="grc"] {
 .journal-feed-actions svg { width: 16px; height: 16px; }
 
 .gh-switch > span { margin: 0; text-align: start; flex: 0 1 auto; }
+
+/* Hebrew dates and Bible journeys */
+.hebrew-options { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.hebrew-options .btn[aria-pressed=true], .hebrew-scheme [aria-pressed=true], .atlas-groups [aria-pressed=true] { background:var(--accent-soft); color:var(--accent-ink); }
+.hebrew-scheme { display:flex; gap:3px; padding:3px; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+.hebrew-scheme button { min-height:38px; border-radius:9px; padding:4px 9px; font-size:.78rem; }
+.calendar.with-hebrew .day { position:relative; min-height:67px; padding:5px 2px; gap:2px; }
+.hebrew-cell-date { color:var(--muted); font-size:10px !important; line-height:1.2; white-space:nowrap; font-weight:400; }
+.hebrew-holiday-dot { display:block; width:4px; height:4px; border-radius:50%; background:var(--accent-ink); margin:auto; }
+.hebrew-day-detail { display:grid; gap:9px; margin-bottom:10px; }
+.hebrew-day-detail h2 { font-size:1.05rem; }
+.hebrew-day-detail article { padding-top:9px; border-top:1px solid var(--line); }
+.hebrew-day-detail article > p:not(.muted), .hebrew-day-detail details { font:400 var(--reading-size,15px)/var(--reading-leading,1.25) var(--sans); letter-spacing:var(--reading-tracking); overflow-wrap:anywhere; }
+.hebrew-day-detail .muted { font-size:.76rem; }
+.hebrew-day-detail details { font-size:.78rem; color:var(--muted); }
+.hebrew-day-detail summary, .atlas-notes summary, .atlas-stop-list summary { min-height:44px; align-content:center; cursor:pointer; }
+.atlas-groups { display:flex; flex-wrap:wrap; gap:4px; padding:5px; border:1px solid var(--line); background:var(--card); border-radius:14px; }
+.atlas-groups button { min-height:40px; padding:5px 10px; border-radius:10px; font-size:.8rem; }
+.atlas-journeys { display:flex; flex-wrap:wrap; gap:5px; margin:10px 0; }
+.atlas-journeys .btn { font-size:.8rem; padding:5px 10px; }
+.atlas-map-card { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:var(--card); margin-bottom:10px; }
+.atlas-map-card > header { padding:6px 12px; gap:8px; flex-wrap:wrap; }
+.atlas-map-card h2 { font-size:1rem; }
+.atlas-map { display:block; width:100%; height:clamp(270px,48vw,470px); fill:none; stroke:none; background:color-mix(in srgb,var(--accent-soft) 65%,var(--card)); }
+.atlas-land { fill:var(--card); stroke:var(--line); stroke-width:1px; vector-effect:non-scaling-stroke; }
+.atlas-route { stroke:var(--accent-ink); stroke-width:2px; stroke-dasharray:6 5; vector-effect:non-scaling-stroke; fill:none; }
+.atlas-boundary { fill:color-mix(in srgb,#d4ad63 25%,transparent); stroke:#aa7d39; stroke-width:2px; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; }
+.atlas-pin { cursor:pointer; outline:none; }
+.atlas-pin circle { fill:var(--card); stroke:var(--accent-ink); stroke-width:1.5px; vector-effect:non-scaling-stroke; }
+.atlas-pin .atlas-hit { fill:transparent; stroke:none; }
+.atlas-pin text { fill:var(--accent-ink); stroke:none; font-family:var(--sans); font-weight:700; pointer-events:none; }
+.atlas-pin.active circle:not(.atlas-hit), .atlas-pin:focus circle:not(.atlas-hit) { fill:var(--accent-ink); stroke:var(--card); stroke-width:2px; }
+.atlas-pin.active text, .atlas-pin:focus text { fill:var(--card); }
+.atlas-place-label { fill:var(--ink); stroke:var(--card); stroke-width:3px; paint-order:stroke; vector-effect:non-scaling-stroke; font-family:var(--sans); font-weight:650; pointer-events:none; }
+.atlas-controls { display:flex; flex-wrap:wrap; gap:4px; padding:8px 10px; }
+.atlas-controls .btn { min-width:36px; min-height:40px; padding:4px 9px; border-radius:10px; }
+.atlas-legend { display:flex; flex-wrap:wrap; gap:5px 12px; padding:0 12px 10px; color:var(--muted); font-size:.7rem; }
+.atlas-detail { display:grid; gap:8px; }
+.atlas-detail > p { font-size:var(--reading-size,15px); line-height:var(--reading-leading,1.25); letter-spacing:var(--reading-tracking); overflow-wrap:anywhere; }
+.atlas-detail h2 { font-size:1.15rem; }
+.atlas-detail .note-link { justify-self:start; }
+.atlas-pagination { padding-top:7px; border-top:1px solid var(--line); }
+.atlas-pagination .btn { font-size:.8rem; }
+.atlas-notes, .atlas-stop-list { padding:0 12px; margin-bottom:8px; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--muted); font-size:.8rem; overflow-wrap:anywhere; }
+.atlas-notes p { margin-bottom:9px; }
+.atlas-stop-list button { display:block; width:100%; text-align:start; min-height:44px; border-top:1px solid var(--line); padding:6px 3px; }
+.atlas-stop-list [aria-current=step] { color:var(--accent-ink); font-weight:700; }
+@media (max-width:360px) { .hebrew-cell-date { font-size:9px !important; } .atlas-groups { gap:2px; } .atlas-groups button { padding-inline:7px; } }
+
+.atlas-region-label { fill:var(--muted); font-family:var(--sans); stroke:var(--card); stroke-width:2px; paint-order:stroke; vector-effect:non-scaling-stroke; pointer-events:none; }

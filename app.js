@@ -1,3 +1,5 @@
+import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=1';
+import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=1';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
@@ -454,7 +456,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'records',journals:'records',bundles:'records',journal:'calendar',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -1718,19 +1720,19 @@ function calendarScreen() {
       (hasDailyNote?' 말씀 묵상 있음':'')+(hasReading?' 성경 읽기 기록 있음':'')+(prayerCount?' 기도 '+prayerCount+'건':'')+
       (thoughtCount?' 생각 노트 '+thoughtCount+'건':'')+(hasVerse?' 오늘의 말씀 있음':'')+(hasMarks?' 구절 메모 또는 표시 있음':'');
     days += '<button class="day" data-day="'+key+'" aria-pressed="'+(key===selectedDay)+'" '+
-      (hasQT?'data-qt-record ':'')+(key===today?'aria-current="date" ':'')+'aria-label="'+label+'"><span>'+day+'</span>'+
+      (hasQT?'data-qt-record ':'')+(key===today?'aria-current="date" ':'')+'aria-label="'+label+'"><span>'+day+'</span>'+hebrewDayCell(key)+
       '<span class="calendar-day-marks" aria-hidden="true">'+(hasQT?'<i class="calendar-dot qt-dot"></i>':'')+
       (hasOther?'<i class="calendar-dot other-dot"></i>':'')+'</span></button>';
   }
   return heading('QT CALENDAR','묵상 달력','날짜를 고르고 항목을 눌러 그날의 기록을 펼쳐 보세요.')+
-    '<div class="calendar-layout"><section class="card calendar-month"><header class="row calendar-month-header">'+
+    hebrewOptions()+'<div class="calendar-layout"><section class="card calendar-month"><header class="row calendar-month-header">'+
     '<div><p class="muted">'+year+'년</p><h2>'+num+'월</h2></div><div class="calendar-month-actions">'+
     '<button class="btn" data-month="-1" aria-label="이전 달">'+icon('left')+'</button>'+
     '<button class="btn" data-action="calendar-today">오늘</button>'+
     '<button class="btn" data-month="1" aria-label="다음 달">'+icon('right')+'</button></div></header>'+
-    '<div class="calendar">'+days+'</div><footer class="calendar-legend"><span><i class="calendar-dot qt-dot"></i> 묵상·읽기</span>'+
+    '<div class="calendar'+(hebrewEnabled()?' with-hebrew':'')+'">'+days+'</div><footer class="calendar-legend"><span><i class="calendar-dot qt-dot"></i> 묵상·읽기</span>'+
     '<span><i class="calendar-dot other-dot"></i> 기타 기록</span><span>기록 '+recordedDays+'일</span></footer></section>'+
-    '<div>'+calendarDaySummary(selectedDay,prayersByDay.get(selectedDay) ?? [],marksByDay.get(selectedDay) ?? [])+
+    '<div>'+hebrewDayDetail(selectedDay)+calendarDaySummary(selectedDay,prayersByDay.get(selectedDay) ?? [],marksByDay.get(selectedDay) ?? [])+
     (undated.length?'<details class="undated-prayers"><summary>날짜 미기록 기도·생각 '+undated.length+'건</summary>'+
       undated.map(prayer=>calendarPrayer(prayer)).join('')+'</details>':'')+'</div></div>';
 }
@@ -2170,6 +2172,7 @@ function recordsScreen() {
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
       ['calendar','calendar','달력','묵상 달력'],
+      ['atlas','book','성경 지도','인물과 사건의 여정'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
@@ -2361,7 +2364,7 @@ function bundlesScreen() {
 }
 function render(studyFromSelection = false) {
   flushReadingBookmark();
-  const screens = {today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {atlas:atlasScreen,today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
@@ -2461,6 +2464,7 @@ function render(studyFromSelection = false) {
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
   main.innerHTML = screens[view](prayerId || editorId);
+  if (view==='atlas') mountAtlas(main,render);
   if (document.getElementById('gh-device-list')) refreshGhDevices();
   renderedBible = view==='bible'?readerAddress():'';
   const thoughtForm = main.querySelector('form[data-thought-editor]');
@@ -2476,7 +2480,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = ['calendar','journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['atlas','calendar','journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -3476,6 +3480,14 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if (atlasAction(target) || hebrewAction(target)) { render(); return; }
+  if (target.atlasRef) {
+    const address = target.atlasRef;
+    const edition = [state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));
+    if (edition) visit(edition+'/'+address);
+    else notify('관련 구절을 보려면 해당 성경책이 있는 번역본을 추가해 주세요.');
+    return;
+  }
   if (target.action==='discard-draft') return discardDraft(button.form);
   if (target.settingsSection && Object.hasOwn(settingsSections,target.settingsSection)) {
     settingsSection = target.settingsSection;
