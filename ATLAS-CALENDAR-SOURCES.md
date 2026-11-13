@@ -35,3 +35,23 @@ CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 ## 같은 지도 위의 영역 표시
 
 역사 SVG를 독립 이미지로 표시하지 않고 영역 path만 추출해 같은 지도 위에 올립니다. 두로·예루살렘·브엘세바 등 지명 대응점을 이용한 아핀 좌표 변환입니다. 원본 역사 지도의 일반화와 좌표 변환 오차가 포함되므로 정밀 경계선으로 사용하지 않습니다. 현대 영역은 Natural Earth의 지리 좌표 도형을 그대로 사용합니다. atlas-overlays.js는 원본 역사 자료의 파생물이며 12지파 도형은 CC BY-SA 3.0을 따릅니다.
+
+## 2026-11-13 사용자 캡처 대조 수정
+
+사용자 제공 캡처 3–15번을 각각의 여정 흐름 참고 자료로 사용했습니다. 캡처 1·2·16번은 영역 비교 참고이며 영역 도형의 출처는 위 역사 지도와 Natural Earth를 유지합니다. 캡처의 작은 지명은 정확히 판독할 수 없는 경우가 있어 이미지에 보이는 선을 정밀 측량 자료처럼 복사하지 않았습니다. 주요 지점은 아래 본문과 대조했고, 중간 연결 좌표는 여전히 지리적 재구성입니다. 사용자 캡처 이미지는 배포 파일에 포함하지 않습니다.
+
+- 아브라함: 창 11–13, 21장. 유프라테스·레반트 이동권과 네겝·애굽 왕복. https://bible.usccb.org/bible/genesis/12
+- 출애굽: 출 12–19, 민 10–13·33장. 시내산 이후 하세롯·가데스까지 주요 지점 연장. 남부 시내산 견해이며 모든 진영을 그린 것은 아닙니다. https://bible.usccb.org/bible/numbers/33
+- 정찰: 민 13:21–26. 남북 범위와 에스골 귀환. 북단 지점과 왕복 중간길은 추정. https://bible.usccb.org/bible/numbers/13
+- 가나안 진입·정복: 민 20–22, 신 2, 수 4·6·8–11장. 모세 시대 우회와 여호수아 시대 전투 구분. https://bible.usccb.org/bible/numbers/21
+- 북이스라엘 포로기: 왕하 17:6. 복수 유배 목적지를 가지선으로 표현. https://bible.usccb.org/bible/2kings/17
+- 남유다 포로기: 왕하 25:6–11. 시드기야의 리블라 이송과 바벨론 유배 주요 지점 개요. https://bible.usccb.org/bible/2kings/25
+- 예수 유년기: 마 2, 눅 2장. 복음서 종합 개요이며 확정 연대기 조화를 주장하지 않음. https://bible.usccb.org/bible/matthew/2
+- 공생애: 요 2·4·10장, 막 7장 등. 시돈·데가볼리·요단 동편 보완. https://bible.usccb.org/bible/mark/7
+- 바울 1차: 행 13–14. 출발·귀환 지점과 육지/해상 연결 재검토. https://bible.usccb.org/bible/acts/13
+- 바울 2차: 행 15–18. 암비볼리·아볼로니아·겐그레아 보완. https://bible.usccb.org/bible/acts/17
+- 바울 3차 출발: 행 18:23–20:3, 고후 2:12–13. 갈라디아·브루기아는 지역 대표점, 빌립보·고린도도 지역 방문을 표시하는 대표점으로 구분. https://bible.usccb.org/bible/2corinthians/2
+- 바울 3차 복귀: 행 20–21. 마게도냐 귀환·드로아·에게해 기항지·예루살렘. 드로아–앗소는 바울의 육로 표시. https://bible.usccb.org/bible/acts/20
+- 로마: 행 27–28. 살모네·가우다·압비오 광장·트레이스 타베르네 보완. 폭풍 표류는 추정선. https://bible.usccb.org/bible/acts/27
+
+추가된 고대 지명 식별에는 OpenBible.info Bible Geocoding Data(CC BY 4.0)를 사용했으며, 실제 해당 항목 URL은 atlas-data.js의 placeNotes에 저장했습니다. 성경 본문은 번역문을 복제하지 않고 사건을 자체 요약했습니다.
