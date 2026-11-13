@@ -3,7 +3,7 @@ import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
 
 const ghCloudRepo = 'haedoz/logbible-data';
-let ghDevices = [], ghDeviceScope = '', ghDeviceChecked = 0, ghDeviceBusy = false;
+let ghDevices = [], ghDeviceScope = '', ghDeviceChecked = 0, ghDeviceBusy = false, ghDeviceInputTimer;
 function ghDeviceName() {
   const ua = navigator.userAgent;
   if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1)) return '아이패드';
@@ -15,7 +15,7 @@ function ghDeviceName() {
 }
 function ghDeviceMarkup() {
   const user = (localStorage.getItem('logbible-gh-user') || '').replace(/\.json$/i,'').trim();
-  if (!user || ghDeviceScope!==user || !ghDevices.length) return '<p class="muted">동기화 접속이 확인된 기기가 아직 없어요.</p>';
+  if (!user || ghDeviceScope!==user || !ghDevices.length) return '<p class="muted">'+(ghDeviceBusy?'동기화 기기 확인 중…':'동기화 접속이 확인된 기기가 아직 없어요.')+'</p>';
   const active = localStorage.getItem('logbible-gh-auto') !== 'false';
   return '<p class="muted">동기화 기기</p><div class="gh-device-chips">'+ghDevices.map(device=>{
     const recent = active && Date.now()-device.seen<120000;
@@ -25,7 +25,7 @@ function ghDeviceMarkup() {
 async function refreshGhDevices(force = false) {
   const token = localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
   const user = localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
-  if (!token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy || (!force && Date.now()-ghDeviceChecked<45000)) return;
+  if (!token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy) return;
   ghDeviceBusy = true;
   const scope = user;
   try {
@@ -34,7 +34,9 @@ async function refreshGhDevices(force = false) {
     const path = 'sync-devices/'+encodeURIComponent(user)+'/'+id+'.json';
     const headers = {Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
     const url = 'https://api.github.com/repos/'+ghCloudRepo+'/contents/';
-    let response = await fetch(url+path,{headers,cache:'no-store'});
+    let response;
+    if (force || ghDeviceScope!==user || Date.now()-ghDeviceChecked>=45000) {
+    response = await fetch(url+path,{headers,cache:'no-store'});
     if (!response.ok && response.status!==404) throw Error('device');
     const previous = response.ok?await response.json():null;
     const device = {name:ghDeviceName(),seen:Date.now()};
@@ -42,6 +44,8 @@ async function refreshGhDevices(force = false) {
     const content = btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''));
     response = await fetch(url+path,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Update sync device',content,...(previous?.sha?{sha:previous.sha}:{})})});
     if (!response.ok) throw Error('device');
+    ghDeviceChecked = Date.now();
+    }
     response = await fetch(url+'sync-devices/'+encodeURIComponent(user),{headers,cache:'no-store'});
     if (!response.ok) throw Error('devices');
     const files = await response.json();
@@ -58,11 +62,14 @@ async function refreshGhDevices(force = false) {
     if (localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim()!==scope) return;
     ghDevices = devices.filter(Boolean).sort((a,b)=>b.seen-a.seen);
     ghDeviceScope = scope;
-    ghDeviceChecked = Date.now();
     const panel = document.getElementById('gh-device-list');
     if (panel) panel.innerHTML = ghDeviceMarkup();
-  } catch { ghDeviceChecked = Date.now(); }
-  finally { ghDeviceBusy = false; }
+  } catch { ghDeviceChecked = 0; }
+  finally {
+    ghDeviceBusy = false;
+    const panel = document.getElementById('gh-device-list');
+    if (panel) panel.innerHTML = ghDeviceMarkup();
+  }
 }
 
 const icons = {
@@ -2201,8 +2208,8 @@ function backupSettings() {
     '<section class="gh-card">'+
     '<div class="gh-header"><div><h3>GitHub 비공개 클라우드</h3></div>'+
     '<span class="gh-badge '+(isConnected?'':'off')+'">'+(isConnected?'자동 동기화 켜짐':!ghToken || !ghUser?'연결 설정 필요':'자동 동기화 꺼짐')+'</span></div>'+
-    '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input class="gh-input" id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
     '<div id="gh-device-list" class="gh-device-list" aria-live="polite">'+ghDeviceMarkup()+'</div>'+
+    '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input class="gh-input" id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
     '<div class="field"><span>사용자 파일명</span><input class="gh-input" id="gh-user-input" type="text" placeholder="사용하실 이름 영문 입력" value="'+esc(ghUser)+'" autocomplete="off" spellcheck="false"><p class="muted">기록 구분을 위한 영문 이름을 입력하세요. 같은 이름을 쓰는 기기끼리 자동으로 이어져요.</p></div>'+
     '<label class="gh-switch"><input type="checkbox" id="gh-auto-toggle" '+(ghAuto?'checked':'')+' data-action="gh-toggle-auto"><span>자동 동기화</span></label>'+
     (ghLastSync ? '<p class="muted">마지막 동기화 · '+esc(ghLastSync)+'</p>' : '')+
@@ -2454,6 +2461,7 @@ function render(studyFromSelection = false) {
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
   main.innerHTML = screens[view](prayerId || editorId);
+  if (document.getElementById('gh-device-list')) refreshGhDevices();
   renderedBible = view==='bible'?readerAddress():'';
   const thoughtForm = main.querySelector('form[data-thought-editor]');
   const prayerForm = main.querySelector('form[data-prayer-editor]');
@@ -4970,12 +4978,19 @@ async function checkGhAutoSync() {
 window.addEventListener('focus', checkGhAutoSync);
 setInterval(() => {
   const devicePanel = document.getElementById('gh-device-list');
-  if (devicePanel && !document.hidden) devicePanel.innerHTML = ghDeviceMarkup();
+  if (devicePanel && !document.hidden) {
+    devicePanel.innerHTML = ghDeviceMarkup();
+    refreshGhDevices();
+  }
   if (!document.hidden) checkGhAutoSync();
 }, 7000);
 
 main.addEventListener('input', event => {
   const target = event.target;
+  if (target.id === 'gh-token-input' || target.id === 'gh-user-input') {
+    clearTimeout(ghDeviceInputTimer);
+    ghDeviceInputTimer = setTimeout(() => refreshGhDevices(true), 700);
+  }
   if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim().replace(/[^\x21-\x7E]/g, ''));
   if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim().replace(/\.json$/i, '').trim());
 });
