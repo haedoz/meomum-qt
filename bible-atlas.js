@@ -11,6 +11,7 @@ let minMapWidth=.03,maxMapWidth=65;
 const enabled=new Set([selected]);
 const boundaries=new Set();
 let passageText=()=>'';
+let openPanel='';
 const colors=['#176db1','#b6532e','#648528','#8b52ab','#16887b','#c14673','#a07b1b','#485fc3','#008357','#a44693','#a66013','#596da2','#af3e3e'];
 const colorFor=id=>colors[routes.findIndex(item=>item.id===id)%colors.length];
 const project=([x,y])=>[x,-y*1.25];
@@ -18,6 +19,7 @@ const pathFor=points=>points.map((p,i)=>(i?'L':'M')+project(p).join(',')).join('
 const mapUnit=()=>Math.max(viewport[2]/Math.max(280,Math.min(760,(globalThis.innerWidth ?? 390)-48)),viewport[3]/460);
 const land=landRings.map(pathFor).join(' '),lakes=lakeRings.map(pathFor).join(' ');
 export function atlasAction(target) {
+ if(target.atlasPanel){openPanel=openPanel===target.atlasPanel?'':target.atlasPanel;return true;}
  if(target.atlasBoundary){const id=target.atlasBoundary;if(boundaries.has(id))boundaries.delete(id);else boundaries.add(id);viewport=[34.0,-42.6,2.8,4.6];return true;}
  if(target.atlasGroup){group=target.atlasGroup;return true;}
  if(target.atlasJourney && routes.some(item=>item.id===target.atlasJourney)) {
@@ -46,7 +48,7 @@ function chooser(visible){
  return '<section class="atlas-selection-panel"><div class="row"><div><h2>선택 가능한 여정</h2><p>체크하면 지도에 추가돼요. 여러 개를 선택할 수 있어요.</p></div><span class="reading-badge">'+visible.length+'개 표시</span></div>'+
  '<nav class="atlas-groups" aria-label="여정 분류">'+groups.map(name=>'<button type="button" data-atlas-group="'+name+'" aria-pressed="'+(group===name)+'">'+name+'</button>').join('')+'</nav>'+
  '<div class="atlas-choices">'+routes.filter(r=>r.group===group).map(r=>'<div class="atlas-choice"><button type="button" class="atlas-toggle" data-atlas-journey="'+r.id+'" aria-pressed="'+enabled.has(r.id)+'"><span class="atlas-choice-check" aria-hidden="true">'+(enabled.has(r.id)?'✓':'＋')+'</span><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span><span>'+safe(r.title)+'</span></button><button type="button" class="text-action" data-atlas-only="'+r.id+'">단독 보기</button></div>').join('')+'</div>'+
- '</section><section class="atlas-selected-panel card"><div class="row"><h2>선택한 여정</h2><span class="reading-badge">'+visible.length+'개</span></div><div class="atlas-layer-list" aria-label="표시 중인 여정">'+visible.map(r=>'<div class="atlas-layer-chip"><button type="button" data-atlas-focus="'+r.id+'" aria-pressed="'+(selected===r.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span>'+safe(r.title)+'</button><button type="button" data-atlas-journey="'+r.id+'" aria-label="'+safe(r.title)+' 숨기기">×</button></div>').join('')+'</div></section>';
+ '</section>';
 }
 function labelsFor(route,frameWidth){
  const seen=new Set(),pins=[];
@@ -82,7 +84,10 @@ function journeyScreen(){
  (r.id===selected?'':r.steps.map(stop=>{const [x,y]=project(places[stop.place].slice(1));return '<circle class="atlas-layer-pin" cx="'+x+'" cy="'+y+'" r="'+viewport[2]/150+'" style="fill:'+colorFor(r.id)+'"/>';}).join(''))).join('');
  const detail=enabled.has(selected)?'<section class="card atlas-detail" aria-live="polite"><div class="row"><span class="reading-badge">'+safe(route.title)+' · '+(step+1)+' / '+route.steps.length+'</span><button class="text-action" type="button" data-atlas-locate="true">이 장소 확대</button></div><h2>'+safe(places[active.place][0])+'</h2><p>'+safe(active.text)+'</p><span class="atlas-confidence">'+safe(placeNotes[active.place]?.confidence ?? '위치 추정')+'</span><button type="button" class="note-link" data-atlas-ref="'+active.ref+'">'+safe(reference(active.ref))+' 읽기 →</button><div class="row atlas-pagination"><button class="btn" data-atlas-step="-1" '+(!step?'disabled':'')+'>← 이전 사건</button><button class="btn" data-atlas-step="1" '+(step===route.steps.length-1?'disabled':'')+'>다음 사건 →</button></div></section>'+
  '<section class="card atlas-reading-guide"><h2>여정과 관련 말씀</h2><p>'+safe(route.description)+'</p><div class="atlas-scripture-links">'+[...new Set([route.steps[0].ref,route.steps.find(s=>s.place==='egypt')?.ref,route.steps.at(-1).ref].filter(Boolean))].map(ref=>passageCard(ref)).join('')+'</div></section>':'';
- return chooser(visible)+boundaryChooser()+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도"><path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+boundaryShapes()+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+boundaryLegend()+'<p class="atlas-legend">점선은 방문 순서를 잇는 개략적 이동권입니다. 성경에 기록되지 않은 중간 이동로는 확정 경로로 표시하지 않습니다.</p></section>'+detail;
+ return compactControls(visible)+(openPanel==='journeys'?chooser(visible):openPanel==='boundaries'?boundaryChooser():'')+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도"><path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+boundaryShapes()+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+boundaryLegend()+'<p class="atlas-legend">점선은 방문 순서를 잇는 개략적 이동권입니다. 성경에 기록되지 않은 중간 이동로는 확정 경로로 표시하지 않습니다.</p></section>'+detail;
+}
+function compactControls(visible){
+ return '<section class="atlas-compact-controls"><div class="atlas-toolbar"><h1>성경 지도</h1><div><button type="button" data-atlas-panel="journeys" aria-expanded="'+(openPanel==='journeys')+'">여정 선택 <span>'+visible.length+'</span> ⌄</button><button type="button" data-atlas-panel="boundaries" aria-expanded="'+(openPanel==='boundaries')+'">영역 <span>'+boundaries.size+'</span> ⌄</button></div></div><div class="atlas-active-strip" aria-label="선택한 여정">'+(visible.length?visible.map(r=>'<div class="atlas-layer-chip"><button type="button" data-atlas-focus="'+r.id+'" aria-pressed="'+(selected===r.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span>'+safe(r.title)+'</button><button type="button" data-atlas-journey="'+r.id+'" aria-label="'+safe(r.title)+' 숨기기">×</button></div>').join(''):'<span class="muted">여정을 선택해 지도에 표시해 보세요.</span>')+'</div></section>';
 }
 function passageCard(ref){
  const text=passageText(ref);
@@ -109,7 +114,7 @@ function boundaryShapes(){
 }
 export function atlasScreen(resolveText){
  if(typeof resolveText==='function')passageText=resolveText;
- return '<header class="page-heading"><p class="eyebrow">BIBLE ATLAS</p><h1>성경 지도</h1><p class="lead">여정과 시대별 영역을 같은 지도에서 비교해 보세요.</p></header>'+journeyScreen()+'<p class="atlas-credit">고대 영역은 역사 지도 도형을 지명 기준으로 맞춘 재구성 영역입니다. 정밀 경계선이 아닙니다. 12지파: Janz · Richardprins 외 (CC BY-SA 3.0). 왕국: Tobias Schäfer 87 (CC BY 4.0), 기원전 8세기. 현대 지리: Natural Earth 5.1.2. <a href="./ATLAS-CALENDAR-SOURCES.md" target="_blank" rel="noopener">자료 출처와 편집 기준</a></p>';
+ return journeyScreen()+'<p class="atlas-credit">고대 영역은 역사 지도 도형을 지명 기준으로 맞춘 재구성 영역입니다. 정밀 경계선이 아닙니다. 12지파: Janz · Richardprins 외 (CC BY-SA 3.0). 왕국: Tobias Schäfer 87 (CC BY 4.0), 기원전 8세기. 현대 지리: Natural Earth 5.1.2. <a href="./ATLAS-CALENDAR-SOURCES.md" target="_blank" rel="noopener">자료 출처와 편집 기준</a></p>';
 }
 export function mountAtlas(root,redraw){
  enableMapGestures(root.querySelector('.atlas-map'),redraw);
