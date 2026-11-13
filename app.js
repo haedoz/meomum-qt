@@ -6,6 +6,7 @@ import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=
 
 const ghCloudRepo = 'haedoz/logbible-data';
 let ghDevices = [], ghDeviceScope = '', ghDeviceChecked = 0, ghDeviceBusy = false, ghDeviceInputTimer;
+let ghPresence = null, ghPageLeaving = false;
 function ghDeviceName() {
   const ua = navigator.userAgent;
   if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1)) return '아이패드';
@@ -18,11 +19,35 @@ function ghDeviceName() {
 function ghDeviceMarkup() {
   const user = (localStorage.getItem('logbible-gh-user') || '').replace(/\.json$/i,'').trim();
   if (!user || ghDeviceScope!==user || !ghDevices.length) return '<p class="muted">'+(ghDeviceBusy?'동기화 기기 확인 중…':'동기화 접속이 확인된 기기가 아직 없어요.')+'</p>';
-  const active = localStorage.getItem('logbible-gh-auto') !== 'false';
   return '<p class="muted">동기화 기기</p><div class="gh-device-chips">'+ghDevices.map(device=>{
-    const recent = active && Date.now()-device.seen<120000;
-    return '<span class="gh-device '+(recent?'online':'')+'"><i aria-hidden="true"></i><span>'+esc(device.name)+'</span><small>'+(recent?'최근 접속':'마지막 '+esc(new Date(device.seen).toLocaleDateString('ko-KR')))+'</small></span>';
+    const recent = device.online===true && Date.now()-device.seen<90000;
+    return '<span class="gh-device '+(recent?'online':'')+'"><i aria-hidden="true"></i><span>'+esc(device.name)+'</span><small>'+(recent?'접속 중':ghLastSeen(device.seen))+'</small></span>';
   }).join('')+'</div>';
+}
+function ghLastSeen(seen) {
+  const minutes = Math.floor(Math.max(0,Date.now()-seen)/60000);
+  if (minutes<1) return '방금 전';
+  if (minutes<60) return minutes+'분 전';
+  const hours = Math.floor(minutes/60);
+  return hours<24?hours+'시간 전':Math.floor(hours/24)+'일 전';
+}
+function ghIsOnline() {
+  return !ghPageLeaving && !document.hidden && localStorage.getItem('logbible-gh-auto')!=='false';
+}
+async function markGhOffline() {
+  if (!ghPresence) return;
+  const {url,headers,sha,user} = ghPresence;
+  if (user!==localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim()) return;
+  const device = {name:ghDeviceName(),seen:Date.now(),online:false};
+  const content = btoa(Array.from(new TextEncoder().encode(JSON.stringify(device)),byte=>String.fromCharCode(byte)).join(''));
+  try {
+    const response = await fetch(url,{method:'PUT',keepalive:true,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Mark sync device offline',content,sha})});
+    if (response.ok) {
+      const updated = await response.json();
+      if (ghPresence?.url===url) ghPresence.sha = updated.content.sha;
+      ghDeviceChecked = 0;
+    }
+  } catch { /* Heartbeat expiry also handles an interrupted app exit. */ }
 }
 async function refreshGhDevices(force = false) {
   const token = localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
@@ -41,11 +66,13 @@ async function refreshGhDevices(force = false) {
     response = await fetch(url+path,{headers,cache:'no-store'});
     if (!response.ok && response.status!==404) throw Error('device');
     const previous = response.ok?await response.json():null;
-    const device = {name:ghDeviceName(),seen:Date.now()};
+    const device = {name:ghDeviceName(),seen:Date.now(),online:ghIsOnline()};
     const bytes = new TextEncoder().encode(JSON.stringify(device));
     const content = btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''));
     response = await fetch(url+path,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Update sync device',content,...(previous?.sha?{sha:previous.sha}:{})})});
     if (!response.ok) throw Error('device');
+    const updated = await response.json();
+    ghPresence = {url:url+path,headers,sha:updated.content.sha,user};
     ghDeviceChecked = Date.now();
     }
     response = await fetch(url+'sync-devices/'+encodeURIComponent(user),{headers,cache:'no-store'});
@@ -69,6 +96,7 @@ async function refreshGhDevices(force = false) {
   } catch { ghDeviceChecked = 0; }
   finally {
     ghDeviceBusy = false;
+    if (ghPresence && !ghIsOnline()) markGhOffline();
     const panel = document.getElementById('gh-device-list');
     if (panel) panel.innerHTML = ghDeviceMarkup();
   }
@@ -3083,6 +3111,7 @@ const actions = {
   'gh-toggle-auto'() {
     const checked = document.querySelector('#gh-auto-toggle')?.checked ?? true;
     localStorage.setItem('logbible-gh-auto', checked ? 'true' : 'false');
+    if (!checked) markGhOffline();
     notify(checked ? '클라우드 자동 동기화를 켰어요.' : '클라우드 자동 동기화를 껐어요.');
     render();
     refreshGhDevices(true);
@@ -4987,6 +5016,12 @@ async function checkGhAutoSync() {
   }
 }
 
+document.addEventListener('visibilitychange',()=>{
+  if (document.hidden) markGhOffline();
+  else { ghPageLeaving=false; refreshGhDevices(true); }
+});
+window.addEventListener('pagehide',()=>{ ghPageLeaving=true; markGhOffline(); });
+window.addEventListener('pageshow',()=>{ ghPageLeaving=false; refreshGhDevices(true); });
 window.addEventListener('focus', checkGhAutoSync);
 setInterval(() => {
   const devicePanel = document.getElementById('gh-device-list');
