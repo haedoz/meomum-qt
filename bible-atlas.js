@@ -12,6 +12,7 @@ const enabled=new Set([selected]);
 const boundaries=new Set();
 let passageText=()=>'';
 let openPanel='';
+let journeyView='all',leg=0,showVisits=false,pendingVisit=false;
 const colors=['#176db1','#b6532e','#648528','#8b52ab','#16887b','#c14673','#a07b1b','#485fc3','#008357','#a44693','#a66013','#596da2','#af3e3e'];
 const colorFor=id=>colors[routes.findIndex(item=>item.id===id)%colors.length];
 const project=([x,y])=>[x,-y*1.25];
@@ -19,19 +20,23 @@ const pathFor=points=>points.map((p,i)=>(i?'L':'M')+project(p).join(',')).join('
 const mapUnit=()=>Math.max(viewport[2]/Math.max(280,Math.min(760,(globalThis.innerWidth ?? 390)-48)),viewport[3]/460);
 const land=landRings.map(pathFor).join(' '),lakes=lakeRings.map(pathFor).join(' ');
 export function atlasAction(target) {
+ if(target.atlasView){journeyView=target.atlasView==='leg'?'leg':'all';leg=Math.max(0,step-1);viewport=undefined;return true;}
+ if('atlasLeg' in target){const r=routes.find(r=>r.id===selected);leg=Math.max(0,Math.min(r.segments.length-1,leg+Number(target.atlasLeg)));step=r.segmentStepIndexes?.[leg] ?? leg+1;viewport=undefined;return true;}
+ if('atlasVisit' in target){pendingVisit=true;const r=routes.find(r=>r.id===selected);step=Math.max(0,Math.min(r.steps.length-1,Number(target.atlasVisit)));leg=r.segmentStepIndexes?Math.max(0,r.segmentStepIndexes.indexOf(step)):Math.max(0,step-1);viewport=undefined;return true;}
+ if(target.atlasVisits){showVisits=!showVisits;return true;}
  if(target.atlasPanel){openPanel=openPanel===target.atlasPanel?'':target.atlasPanel;return true;}
  if(target.atlasBoundary){const id=target.atlasBoundary;if(boundaries.has(id))boundaries.delete(id);else boundaries.add(id);viewport=[34.0,-42.6,2.8,4.6];return true;}
  if(target.atlasGroup){group=target.atlasGroup;return true;}
  if(target.atlasJourney && routes.some(item=>item.id===target.atlasJourney)) {
   const id=target.atlasJourney;
-  if(enabled.has(id))enabled.delete(id);else{enabled.add(id);selected=id;step=0;}
-  if(!enabled.has(selected) && enabled.size){selected=[...enabled].at(-1);step=0;}
+  if(enabled.has(id))enabled.delete(id);else{enabled.add(id);selected=id;step=0;leg=0;}
+  if(!enabled.has(selected) && enabled.size){selected=[...enabled].at(-1);step=0;leg=0;}
   viewport=undefined;return true;
  }
- if(target.atlasOnly && routes.some(item=>item.id===target.atlasOnly)){selected=target.atlasOnly;step=0;enabled.clear();enabled.add(selected);viewport=undefined;return true;}
- if(target.atlasFocus && enabled.has(target.atlasFocus)){selected=target.atlasFocus;step=0;return true;}
+ if(target.atlasOnly && routes.some(item=>item.id===target.atlasOnly)){selected=target.atlasOnly;step=0;leg=0;enabled.clear();enabled.add(selected);viewport=undefined;return true;}
+ if(target.atlasFocus && enabled.has(target.atlasFocus)){selected=target.atlasFocus;step=0;leg=0;viewport=undefined;return true;}
  if(target.atlasClear){enabled.clear();viewport=undefined;return true;}
- if('atlasStep' in target){const r=routes.find(item=>item.id===selected);step=Math.max(0,Math.min(r.steps.length-1,step+Number(target.atlasStep)));return true;}
+ if('atlasStep' in target){const r=routes.find(item=>item.id===selected);step=Math.max(0,Math.min(r.steps.length-1,step+Number(target.atlasStep)));leg=r.segmentStepIndexes?Math.max(0,r.segmentStepIndexes.indexOf(step)):Math.max(0,step-1);if(journeyView==='leg')viewport=undefined;return true;}
  if(target.atlasReset){viewport=undefined;return true;}
  if(target.atlasLocate){const p=project(places[routes.find(r=>r.id===selected).steps[step].place].slice(1));viewport=[p[0]-1.1,p[1]-1.3,2.2,2.6];return true;}
  return false;
@@ -59,7 +64,7 @@ function labelsFor(route,frameWidth){
   const uncertain=/추정|대표|체류 지역|전통적/.test(fullName)||/추정|대표/.test(placeNotes[entry.place]?.confidence ?? '');
   const name=fullName.split(' · ')[0]+(uncertain?'*':'');
   const number=route.steps.map((stop,i)=>stop.place===entry.place?i+1:null).filter(Boolean).join('·');
-  const labelText=name+(number.includes('·')?' ('+number+')':'');
+  const labelText=name+(number.includes('·')?' ('+number.replaceAll('·','→')+')':'');
   const width=[...labelText].reduce((n,c)=>n+(/[\u1100-\uD7FF]/.test(c)?1:.57),0)*font;
   let label={x:x+radius*1.7,y:y-radius*1.6};
   const offsets=[[1.7,-1.6],[1.7,2.8],[-1.7,-1.6],[-1.7,2.8],[1.7,-4.6],[1.7,5.8],[-1.7,-7.6],[1.7,8.8]];
@@ -70,7 +75,7 @@ function labelsFor(route,frameWidth){
   }
   used.push({...label,w:width});
   const active=route.steps[step].place===entry.place;
-  return '<g class="atlas-pin '+(active?'active':'')+'" data-atlas-pin="'+index+'" role="button" tabindex="0" aria-label="'+safe(name)+'" transform="translate('+x+','+y+')"><circle class="atlas-hit" r="'+radius*2.8+'"/><circle r="'+radius+'"/><text dy=".35em" text-anchor="middle" font-size="'+font*.62+'">'+(index+1)+'</text></g>'+
+  return '<g class="atlas-pin '+(active?'active':'')+'" data-atlas-pin="'+index+'" role="button" tabindex="0" aria-label="'+safe(name)+'" transform="translate('+x+','+y+')"><circle class="atlas-hit" r="'+radius*2.8+'"/><circle r="'+radius+'"/><text dy=".35em" text-anchor="middle" font-size="'+font*.62+'">'+(active?step+1:index+1)+'</text></g>'+
    '<path class="atlas-label-leader" d="M'+x+','+y+' L'+label.x+','+(label.y-font*.35)+'"/>'+
    '<text class="atlas-place-label" x="'+label.x+'" y="'+label.y+'" font-size="'+font+'">'+safe(labelText)+'</text>';
  }).join('');
@@ -90,17 +95,39 @@ function directionArrow(segment,color){
  }
  return '';
 }
+function segmentSteps(r,i){return r.segmentStepIndexes?[0,r.segmentStepIndexes[i]]:[i,i+1];}
+function separatedSegment(r,i){
+ const [a,b]=segmentSteps(r,i),key=[r.steps[a].place,r.steps[b].place].sort().join('|');
+ const matches=r.segments.map((_,j)=>{const [x,y]=segmentSteps(r,j);return [r.steps[x].place,r.steps[y].place].sort().join('|')===key?j:-1;}).filter(j=>j>=0);
+ const raw=r.segments[i];
+ if(matches.length<2)return raw;
+ const side=(matches.indexOf(i)-(matches.length-1)/2)*7*(r.steps[a].place<r.steps[b].place?1:-1)*mapUnit();
+ const ps=raw.map(project),shifted=ps.map((p,j)=>{
+  const before=ps[Math.max(0,j-1)],after=ps[Math.min(ps.length-1,j+1)],dx=after[0]-before[0],dy=after[1]-before[1],n=Math.hypot(dx,dy)||1;
+  return [p[0]-dy/n*side,p[1]+dx/n*side];
+ });
+ return [ps[0],...shifted,ps.at(-1)].map(([x,y])=>[x,-y/1.25]);
+}
+function journeyNavigation(r){
+ const [a,b]=segmentSteps(r,leg),from=places[r.steps[a].place][0].split(' · ')[0],to=places[r.steps[b].place][0].split(' · ')[0];
+ return '<div class="atlas-trip-navigation"><div class="atlas-view-switch" aria-label="여정 표시 방식"><button type="button" data-atlas-view="all" aria-pressed="'+(journeyView==='all')+'">전체 여정</button><button type="button" data-atlas-view="leg" aria-pressed="'+(journeyView==='leg')+'">구간별 보기</button></div>'+(journeyView==='leg'?'<div class="atlas-leg-nav"><button type="button" data-atlas-leg="-1" aria-label="이전 구간" '+(!leg?'disabled':'')+'>‹</button><span><small>'+ (leg+1)+' / '+r.segments.length+' 구간</small>'+safe(from)+' → '+safe(to)+'</span><button type="button" data-atlas-leg="1" aria-label="다음 구간" '+(leg===r.segments.length-1?'disabled':'')+'>›</button></div>':'')+'</div>';
+}
+function visitTimeline(r){
+ return '<section class="card atlas-visits"><button class="atlas-visits-toggle" type="button" data-atlas-visits="true" aria-expanded="'+showVisits+'"><strong>방문 순서</strong><span>'+r.steps.length+'개 사건 '+(showVisits?'⌃':'⌄')+'</span></button>'+(showVisits?'<ol>'+r.steps.map((entry,i)=>'<li><button type="button" data-atlas-visit="'+i+'" aria-current="'+(step===i?'step':'false')+'"><span class="atlas-visit-number">'+(i+1)+'</span><span>'+safe(places[entry.place][0])+'<small>'+safe(reference(entry.ref))+'</small></span>'+(r.steps.slice(0,i).some(s=>s.place===entry.place)?'<em>재방문</em>':'')+'</button></li>').join('')+'</ol>':'')+'</section>';
+}
 function journeyScreen(){
  const visible=routes.filter(r=>enabled.has(r.id)),route=routes.find(r=>r.id===selected),active=route.steps[step];
- const points=(visible.length?visible:[route]).flatMap(r=>r.segments.flat().map(project));
+ leg=Math.min(leg,route.segments.length-1);
+ const points=journeyView==='leg'?route.segments[leg].map(project):(visible.length?visible:[route]).flatMap(r=>r.segments.flat().map(project));
  if(!viewport)viewport=fit(points);
  minMapWidth=.03;maxMapWidth=65;
- const paths=visible.map(r=>r.segments.map(segment=>'<polyline class="atlas-route" style="stroke:'+colorFor(r.id)+'" marker-end="url(#arrow-'+r.id+')" points="'+segment.map(project).map(p=>p.join(',')).join(' ')+'"/>'+directionArrow(segment,colorFor(r.id))).join('')+
+ const drawing=journeyView==='leg'?visible.filter(r=>r.id===selected):visible;
+ const paths=drawing.map(r=>r.segments.map((raw,i)=>{if(journeyView==='leg'&&i!==leg)return '';const segment=separatedSegment(r,i);return '<polyline class="atlas-route" style="stroke:'+colorFor(r.id)+'" marker-end="url(#arrow-'+r.id+')" points="'+segment.map(project).map(p=>p.join(',')).join(' ')+'"/>'+directionArrow(segment,colorFor(r.id));}).join('')+
  (r.id===selected?'':r.steps.map(stop=>{const [x,y]=project(places[stop.place].slice(1));return '<circle class="atlas-layer-pin" cx="'+x+'" cy="'+y+'" r="'+viewport[2]/150+'" style="fill:'+colorFor(r.id)+'"/>';}).join(''))).join('');
  const arrows='<defs>'+visible.map(r=>'<marker id="arrow-'+r.id+'" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="'+mapUnit()*7+'" markerHeight="'+mapUnit()*7+'" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 9 5 1 9" style="fill:none;stroke:'+colorFor(r.id)+';stroke-width:1.7"/></marker>').join('')+'</defs>';
  const detail=enabled.has(selected)?'<section class="card atlas-detail" aria-live="polite"><div class="row"><span class="reading-badge">'+safe(route.title)+' · '+(step+1)+' / '+route.steps.length+'</span><button class="text-action" type="button" data-atlas-locate="true">이 장소 확대</button></div><h2>'+safe(places[active.place][0])+'</h2><p>'+safe(active.text)+'</p><span class="atlas-confidence">'+safe(placeNotes[active.place]?.confidence ?? '위치 추정')+'</span><button type="button" class="note-link" data-atlas-ref="'+active.ref+'">'+safe(reference(active.ref))+' 읽기 →</button><div class="row atlas-pagination"><button class="btn" data-atlas-step="-1" '+(!step?'disabled':'')+'>← 이전 사건</button><button class="btn" data-atlas-step="1" '+(step===route.steps.length-1?'disabled':'')+'>다음 사건 →</button></div></section>'+
  '<section class="card atlas-reading-guide"><h2>여정과 관련 말씀</h2><p>'+safe(route.description)+'</p><div class="atlas-scripture-links">'+[...new Set([route.steps[0].ref,route.steps.find(s=>s.place==='egypt')?.ref,route.steps.at(-1).ref].filter(Boolean))].map(ref=>passageCard(ref)).join('')+'</div></section>':'';
- return compactControls(visible)+(openPanel==='journeys'?chooser(visible):openPanel==='boundaries'?boundaryChooser():'')+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도">'+arrows+'<path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+boundaryShapes()+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+boundaryLegend()+'<p class="atlas-legend">화살표는 이동 방향, 점선은 재구성한 이동권입니다. 중간 경로는 추정이며 포로기 가지선은 여러 유배 목적지를 나타냅니다. *는 위치 추정 또는 지역 대표점입니다.</p></section>'+detail;
+ return compactControls(visible)+(openPanel==='journeys'?chooser(visible):openPanel==='boundaries'?boundaryChooser():'')+'<section class="atlas-map-card"><header class="row"><h2>'+(journeyView==='leg'?safe(route.title)+' · 구간별 보기':visible.length+'개 여정 함께 보기')+'</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header>'+journeyNavigation(route)+'<svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도">'+arrows+'<path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+boundaryShapes()+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+boundaryLegend()+'<p class="atlas-legend">화살표는 이동 방향, 괄호의 숫자는 방문 순서입니다. 반복 구간의 선 간격은 겹침을 피하기 위한 표시이며 서로 다른 실제 도로를 뜻하지 않습니다. 중간 경로는 추정이며 포로기 가지선은 여러 유배 목적지를 나타냅니다. *는 위치 추정 또는 지역 대표점입니다.</p></section>'+visitTimeline(route)+detail;
 }
 function atlasIcon(type){
  const paths=type==='route'?'<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h6a4 4 0 0 1 0 8h-2a4 4 0 0 0 0 8"/>':'<path d="m12 3 10 6-10 6L2 9 12 3Zm-9 11 9 5 9-5M3 18l9 5 9-5"/>';
@@ -137,6 +164,7 @@ export function atlasScreen(resolveText){
  return journeyScreen()+'<p class="atlas-credit">고대 영역은 역사 지도 도형을 지명 기준으로 맞춘 재구성 영역입니다. 정밀 경계선이 아닙니다. 12지파: Janz · Richardprins 외 (CC BY-SA 3.0). 왕국: Tobias Schäfer 87 (CC BY 4.0), 기원전 8세기. 현대 지리: Natural Earth 5.1.2. <a href="./ATLAS-CALENDAR-SOURCES.md" target="_blank" rel="noopener">자료 출처와 편집 기준</a></p>';
 }
 export function mountAtlas(root,redraw){
+ if(pendingVisit){pendingVisit=false;requestAnimationFrame(()=>root.querySelector('.atlas-map-card')?.scrollIntoView({block:'start',behavior:'smooth'}));}
  enableMapGestures(root.querySelector('.atlas-map'),redraw);
  root.querySelectorAll('[data-atlas-pin]').forEach(pin=>{
   const choose=()=>{step=Number(pin.dataset.atlasPin);redraw();};
