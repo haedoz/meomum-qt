@@ -31,3 +31,7 @@ CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 
 @hebcal/core 5.9.0, GPL-2.0. vendor/hebcal-LICENSE.txt 포함. 원본 소스: https://github.com/hebcal/hebcal-es6/tree/v5.9.0
 양력일 낮에 대응하는 히브리 날짜를 계산하며 지역별 일몰 시각을 계산하지 않습니다. 이스라엘과 해외 유대 공동체 기준을 선택할 수 있습니다.
+
+## 같은 지도 위의 영역 표시
+
+역사 SVG를 독립 이미지로 표시하지 않고 영역 path만 추출해 같은 지도 위에 올립니다. 두로·예루살렘·브엘세바 등 지명 대응점을 이용한 아핀 좌표 변환입니다. 원본 역사 지도의 일반화와 좌표 변환 오차가 포함되므로 정밀 경계선으로 사용하지 않습니다. 현대 영역은 Natural Earth의 지리 좌표 도형을 그대로 사용합니다. atlas-overlays.js는 원본 역사 자료의 파생물이며 12지파 도형은 CC BY-SA 3.0을 따릅니다.

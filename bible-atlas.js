@@ -1,26 +1,24 @@
 import {books} from './books.js';
 import {places,journeys,placeNotes} from './atlas-data.js?v=2';
+import {historicalOverlays} from './atlas-overlays.js';
 import {landRings,lakeRings,modernRegions} from './atlas-geography.js';
 const titles=Object.fromEntries(books);
 const reference=ref=>{const [book,chapter,verse]=ref.split('/');return titles[book]+' '+chapter+':'+verse;};
 const safe=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const routes=journeys.filter(item=>item.id!=='borders');
-let selected=routes[0].id,group=routes[0].group,step=0,viewport,mode='journeys';
+let selected=routes[0].id,group=routes[0].group,step=0,viewport;
 let minMapWidth=.03,maxMapWidth=65;
 const enabled=new Set([selected]);
+const boundaries=new Set();
+let passageText=()=>'';
 const colors=['#176db1','#b6532e','#648528','#8b52ab','#16887b','#c14673','#a07b1b','#485fc3','#008357','#a44693','#a66013','#596da2','#af3e3e'];
 const colorFor=id=>colors[routes.findIndex(item=>item.id===id)%colors.length];
 const project=([x,y])=>[x,-y*1.25];
 const pathFor=points=>points.map((p,i)=>(i?'L':'M')+project(p).join(',')).join(' ')+' Z';
 const mapUnit=()=>Math.max(viewport[2]/Math.max(280,Math.min(760,(globalThis.innerWidth ?? 390)-48)),viewport[3]/460);
 const land=landRings.map(pathFor).join(' '),lakes=lakeRings.map(pathFor).join(' ');
-const mapModes=[['journeys','성경 여정'],['tribes','12지파'],['kingdoms','남유다·북이스라엘'],['modern','현대 이스라엘']];
-const history={
- tribes:{title:'12지파의 땅 분배',size:[2168,3300],file:'tribes-ko.svg',description:'여호수아 13–19장에 따른 전통적인 분배 재구성도입니다. 실제 점령 범위와 일치한다는 뜻은 아닙니다. 단의 북쪽 이동 이전을 나타냅니다.',ref:'JOS/13/7',credit:'Janz · Richardprins 외, 한국어판 정리 · CC BY-SA 3.0',url:'https://commons.wikimedia.org/wiki/File:12_Tribes_of_Israel_Map.svg'},
- kingdoms:{title:'남유다와 북이스라엘 · 기원전 8세기',size:[2369,3070],file:'kingdoms-ko.svg',description:'기원전 8세기를 대상으로 한 역사 재구성도입니다. 두 왕국의 범위는 시대에 따라 변했으므로 모든 시대를 대표하는 고정 경계로 읽지 않습니다.',ref:'1KI/12/20',credit:'Tobias Schäfer 87 · Finkelstein (2013), p.2 기반 · CC BY 4.0 · 한국어 표기 편집',url:'https://commons.wikimedia.org/wiki/File:Kingdoms_of_Israel_and_Judah_(8th_century_BCE).svg'}
-};
 export function atlasAction(target) {
- if(target.atlasMode && mapModes.some(([id])=>id===target.atlasMode)){mode=target.atlasMode;viewport=undefined;return true;}
+ if(target.atlasBoundary){const id=target.atlasBoundary;if(boundaries.has(id))boundaries.delete(id);else boundaries.add(id);viewport=[34.0,-42.6,2.8,4.6];return true;}
  if(target.atlasGroup){group=target.atlasGroup;return true;}
  if(target.atlasJourney && routes.some(item=>item.id===target.atlasJourney)) {
   const id=target.atlasJourney;
@@ -45,10 +43,10 @@ function fit(points){
 function mapControls(){return '<div class="atlas-controls"><span class="muted">밀어서 이동 · 두 손가락 확대/축소</span><button class="btn" type="button" data-atlas-reset="all">전체 보기</button></div>';}
 function chooser(visible){
  const groups=[...new Set(routes.map(r=>r.group))];
- return '<section class="atlas-selection-panel"><div class="row"><div><h2>함께 볼 여정</h2><p>체크하면 지도에 추가돼요. 여러 개를 선택할 수 있어요.</p></div><span class="reading-badge">'+visible.length+'개 표시</span></div>'+
+ return '<section class="atlas-selection-panel"><div class="row"><div><h2>선택 가능한 여정</h2><p>체크하면 지도에 추가돼요. 여러 개를 선택할 수 있어요.</p></div><span class="reading-badge">'+visible.length+'개 표시</span></div>'+
  '<nav class="atlas-groups" aria-label="여정 분류">'+groups.map(name=>'<button type="button" data-atlas-group="'+name+'" aria-pressed="'+(group===name)+'">'+name+'</button>').join('')+'</nav>'+
  '<div class="atlas-choices">'+routes.filter(r=>r.group===group).map(r=>'<div class="atlas-choice"><button type="button" class="atlas-toggle" data-atlas-journey="'+r.id+'" aria-pressed="'+enabled.has(r.id)+'"><span class="atlas-choice-check" aria-hidden="true">'+(enabled.has(r.id)?'✓':'＋')+'</span><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span><span>'+safe(r.title)+'</span></button><button type="button" class="text-action" data-atlas-only="'+r.id+'">단독 보기</button></div>').join('')+'</div>'+
- '<div class="atlas-layer-list" aria-label="표시 중인 여정">'+visible.map(r=>'<div class="atlas-layer-chip"><button type="button" data-atlas-focus="'+r.id+'" aria-pressed="'+(selected===r.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span>'+safe(r.title)+'</button><button type="button" data-atlas-journey="'+r.id+'" aria-label="'+safe(r.title)+' 숨기기">×</button></div>').join('')+'</div></section>';
+ '</section><section class="atlas-selected-panel card"><div class="row"><h2>선택한 여정</h2><span class="reading-badge">'+visible.length+'개</span></div><div class="atlas-layer-list" aria-label="표시 중인 여정">'+visible.map(r=>'<div class="atlas-layer-chip"><button type="button" data-atlas-focus="'+r.id+'" aria-pressed="'+(selected===r.id)+'"><span class="atlas-color-dot" style="background:'+colorFor(r.id)+'"></span>'+safe(r.title)+'</button><button type="button" data-atlas-journey="'+r.id+'" aria-label="'+safe(r.title)+' 숨기기">×</button></div>').join('')+'</div></section>';
 }
 function labelsFor(route,frameWidth){
  const seen=new Set(),pins=[];
@@ -83,24 +81,35 @@ function journeyScreen(){
  const paths=visible.map(r=>r.segments.map(segment=>'<polyline class="atlas-route" style="stroke:'+colorFor(r.id)+'" points="'+segment.map(project).map(p=>p.join(',')).join(' ')+'"/>').join('')+
  (r.id===selected?'':r.steps.map(stop=>{const [x,y]=project(places[stop.place].slice(1));return '<circle class="atlas-layer-pin" cx="'+x+'" cy="'+y+'" r="'+viewport[2]/150+'" style="fill:'+colorFor(r.id)+'"/>';}).join(''))).join('');
  const detail=enabled.has(selected)?'<section class="card atlas-detail" aria-live="polite"><div class="row"><span class="reading-badge">'+safe(route.title)+' · '+(step+1)+' / '+route.steps.length+'</span><button class="text-action" type="button" data-atlas-locate="true">이 장소 확대</button></div><h2>'+safe(places[active.place][0])+'</h2><p>'+safe(active.text)+'</p><span class="atlas-confidence">'+safe(placeNotes[active.place]?.confidence ?? '위치 추정')+'</span><button type="button" class="note-link" data-atlas-ref="'+active.ref+'">'+safe(reference(active.ref))+' 읽기 →</button><div class="row atlas-pagination"><button class="btn" data-atlas-step="-1" '+(!step?'disabled':'')+'>← 이전 사건</button><button class="btn" data-atlas-step="1" '+(step===route.steps.length-1?'disabled':'')+'>다음 사건 →</button></div></section>'+
- '<section class="card atlas-reading-guide"><h2>이 여정을 읽는 방법</h2><p>'+safe(route.description)+'</p><div class="atlas-scripture-links">'+[...new Set([route.steps[0].ref,route.steps.find(s=>s.place==='egypt')?.ref,route.steps.at(-1).ref].filter(Boolean))].map(ref=>'<button type="button" class="btn" data-atlas-ref="'+ref+'">'+safe(reference(ref))+'</button>').join('')+'</div></section>':'';
- return chooser(visible)+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도"><path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+'<p class="atlas-legend">점선은 방문 순서를 잇는 개략적 이동권입니다. 성경에 기록되지 않은 중간 이동로는 확정 경로로 표시하지 않습니다.</p></section>'+detail;
+ '<section class="card atlas-reading-guide"><h2>여정과 관련 말씀</h2><p>'+safe(route.description)+'</p><div class="atlas-scripture-links">'+[...new Set([route.steps[0].ref,route.steps.find(s=>s.place==='egypt')?.ref,route.steps.at(-1).ref].filter(Boolean))].map(ref=>passageCard(ref)).join('')+'</div></section>':'';
+ return chooser(visible)+boundaryChooser()+'<section class="atlas-map-card"><header class="row"><h2>'+visible.length+'개 여정 함께 보기</h2><span class="atlas-map-key"><i class="sea"></i>바다 <i class="land"></i>육지</span></header><svg class="atlas-map atlas-journey-map" viewBox="'+viewport.join(' ')+'" role="group" aria-label="성경 여정 지도"><path class="atlas-land" d="'+land+'"/><path class="atlas-lakes" d="'+lakes+'"/>'+boundaryShapes()+geography(viewport[2])+paths+(enabled.has(selected)?labelsFor(route,viewport[2]):'')+'</svg>'+mapControls()+boundaryLegend()+'<p class="atlas-legend">점선은 방문 순서를 잇는 개략적 이동권입니다. 성경에 기록되지 않은 중간 이동로는 확정 경로로 표시하지 않습니다.</p></section>'+detail;
 }
-function historyScreen(){
- const info=history[mode];minMapWidth=info.size[0]*.02;maxMapWidth=info.size[0]*2;
- if(!viewport)viewport=[0,0,...info.size];
- const extra=mode==='tribes'?'레위는 연속된 땅 대신 여러 지파 안의 성읍을 받았습니다. 요셉의 몫은 에브라임과 므낫세로 표시하며, 므낫세의 땅은 요단 동·서에 나뉩니다.':'북이스라엘은 파란색, 남유다는 황토색 영역입니다. 사마리아와 예루살렘을 각각의 중심 도시로 확인해 보세요.';
- return '<section class="atlas-map-card atlas-history-card"><header><h2>'+safe(info.title)+'</h2><p>'+safe(info.description)+'</p></header><svg class="atlas-map atlas-history-map" viewBox="'+viewport.join(' ')+'" role="img" aria-label="'+safe(info.title)+'"><image href="./maps/'+info.file+'" x="0" y="0" width="'+info.size[0]+'" height="'+info.size[1]+'"/></svg>'+mapControls()+'<p class="atlas-credit"><a target="_blank" rel="noopener" href="'+info.url+'">'+safe(info.credit)+'</a></p></section><section class="card atlas-reading-guide"><h2>지도에서 살펴보기</h2><p>'+extra+'</p><button type="button" class="note-link" data-atlas-ref="'+info.ref+'">'+safe(reference(info.ref))+' 읽기 →</button></section>';
+function passageCard(ref){
+ const text=passageText(ref);
+ return '<article class="atlas-passage"><div class="row"><strong>'+safe(reference(ref))+'</strong><button type="button" class="text-action" data-atlas-ref="'+ref+'">본문 이동 →</button></div><p>'+safe(text || '이 구절이 있는 성경 번역본을 추가하면 본문이 여기에 표시돼요.')+'</p></article>';
 }
-function modernScreen(){
- minMapWidth=.03;maxMapWidth=25;if(!viewport)viewport=[33.5,-42.2,3.6,6.1];
- const shapes=modernRegions.map(region=>'<path class="atlas-modern-region '+(region.id==='Israel'?'israel':region.id==='Palestine'?'palestine':'neighbor')+'" d="'+region.rings.map(pathFor).join(' ')+'"/>').join('');
- const towns=[[34.78,32.08,'텔아비브'],[35.23,31.78,'예루살렘'],[34.99,32.82,'하이파'],[34.95,29.56,'에일라트'],[34.84,31.24,'브엘세바'],[35.93,31.95,'암만'],[35.51,33.89,'베이루트']];
- const labels=towns.map(([x,y,name])=>'<circle class="atlas-modern-city" cx="'+x+'" cy="'+(-y*1.25)+'" r="'+viewport[2]/190+'"/><text class="atlas-place-label" x="'+(x+viewport[2]/80)+'" y="'+(-y*1.25)+'" font-size="'+mapUnit()*12+'">'+name+'</text>').join('');
- return '<section class="atlas-map-card"><header><h2>현대 이스라엘과 주변 지역</h2><p>현대 지리 비교용 · Natural Earth 5.1.2의 행정구역 구분</p></header><svg class="atlas-map atlas-modern-map" viewBox="'+viewport.join(' ')+'" role="img" aria-label="현대 이스라엘과 팔레스타인 및 주변국"><path class="atlas-land" d="'+land+'"/>'+shapes+'<path class="atlas-lakes" d="'+lakes+'"/>'+labels+'<text class="atlas-region-label" x="34.2" y="-40.8" font-size="'+mapUnit()*17+'">지중해</text></svg>'+mapControls()+'<p class="atlas-legend">파랑 · 이스라엘 / 보라 · 팔레스타인(서안·가자). 분쟁 지역의 법적 지위나 실시간 통제선을 확정하는 지도가 아닙니다.</p><p class="atlas-credit"><a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noopener">Natural Earth v5.1.2 · Public domain</a></p></section>';
+function boundaryChooser(){
+ return '<section class="atlas-boundary-panel card"><h2>지도에 표시할 영역</h2><p>같은 지도 위에 영역을 겹쳐 볼 수 있어요.</p><div class="atlas-boundary-options">'+[['tribes','12지파'],['kingdoms','남유다·북이스라엘'],['modern','현대 이스라엘']].map(([id,title])=>'<button type="button" data-atlas-boundary="'+id+'" aria-pressed="'+boundaries.has(id)+'"><span aria-hidden="true">'+(boundaries.has(id)?'✓':'＋')+'</span> '+title+'</button>').join('')+'</div></section>';
 }
-export function atlasScreen(){
- return '<header class="page-heading"><p class="eyebrow">BIBLE ATLAS</p><h1>성경 지도</h1><p class="lead">여정과 시대별 지리를 비교해 보세요.</p></header><nav class="atlas-mode-tabs" aria-label="지도 종류">'+mapModes.map(([id,title])=>'<button type="button" data-atlas-mode="'+id+'" aria-pressed="'+(mode===id)+'">'+title+'</button>').join('')+'</nav>'+(mode==='journeys'?journeyScreen():mode==='modern'?modernScreen():historyScreen());
+function boundaryLegend(){
+ return '<div class="atlas-boundary-legend">'+[...boundaries].map(id=>id==='tribes'?'12지파 · 전통적인 땅 분배 재구성':id==='kingdoms'?'기원전 8세기 · 파랑: 북이스라엘 / 붉은색: 남유다':'현대 지리 · 파랑: 이스라엘 / 보라: 팔레스타인(서안·가자)').map(text=>'<p>'+text+'</p>').join('')+'</div>';
+}
+function boundaryShapes(){
+ let result='';
+ for(const id of boundaries){
+  if(id==='modern'){
+   result+=modernRegions.filter(r=>['Israel','Palestine'].includes(r.id)).map(r=>'<path class="atlas-territory" fill="'+(r.id==='Israel'?'#3c91d3':'#ae72bd')+'" d="'+r.rings.map(pathFor).join(' ')+'"/>').join('');
+   continue;
+  }
+  const layer=historicalOverlays[id];
+  result+='<g transform="matrix('+layer.matrix.join(' ')+')">'+layer.shapes.map(shape=>'<path class="atlas-territory" fill="'+shape.fill+'" d="'+shape.d+'"/>').join('')+'</g>';
+  result+=layer.labels.map(label=>'<text class="atlas-territory-label" x="'+label.x+'" y="'+label.y+'" font-size="'+mapUnit()*12+'">'+safe(label.name)+'</text>').join('');
+ }
+ return result;
+}
+export function atlasScreen(resolveText){
+ if(typeof resolveText==='function')passageText=resolveText;
+ return '<header class="page-heading"><p class="eyebrow">BIBLE ATLAS</p><h1>성경 지도</h1><p class="lead">여정과 시대별 영역을 같은 지도에서 비교해 보세요.</p></header>'+journeyScreen()+'<p class="atlas-credit">고대 영역은 역사 지도 도형을 지명 기준으로 맞춘 재구성 영역입니다. 정밀 경계선이 아닙니다. 12지파: Janz · Richardprins 외 (CC BY-SA 3.0). 왕국: Tobias Schäfer 87 (CC BY 4.0), 기원전 8세기. 현대 지리: Natural Earth 5.1.2. <a href="./ATLAS-CALENDAR-SOURCES.md" target="_blank" rel="noopener">자료 출처와 편집 기준</a></p>';
 }
 export function mountAtlas(root,redraw){
  enableMapGestures(root.querySelector('.atlas-map'),redraw);

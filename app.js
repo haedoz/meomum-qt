@@ -1,4 +1,4 @@
-import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=3';
+import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=4';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=2';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
@@ -2392,7 +2392,7 @@ function bundlesScreen() {
 }
 function render(studyFromSelection = false) {
   flushReadingBookmark();
-  const screens = {atlas:atlasScreen,today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
