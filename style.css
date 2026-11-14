@@ -3110,3 +3110,18 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .today-view .today-summary-item>span{gap:6px;line-height:1.25}
 .today-view .today-summary-item strong{font-size:15px;line-height:1.25;font-weight:650;letter-spacing:-.3px;color:var(--ink);margin:0}
 @media(max-width:360px){.today-view .today-summary-item{min-height:0;padding:12px 9px;gap:5px}}
+
+/* Icon-only reading mode and compact archive navigation. */
+.reading-mode-menu>summary{width:34px;min-width:34px;padding:0;color:var(--accent-ink)}
+.reading-mode-menu>summary>svg:last-child{width:18px;height:18px}
+.record-filter-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.record-filter-row .filter-chip{min-width:0;padding:9px 8px;gap:4px;font-size:12px}
+.record-filter-row .filter-chip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-pagination{display:flex;justify-content:center;align-items:center;gap:24px;margin:22px 0 10px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
+.record-pagination>button{width:36px;height:36px;display:grid;place-items:center;border-radius:12px;background:var(--light);color:var(--ink);padding:0}
+.record-pagination>button:disabled{opacity:.3}
+.record-pagination svg{width:17px;height:17px}
+.record-pagination>span{text-align:center;font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.record-pagination strong{color:var(--ink);font-size:15px}
+.record-pagination small{display:block;margin-top:4px;font-size:11px}
+.record-result{scroll-margin-top:calc(var(--top-bar-height) + 14px)}

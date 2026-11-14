@@ -104,6 +104,7 @@ async function refreshGhDevices(force = false) {
 }
 
 const icons = {
+  studyMode:'<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/>',
   trash:'<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>',
   yearVerse:'<path d="M6 3h12v18l-6-4-6 4V3Z"/><path d="m12 6 1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.3l2-.3 1-2Z"/>',
   map:'<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15"/>',
@@ -202,10 +203,10 @@ let activeJournalId='';
 let todayThoughtsOpen=false;
 let todayPlanMode='books',todayPlanBook='',todayBookPicker=false,todayBookScope='new';
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
-const recordSelection = {edition:'',book:'',year:''};
+const recordSelection = {edition:'',book:'',year:'',month:''};
 let recordPage = 0;
 let oldestRecordsFirst = false;
-const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
+const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도'],month:['월','모든 월']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse, verseAlignmentEpoch=0;
@@ -2066,15 +2067,19 @@ function recordList(rows = recordRows()) {
     return matchesFilter &&
       (!recordSelection.edition || edition===recordSelection.edition) &&
       (!recordSelection.book || book===recordSelection.book) &&
-      (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year);
+      (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year) &&
+      (!recordSelection.month || day?.slice(0,7)===recordSelection.month);
   });
   if (oldestRecordsFirst) matching.sort((a,b)=>(a.day ?? '9999').localeCompare(b.day ?? '9999'));
   const hasFilter = Object.values(recordSelection).some(Boolean);
+  const pageSize=6, pages=Math.max(1,Math.ceil(matching.length/pageSize));
+  recordPage=Math.min(recordPage,pages-1);
+  const pageRows=matching.slice(recordPage*pageSize,(recordPage+1)*pageSize);
 
   let groupsHtml = '';
   if (matching.length) {
       const dateGroups = new Map();
-      for (const item of matching) {
+      for (const item of pageRows) {
         const d = item.day || 'undated';
         if (!dateGroups.has(d)) dateGroups.set(d, []);
         dateGroups.get(d).push(item);
@@ -2106,7 +2111,7 @@ function recordList(rows = recordRows()) {
       '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
       (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button>'+
     '</div></div>'+
-    (matching.length ? groupsHtml : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
+    (matching.length ? groupsHtml+'<nav class="record-pagination" aria-label="말씀 기록 페이지"><button type="button" data-record-page="'+(recordPage-1)+'" '+(recordPage===0?'disabled':'')+' aria-label="이전 페이지">'+icon('left')+'</button><span><strong>'+(recordPage+1)+'</strong> / '+pages+'<small>페이지 · 전체 '+matching.length+'건</small></span><button type="button" data-record-page="'+(recordPage+1)+'" '+(recordPage===pages-1?'disabled':'')+' aria-label="다음 페이지">'+icon('right')+'</button></nav>' : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
 }
 function personalSearchEntries() {
   const entries = [];
@@ -2189,6 +2194,7 @@ function choosePersonalSearchFilter(choice) {
   readerSearchPanel.querySelector('[data-action="personal-search-'+key+'"]')?.focus({preventScroll:true});
 }
 function recordPickerItems(key,rows) {
+  if(key==='month') return [...new Set(rows.filter(({day})=>day&&(!recordSelection.year||day.slice(0,4)===recordSelection.year)).map(({day})=>day.slice(0,7)))].sort().reverse().map(id=>[id,id.slice(0,4)+'년 '+Number(id.slice(5))+'월']);
   if (key==='edition') return [...new Set(rows.map(({key})=>readRef(key).edition))].map(id=>[id,editionLabel(id)]);
   if (key==='book') {
     const savedBooks = new Set(rows.map(({key})=>readRef(key).book));
@@ -2523,7 +2529,7 @@ function render(studyFromSelection = false) {
     const toolbar=document.createElement('div');toolbar.className='reading-toolbar';
     const modes=[['bible','본문','book'],['commentary','주석','comment'],['original','원전','note']];
     const active=modes.find(([route])=>route===view);
-    toolbar.innerHTML='<details class="reading-mode-menu"><summary aria-label="성경 본문, 주석, 원전분해 전환">'+icon(active[2])+'<span>'+active[1]+'</span>'+icon('down')+'</summary><nav class="reading-mode-options" aria-label="성경 보기 방식">'+modes.map(([route,label,symbol])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===view?'page':'false')+'">'+icon(symbol)+(route==='bible'?'성경 본문':route==='original'?'원전분해':label)+'</button>').join('')+'</nav></details>';
+    toolbar.innerHTML='<details class="reading-mode-menu"><summary aria-label="성경 본문, 주석, 원전분해 전환">'+icon('studyMode')+'</summary><nav class="reading-mode-options" aria-label="성경 보기 방식">'+modes.map(([route,label,symbol])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===view?'page':'false')+'">'+icon(symbol)+(route==='bible'?'성경 본문':route==='original'?'원전분해':label)+'</button>').join('')+'</nav></details>';
     const controls=main.querySelector(':scope > .reader-controls');
     main.prepend(toolbar);if(controls)toolbar.append(controls);
   }
@@ -3521,6 +3527,7 @@ function showRecordPicker(key) {
 function chooseRecordOption(button) {
   const {recordFilter:key} = button.closest('[data-record-filter]').dataset;
   recordSelection[key] = button.dataset.recordOption;
+  if(key==='year')recordSelection.month='';
   recordPage = 0;
   modal.close();
   render();
