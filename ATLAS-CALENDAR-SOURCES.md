@@ -59,3 +59,7 @@ CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 ## 반복 방문과 구간 표시
 
 반복해서 연결되는 두 장소의 선은 화면에서 나란히 벌려 그립니다. 이는 선 겹침을 피하는 시각적 간격이며 실제로 별도의 도로를 이용했다는 지리 정보가 아닙니다. 핀 옆 괄호는 전체 사건 목록에서의 방문 순서입니다. 구간별 보기와 방문 순서는 기존 대조 사건 목록을 사용하며 생략된 모든 역사적 이동을 복원했다는 뜻은 아닙니다. 포로기 가지선은 순차 여정과 구분해 사마리아에서 각 목적지로 연결합니다.
+
+## 유대력 안내 자료
+
+달력의 유대력 안내는 사용자 제공 월별 카드 2장과 계절 순환도 1장을 calendar-reference 폴더에 포함합니다. 월별 지파·문자는 제공 자료의 전통적 연결이며 성경이 규정한 달별 배정으로 제시하지 않습니다. 현대 유대력의 윤달은 아다르 1 30일·아다르 2 29일로 보완했습니다. 민간력/성서력 순서는 평년 기준이라고 표시합니다. 참고: https://hebcal.github.io/api/hdate/enums/months.html , https://eclipse.gsfc.nasa.gov/SEhelp/calendars.html , https://www.chabad.org/library/article_cdo/aid/526874/jewish/The-Jewish-Month.htm . 절기 날짜와 전통 차이는 https://www.hebcal.com/holidays/shavuot?i=on 및 기존 Hebcal 달력 계산을 사용합니다. 월별 관련 본문은 앱에 가져온 번역본으로 연결되며 직접 인용문을 새로 수록하지 않았습니다.

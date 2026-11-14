@@ -1,5 +1,6 @@
+import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
-import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=2';
+import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=3';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
@@ -486,7 +487,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {'today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'journals',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {'hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'journals',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -2414,7 +2415,7 @@ function bundlesScreen() {
 }
 function render(studyFromSelection = false) {
   flushReadingBookmark();
-  const screens = {atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {'hebrew-guide':hebrewGuideScreen,atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
@@ -2531,7 +2532,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = view==='hebrew-guide'?'calendar':view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -3532,7 +3533,7 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
-  if (atlasAction(target) || hebrewAction(target)) { render(); return; }
+  if (atlasAction(target) || hebrewAction(target) || hebrewGuideAction(target)) { render(); return; }
   if (target.atlasRef) {
     const address = target.atlasRef;
     const edition = [state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));

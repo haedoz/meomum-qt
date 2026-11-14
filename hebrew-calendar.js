@@ -49,7 +49,7 @@ function eventInfo(event) {
 }
 export function hebrewOptions() {
  return '<section class="hebrew-options"><button type="button" class="btn" data-hebrew-toggle="true" aria-pressed="'+enabled+'">히브리력 '+(enabled?'표시 중':'표시')+'</button>'+
- (enabled?'<div class="hebrew-scheme" role="group" aria-label="절기 기준"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 유대 공동체</button></div>':'')+'</section>';
+ (enabled?'<div class="hebrew-scheme" role="group" aria-label="절기 기준"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 유대 공동체</button></div>':'')+'<button type="button" class="btn hebrew-guide-button" data-nav="hebrew-guide">유대력 <span>민간력 / 성서력</span><span aria-hidden="true">›</span></button></section>';
 }
 export function hebrewDayCell(day) {
  if(!enabled)return '';
