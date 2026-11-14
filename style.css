@@ -3104,3 +3104,9 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .reading-toolbar .reader-controls>.field::after{top:50%;bottom:auto;right:11px;width:6px;height:6px;transform:translateY(-70%) rotate(45deg);border-width:0 1.5px 1.5px 0;opacity:.65}
 .reading-toolbar .reader-picker-trigger{padding-inline:8px 24px;display:flex;align-items:center}
 .reading-toolbar .reader-picker-trigger>span{width:100%}
+
+/* Compact, consistent daily summary cards. */
+.today-view .today-summary-item{justify-content:flex-start;min-height:0;padding:13px 12px 14px;gap:5px;border-radius:16px}
+.today-view .today-summary-item>span{gap:6px;line-height:1.25}
+.today-view .today-summary-item strong{font-size:15px;line-height:1.25;font-weight:650;letter-spacing:-.3px;color:var(--ink);margin:0}
+@media(max-width:360px){.today-view .today-summary-item{min-height:0;padding:12px 9px;gap:5px}}

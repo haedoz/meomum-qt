@@ -810,7 +810,7 @@ function todaySummary(day,journal) {
   const prayers = state.prayers.filter(item=>item.day===day);
   const thoughts = prayers.filter(item=>item.kind==='thought').length;
   const entries = [
-    ['comment','묵상 노트',journalsOn(day).some(([,entry])=>!entry.done&&hasJournalContent(entry))?'작성 중':journalsOn(day).filter(([,entry])=>entry.done).length+'편 완료','data-start-journal="true"'],
+    ['comment','묵상 노트',journalsOn(day).filter(([,entry])=>entry.done||hasJournalContent(entry)).length+'건','data-start-journal="true"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
     ['note','오늘의 생각',thoughts+'건','data-action="open-today-thoughts" aria-expanded="'+todayThoughtsOpen+'"'],
   ];
