@@ -1,5 +1,5 @@
-const version = 'meomum-pages-v185';
-const paths = ['./hebrew-guide.js?v=2','./bible-atlas.js?v=8','./hebrew-calendar.js?v=3','./atlas-data.js?v=3','./atlas-geography.js','./atlas-overlays.js','./vendor/hebcal.mjs','./','./app.js?v=185','./books.js','./daily-verse-refs.js?v=1','./bdb.js?v=38','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=185','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest?v=4','./icon-192.png','./icon-512.png'];
+const version = 'meomum-pages-v186';
+const paths = ['./hebrew-guide.js?v=2','./bible-atlas.js?v=8','./hebrew-calendar.js?v=3','./atlas-data.js?v=3','./atlas-geography.js','./atlas-overlays.js','./vendor/hebcal.mjs','./','./app.js?v=186','./books.js','./daily-verse-refs.js?v=1','./bdb.js?v=38','./vendor/sql-wasm.mjs','./vendor/sql-wasm.wasm','./style.css?v=186','./landscape.svg','./fonts/PretendardVariable.woff2','./manifest.webmanifest?v=4','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(version);

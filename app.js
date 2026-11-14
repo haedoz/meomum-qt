@@ -197,6 +197,7 @@ const chosen = new Set();
 let pickingIndividualVerses = false;
 const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
+let activeJournalId='';
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
 let recordPage = 0;
@@ -493,7 +494,7 @@ function goBack() {
   render();
 }
 function journalDate(hash) {
-  const day = hash.startsWith('journal/') ? hash.slice(8) : '';
+  const day = hash.startsWith('journal/') ? hash.slice(8).split('/')[0] : '';
   return validDay(day)?day:'';
 }
 function validDay(day) {
@@ -586,8 +587,22 @@ function rememberDailyVerse(day) {
   state.dailyVerses[day] = {ref,body,label};
   if (db) save();
 }
-function journalEntry(key) {
-  return state.journal[key] ??= {done:false,verses:[]};
+function journalsOn(day) {
+  const entry=state.journal[day];
+  return entry?[[day,entry,''],...(entry.notes ?? []).map(note=>[day,note,note.id])]:[];
+}
+function allJournalEntries(){return Object.keys(state.journal).flatMap(journalsOn);}
+function journalRoute(day,id=''){return 'journal/'+day+(id?'/'+id:'');}
+function journalEntry(day,id=activeJournalId) {
+  const parent=state.journal[day] ??= {done:false,verses:[]};
+  return id?(parent.notes ?? []).find(note=>note.id===id) ?? parent:parent;
+}
+function startTodayJournal(){
+  const day=dateKey(),parent=state.journal[day];
+  if(!parent || !parent.done){navigate(journalRoute(day));return;}
+  let note=(parent.notes ?? []).find(note=>!note.done);
+  if(!note){note={id:newId(),done:false,verses:[],reflection:'',created:new Date().toISOString()};(parent.notes ??= []).push(note);save();}
+  navigate(journalRoute(day,note.id));
 }
 function hasJournalContent(entry) {
   return Boolean(entry.done || entry.title?.trim() || entry.reflection?.trim() || entry.verses.length || entry.comments?.length);
@@ -598,7 +613,7 @@ function writingHeader(symbol,label,title,meta = '') {
 }
 function journalScreen() {
   const day = selectedDay;
-  const entry = state.journal[day] ?? {verses:[]};
+  const entry = journalEntry(day);
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
   if (validRefs.length) {
@@ -676,12 +691,12 @@ function todayYearVerse(day) {
   return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+(item?.refs.length?' · '+esc(yearDisplayReference(item.refs[0]).label):'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
 }
 function journalsScreen() {
-  const entries = Object.entries(state.journal)
+  const entries = allJournalEntries()
     .filter(([_, entry]) => hasJournalContent(entry))
     .sort(([dayA], [dayB]) => dayB.localeCompare(dayA));
 
   const count = entries.length;
-  const cards = entries.map(([day, entry]) => {
+  const cards = entries.map(([day, entry, noteId]) => {
     const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
     const validRefs = (entry.verses || []).filter(validRef);
     let versesHtml = '';
@@ -705,9 +720,9 @@ function journalsScreen() {
       versesHtml+
       (entry.reflection ? '<div class="record-text" style="white-space:pre-wrap;margin:4px 0;line-height:var(--reading-leading, 1.65)">'+esc(entry.reflection)+'</div>' : '')+
       '<footer class="journal-feed-actions">'+
-      '<button type="button" class="text-action destructive" data-delete-journal="'+day+'" aria-label="'+esc(date)+' 묵상 삭제">삭제</button>'+
-      '<button type="button" class="btn" data-edit-journal="'+day+'" aria-label="'+esc(date)+' 묵상 수정">'+icon('edit')+' 수정</button>'+
-      '<button type="button" class="btn" data-nav="journal/'+day+'">묵상 열기 '+icon('right')+'</button>'+
+      '<button type="button" class="text-action destructive" data-delete-journal="'+day+'" data-journal-note="'+noteId+'" aria-label="'+esc(date)+' 묵상 삭제">삭제</button>'+
+      '<button type="button" class="btn" data-edit-journal="'+day+'" data-journal-note="'+noteId+'" aria-label="'+esc(date)+' 묵상 수정">'+icon('edit')+' 수정</button>'+
+      '<button type="button" class="btn" data-nav="'+journalRoute(day,noteId)+'">묵상 열기 '+icon('right')+'</button>'+
       '</footer>'+
       '</article>';
   }).join('');
@@ -795,7 +810,7 @@ function todaySummary(day,journal) {
   const prayers = state.prayers.filter(item=>item.day===day);
   const thoughts = prayers.filter(item=>item.kind==='thought').length;
   const entries = [
-    ['comment','묵상 노트',journal?.done?'완료':journal && hasJournalContent(journal)?'작성 중':'시작 전','data-nav="journal/'+day+'"'],
+    ['comment','묵상 노트',journalsOn(day).some(([,entry])=>!entry.done&&hasJournalContent(entry))?'작성 중':journalsOn(day).filter(([,entry])=>entry.done).length+'편 완료','data-start-journal="true"'],
     ['check','묵상 체크',read+' / '+state.readingGoal+'장','data-nav="today-reading"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
     ['note','생각 노트',thoughts+'건','data-nav="thoughts"'],
@@ -806,6 +821,19 @@ function todaySummary(day,journal) {
       '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong>'+
       (symbol==='check'?'<progress class="today-reading-progress" aria-hidden="true" max="'+state.readingGoal+'" value="'+Math.min(read,state.readingGoal)+'"></progress>':'')+
       '</button>').join('')+'</div></section>';
+}
+function todayPlan(day=dateKey()) {
+  const canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
+  const scope=planned.length?planned:canon,checked=checkedChaptersOn(day),done=scope.filter(key=>checked.has(key));
+  const queue=state.readingRange?scope.filter(key=>!progress.counts.has(key)):progress.remaining;
+  const next=queue.filter(key=>!checked.has(key)).slice(0,Math.max(0,state.readingGoal-done.length));
+  return {done,next};
+}
+function todayPlanCard(day){
+  const {done,next}=todayPlan(day),fromJournal=journalChapters(state.journal[day]);
+  const row=(key,complete)=>'<div class="today-plan-row"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
+  const range=state.readingRange;
+  return '<section class="card today-plan-card" aria-labelledby="today-plan-title"><header class="row"><div><p class="eyebrow">READING PLAN</p><h2 id="today-plan-title">오늘의 통독</h2></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
 function todayReadingScreen() {
   const day=dateKey(),canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
@@ -828,7 +856,6 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'오늘의 말씀 본문으로 이동':'성경 번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':'data-nav="settings" data-import-link';
-  const resume = bibleResumeRef();
   return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1>오늘의 QT</h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
@@ -836,10 +863,7 @@ function todayScreen() {
       '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
-    (reader.edition?'<button type="button" class="card row today-resume" data-action="resume-bible">'+
-      '<span class="tile-icon">'+icon('book')+'</span><span class="today-resume-copy"><span>이어서 읽기</span><strong>'+
-      titles[reader.book]+' '+reader.chapter+'장'+(resume?' '+verseNumber(resume)+'절':'')+'</strong></span>'+icon('right')+'</button>':'')+
-    todayYearVerse(today)+todaySummary(today,state.journal[today]);
+    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -1408,10 +1432,10 @@ function validChapter(key) {
     book+'/'+Number(chapter)===key && Number(chapter)>=1 && Number(chapter)<=chapterCounts[book];
 }
 function journalChapters(entry) {
-  return new Set(entry?.done ? entry.verses.map(ref=>{
+  return new Set([...(entry?.done ? entry.verses.map(ref=>{
     const {book,chapter} = readRef(ref);
     return book+'/'+chapter;
-  }) : []);
+  }) : []),...(entry?.notes ?? []).flatMap(note=>[...journalChapters(note)])]);
 }
 function checkedChaptersOn(day) {
   return new Set([...(state.chapterLog[day] ?? []),...journalChapters(state.journal[day])]);
@@ -1465,6 +1489,7 @@ async function toggleChapter(key) {
     const control = main.querySelector('[data-chapter-control]');
     if (control) control.outerHTML = chapterCheckControl(book,chapter);
   }
+  if(view==='today'||view==='today-reading')render();
   if (stored) notify(checked?'오늘의 장 체크를 해제했어요.':'오늘 묵상한 장으로 체크했어요.');
 }
 function canonChapters() {
@@ -1482,7 +1507,7 @@ function chapterLabel(key) {
 function readingProgress(canon,year = '') {
   const daily = new Map(Object.entries(state.chapterLog).filter(([day])=>!year || day.startsWith(year+'-'))
     .map(([day,chapters])=>[day,new Set(chapters)]));
-  for (const [day,entry] of Object.entries(state.journal)) {
+  for (const [day,entry,noteId] of allJournalEntries()) {
     if ((year && !day.startsWith(year+'-')) || !entry.done || !entry.verses.length) continue;
     if (!daily.has(day)) daily.set(day,new Set());
     for (const chapter of journalChapters(entry)) daily.get(day).add(chapter);
@@ -1759,7 +1784,7 @@ function calendarScreen() {
   let recordedDays = 0;
   for (let day=1; day<=end; day++) {
     const key = monthPrefix+String(day).padStart(2,'0'), journal = state.journal[key];
-    const hasJournal = Boolean(journal && hasJournalContent(journal));
+    const hasJournal = journalsOn(key).some(([,entry])=>hasJournalContent(entry));
     const hasDailyNote = Boolean(state.dailyNotes[key]);
     const hasReading = Boolean(state.chapterLog[key]?.length);
     const hasQT = hasJournal || hasDailyNote || hasReading;
@@ -1853,6 +1878,7 @@ function calendarDaySummary(day,items,records) {
       (journal.title?'<strong>'+esc(journal.title)+'</strong>':'')+calendarText(journal.reflection)+
       calendarItemActions(journalLink,'data-delete-journal="'+day+'"')+'</div>'):
       '<div class="day-summary-write"><button type="button" class="reading-suggestion" '+journalLink+'><span class="day-detail-label"><span class="day-detail-icon">'+icon('note')+'</span>묵상 노트 열기</span>'+icon('arrow')+'</button></div>')+
+    journalsOn(day).filter(([,entry,id])=>id&&hasJournalContent(entry)).map(([,entry,id])=>calendarDetail('note',entry.title||'묵상 노트','',calendarText(entry.reflection)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"'))).join('')+
     (prayers.length?calendarDetail('prayer','기도',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
     (thoughts.length?calendarDetail('note','생각 노트',thoughts.length+'건',thoughts.map(calendarPrayer).join('')):'')+
     (chapters.length?calendarDetail('check','묵상 체크',chapters.length+'장',
@@ -1876,7 +1902,7 @@ function markKinds(mark) {
 function recordRows() {
   const groups = new Map(), rows = new Map();
   const add = (key,verses,day,mark,noteKey,journalDay) => {
-    const id = [key,verses.join(','),day,mark.journal?'journal':mark.note?'note':'mark'].join('/');
+    const id = [key,verses.join(','),day,mark.journal?'journal/'+journalDay:mark.note?'note':'mark'].join('/');
     const row = rows.get(id) ?? {key,verses,day,mark:{}};
     Object.assign(row.mark,mark);
     if (noteKey) row.noteKey = noteKey;
@@ -1896,7 +1922,7 @@ function recordRows() {
     const {color,highlight,underline,markDay} = state.marks[key];
     add(key,keys.map(verseNumber),markDay,{color,highlight,underline});
   }
-  for (const [day, entry] of Object.entries(state.journal)) {
+  for (const [day, entry, noteId] of allJournalEntries()) {
     if (!hasJournalContent(entry)) continue;
     const validRefs = (entry.verses || []).filter(validRef);
 
@@ -1922,7 +1948,7 @@ function recordRows() {
       journalDone: entry.done,
       combinedRefTitle,
       allRefs: validRefs
-    }, undefined, day);
+    }, undefined, day+(noteId?'/'+noteId:''));
   }
   return [...rows.values()].reverse().sort((left,right)=>(right.day ?? '').localeCompare(left.day ?? ''));
 }
@@ -2117,10 +2143,10 @@ function personalSearchEntries() {
   const add = (type,day,title,body,attribute,value,year = day?.slice(0,4))=>
     entries.push({type,day,year:year || 'undated',title,body,attribute,value});
   const refsText = refs=>refs.map(ref=>reference(ref)+' '+verseText(ref)).join('\n');
-  for (const [day,entry] of Object.entries(state.journal)) {
+  for (const [day,entry,noteId] of allJournalEntries()) {
     if (hasJournalContent(entry)) add('journal',day,entry.title || 'QT 묵상',
       [entry.reflection,refsText(entry.verses),...(entry.comments ?? []).map(comment=>comment.body)].filter(Boolean).join('\n'),
-      'data-nav','journal/'+day);
+      'data-nav',journalRoute(day,noteId));
   }
   for (const [day,note] of Object.entries(state.dailyNotes)) {
     add('daily',day,reference(note.ref),note.body,'data-edit-daily-note',day);
@@ -2206,7 +2232,7 @@ function recordsScreen() {
   for (const key of Object.keys(recordSelection)) {
     if (recordSelection[key] && !recordPickerItems(key,rows).some(([id])=>id===recordSelection[key])) recordSelection[key] = '';
   }
-  const journalCount = Object.values(state.journal).filter(hasJournalContent).length;
+  const journalCount = allJournalEntries().filter(([,entry])=>hasJournalContent(entry)).length;
   const prayers = state.prayers.filter(item=>item.kind!=='thought');
   const answered = prayers.filter(item=>item.done).length;
   const thoughts = state.prayers.length-prayers.length;
@@ -2418,6 +2444,8 @@ function render(studyFromSelection = false) {
   const screens = {'hebrew-guide':hebrewGuideScreen,atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const day = journalDate(hash);
+  const noteId=day?hash.split('/')[2] ?? '':'';
+  activeJournalId=day && validId(noteId) && state.journal[day]?.notes?.some(note=>note.id===noteId)?noteId:'';
   const prayerId = hash.startsWith('prayer/') && validId(hash.slice(7)) ? hash.slice(7) : '';
   const editorId = hash.startsWith('prayer-edit/') && validId(hash.slice(12)) ? hash.slice(12) : '';
   const next = day?'journal':prayerId?'prayer':editorId?'prayer-edit':Object.hasOwn(screens,hash) && !['journal','prayer','prayer-edit'].includes(hash)?hash:'bible';
@@ -2745,6 +2773,13 @@ function validRef(key) {
     (local || Object.hasOwn(retiredEditions,edition)) &&
     validChapter(book+'/'+chapter) && Number.isInteger(verse) && verse>=(local?0:1) && verse<=500;
 }
+function validatedJournalNote(note){
+  if(!isObject(note)||!validId(note.id)||typeof note.done!=='boolean'||!Array.isArray(note.verses)||!note.verses.every(validRef))throw Error('journal note');
+  const result={id:note.id,done:note.done,verses:[...new Set(note.verses)]};
+  for(const field of [...Object.keys(parts),'title','reflection','created'])if(note[field]!==undefined){if(typeof note[field]!=='string')throw Error('journal note field');result[field]=note[field];}
+  if(note.comments!==undefined){if(!Array.isArray(note.comments)||!note.comments.every(validComment))throw Error('journal note comments');result.comments=note.comments;}
+  return result;
+}
 function validatedBackup(payload) {
   const input = payload?.data;
   if (payload?.format !== 'meomum-qt' || ![1,2,3].includes(payload.version) ||
@@ -2765,6 +2800,7 @@ function validatedBackup(payload) {
           new Set(entry.comments.map(item=>item.id)).size!==entry.comments.length) throw Error('journal comments');
       safeEntry.comments = entry.comments;
     }
+    if(entry.notes!==undefined){if(!Array.isArray(entry.notes)||new Set(entry.notes.map(note=>note.id)).size!==entry.notes.length)throw Error('journal notes');safeEntry.notes=entry.notes.map(validatedJournalNote);}
     result.journal[day] = safeEntry;
   }
   if (input.dailyVerses!==undefined) {
@@ -3642,18 +3678,18 @@ document.addEventListener('click',event => {
     document.getElementById('yearly-group-'+target.openYear)?.scrollIntoView({block:'start'});
     return;
   }
-  if (target.addJournal) {
-    navigate('journal/'+dateKey());
+  if (target.addJournal || target.startJournal) {
+    startTodayJournal();
     main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
     return;
   }
   if (target.editJournal) {
     if (!validDay(target.editJournal) || !state.journal[target.editJournal]) return;
-    navigate('journal/'+target.editJournal);
+    navigate(journalRoute(target.editJournal,target.journalNote ?? ''));
     main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
     return;
   }
-  if (target.deleteJournal) return confirmItemRemoval('journal',target.deleteJournal);
+  if (target.deleteJournal){const id=target.journalNote || (view==='journal'?activeJournalId:'');return id?confirmItemRemoval('journal-note',id,target.deleteJournal):confirmItemRemoval('journal',target.deleteJournal);}
   if (target.deleteComment) return confirmItemRemoval('comment',target.deleteComment,target.date);
   if (target.commentDay) return showCommentEditor(target.commentDay,target.commentId);
   if (target.verse) {
@@ -3918,7 +3954,7 @@ main.addEventListener('submit',event => {
   const day = form.dataset.commentForm;
   if (!day) return;
   event.preventDefault();
-  if (!state.journal[day]?.done) return;
+  if (!journalEntry(day).done) return;
   const body = new FormData(form).get('comment').trim();
   if (!body) return notify('댓글 내용을 입력해 주세요.');
   const entry = journalEntry(day);
@@ -4033,7 +4069,7 @@ function migrate(input) {
   delete result.showCommentary;
   result.comparison = comparisonEditions(input.comparison,result.reader.edition);
   delete result.readingSize;
-  for (const entry of Object.values(result.journal)) {
+  for (const entry of Object.values(result.journal).flatMap(entry=>[entry,...(entry.notes ?? [])])) {
     if (typeof entry.reflection!=='string') {
       entry.reflection = Object.entries(parts)
         .filter(([key])=>entry[key]?.trim())
@@ -4798,7 +4834,7 @@ function validComment(item) {
 }
 let commentTarget;
 function showCommentEditor(day,id) {
-  const comment = state.journal[day]?.comments?.find(item=>item.id===id);
+  const comment = journalEntry(day).comments?.find(item=>item.id===id);
   if (id && !comment) return;
   commentTarget = {day,comment};
   dialog(comment?'댓글 편집':'댓글 추가',
@@ -4824,22 +4860,23 @@ function saveComment() {
 }
 let pendingRemoval;
 function confirmItemRemoval(kind,id,day) {
-  const labels = {journal:'묵상',prayer:state.prayers.some(item=>item.id===id && item.kind==='thought')?'생각 기록':'기도제목',comment:'댓글',year:'새해 말씀',note:'구절 메모',dailyNote:'말씀 묵상',bundle:'구절 모음'};
+  const labels = {'journal-note':'묵상',journal:'묵상',prayer:state.prayers.some(item=>item.id===id && item.kind==='thought')?'생각 기록':'기도제목',comment:'댓글',year:'새해 말씀',note:'구절 메모',dailyNote:'말씀 묵상',bundle:'구절 모음'};
   const label = labels[kind];
-  const details = kind==='journal'?'이 날짜의 묵상, 댓글, 담아둔 구절과 QT 체크가 함께 삭제돼요.':
+  const details = kind==='journal'?'이 묵상의 내용, 댓글, 담아둔 구절과 QT 체크가 삭제돼요. 같은 날의 다른 묵상은 유지돼요.':
     kind==='prayer'?'이 게시글의 내용이 함께 삭제돼요.':kind==='note'?reference(id)+'에 남긴 메모를 삭제할까요?':'이 기록을 삭제할까요?';
-  pendingRemoval = {kind,id,day,label};
+  pendingRemoval = {kind,id,day,label,noteId:activeJournalId};
   dialog(label+' 삭제','<p>'+details+'</p><div class="row"><button class="btn" value="cancel">취소</button><button type="button" class="btn danger" data-action="delete-item">삭제 확인</button></div>');
 }
 async function removeItem() {
   if (!pendingRemoval) return;
-  const {kind,id,day,label} = pendingRemoval;
-  const [container,key] = kind==='journal'?[state.journal,id]:
-    kind==='dailyNote'?[state.dailyNotes,id]:kind==='comment'?[state.journal[day],'comments']:kind==='note'?[state.marks,id]:
+  const {kind,id,day,label,noteId} = pendingRemoval;
+  const [container,key] = kind==='journal'?[state.journal,id]:kind==='journal-note'?[state.journal[day],'notes']:
+    kind==='dailyNote'?[state.dailyNotes,id]:kind==='comment'?[journalEntry(day,noteId),'comments']:kind==='note'?[state.marks,id]:
     [state,kind==='prayer'?'prayers':kind==='bundle'?'verseBundles':'newYear'];
   const previous = container?.[key];
   if (!previous) { modal.close(); return; }
-  if (kind==='journal' || kind==='dailyNote') delete container[key];
+  if (kind==='journal' && previous.notes?.length)container[key]={done:false,verses:[],notes:previous.notes};
+  else if (kind==='journal' || kind==='dailyNote') delete container[key];
   else if (kind==='note') {
     container[key] = {...previous};
     updateMark(id,'note','');
@@ -4853,7 +4890,8 @@ async function removeItem() {
     if (view==='prayer' && kind==='prayer' && previous.some(item=>item.id===id && item.kind==='thought')) {
       if (history.state?.qtPrevious) history.back();
       else navigate('thoughts');
-    } else render();
+    } else if(view==='journal'&&(kind==='journal'||kind==='journal-note'))navigate('journals');
+    else render();
     notify(label+'을 삭제했어요.');
   } else {
     container[key] = previous;
