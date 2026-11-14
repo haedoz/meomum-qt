@@ -1625,7 +1625,7 @@ select, .filters .pill { font-size: 0.875rem; }
   --paper:#f5f3f9;--card:#ffffff;--soft:#f0edf6;--light:#eeebf5;--line:#e5e0ee;--ink:#302d3c;--muted:#716b80;--green:#77618f;--accent-ink:#77618f;--accent-soft:#ece5f5;--panel-tint:#eee8f8;--glass-shadow:#51436812;
 }
 :root[data-palette="oat"] {
-  --paper:#f8f6f1;--card:#fffefa;--soft:#f3efe6;--light:#f1ece2;--line:#e9e2d6;--ink:#39342e;--muted:#7c7266;--green:#8c7050;--accent-ink:#8c7050;--accent-soft:#f0e6d5;--panel-tint:#f4ebdb;--glass-shadow:#745b3312;
+ --paper:#f5f3f1;--card:#fffefd;--soft:#eeebe8;--light:#ece8e5;--line:#e5e0dc;--ink:#363230;--muted:#756e69;--green:#84736a;--accent-ink:#84736a;--accent-soft:#ebe3de;--panel-tint:#ede7e2;--glass-shadow:#53463e12;
 }
 :root[data-palette="gray"] {
   --paper: #f5f5f5; --soft: #eeeeef; --line: #e2e2e5;
@@ -1641,7 +1641,7 @@ select, .filters .pill { font-size: 0.875rem; }
   --paper:#27252e;--card:#34313c;--soft:#2f2c37;--light:#403949;--line:#494351;--ink:#eeeaf3;--muted:#bdb5ca;--green:#c5b4dc;--accent-ink:#c5b4dc;--accent-soft:#443a51;--panel-tint:#373042;--glass-shadow:#100d1845;
 }
 :root[data-appearance="dark"][data-palette="oat"] {
-  --paper:#292723;--card:#35322d;--soft:#302d28;--light:#413b31;--line:#4c453a;--ink:#f1ece3;--muted:#c0b6a7;--green:#d2bb96;--accent-ink:#d2bb96;--accent-soft:#463d30;--panel-tint:#393229;--glass-shadow:#15110b45;
+ --paper:#292726;--card:#353230;--soft:#302d2b;--light:#403a36;--line:#4b4541;--ink:#f0ece9;--muted:#bfb5ae;--green:#c9b8ad;--accent-ink:#c9b8ad;--accent-soft:#453b35;--panel-tint:#38312d;--glass-shadow:#15110e45;
 }
 :root[data-appearance="dark"][data-palette="gray"] {
   --paper: #2d2e31; --card: #38393d; --soft: #333438; --line: #4e5054;
@@ -1761,7 +1761,7 @@ dialog .dialog-close.btn:not(.primary) {
   background: linear-gradient(145deg,#f5faff,#a6bedc);
 }
 .palette-swatch[data-swatch="lavender"] { background: linear-gradient(145deg,#f5f1fc,#b8a4cf); }
-.palette-swatch[data-swatch="oat"] { background: linear-gradient(145deg,#fffaf0,#cfb68f); }
+.palette-swatch[data-swatch="oat"] { background: linear-gradient(145deg,#faf8f6,#bcaea5); }
 .palette-swatch[data-swatch="gray"] { background: linear-gradient(145deg,#fcfcfc,#bfc1c5); }
 
 #main:is(.reader-view,.study-view):has(> .reader-controls) { padding-top: 0; }
@@ -3139,10 +3139,10 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .record-page-controls button{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;padding:0;font-size:13px;color:var(--muted);background:transparent}
 .record-page-controls button[aria-current=page]{background:var(--accent-soft);color:var(--accent-ink);font-weight:650}.record-page-controls button:disabled{opacity:.25}.record-page-controls svg{width:15px;height:15px}
 
-/* A quiet warm tint distinguishes the yearly verse. */
-.today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,#d5b984 13%,var(--card)),color-mix(in srgb,#d5b984 5%,var(--card)));border-color:color-mix(in srgb,#bca47c 23%,var(--line))}
-.today-view .today-year-emblem{background:color-mix(in srgb,#c4a56f 17%,var(--card));color:#927247}
-.today-view .today-year-verse>svg{color:#927247}
-:root[data-appearance=dark] .today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,#c4aa80 8%,var(--card)),color-mix(in srgb,#c4aa80 3%,var(--card)));border-color:color-mix(in srgb,#c4aa80 15%,var(--line))}
-:root[data-appearance=dark] .today-view .today-year-emblem{background:color-mix(in srgb,#c4aa80 12%,var(--card));color:#c5b28f}
-:root[data-appearance=dark] .today-view .today-year-verse>svg{color:#c5b28f}
+/* Yearly verse follows the selected palette with a barely visible edge. */
+.today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,var(--accent-soft) 27%,var(--card)),color-mix(in srgb,var(--accent-soft) 8%,var(--card)));border-color:color-mix(in srgb,var(--line) 55%,transparent)}
+.today-view .today-year-emblem{background:color-mix(in srgb,var(--accent-soft) 70%,var(--card));color:var(--accent-ink)}
+.today-view .today-year-verse>svg{color:var(--accent-ink);opacity:.7}
+:root[data-appearance=dark] .today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,var(--accent-soft) 22%,var(--card)),color-mix(in srgb,var(--accent-soft) 7%,var(--card)));border-color:color-mix(in srgb,var(--line) 55%,transparent)}
+:root[data-appearance=dark] .today-view .today-year-emblem{background:color-mix(in srgb,var(--accent-soft) 65%,var(--card));color:var(--accent-ink)}
+:root[data-appearance=dark] .today-view .today-year-verse>svg{color:var(--accent-ink)}
