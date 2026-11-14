@@ -805,15 +805,12 @@ function cardHit(label,attributes) {
   return '<button type="button" class="card-hit" aria-label="'+esc(label)+'" '+attributes+'></button>';
 }
 function todaySummary(day,journal) {
-  const checked = checkedChaptersOn(day);
-  const read = state.readingRange?planChapters(canonChapters(),state.readingRange).filter(key=>checked.has(key)).length:checked.size;
   const prayers = state.prayers.filter(item=>item.day===day);
   const thoughts = prayers.filter(item=>item.kind==='thought').length;
   const entries = [
     ['comment','묵상 노트',journalsOn(day).some(([,entry])=>!entry.done&&hasJournalContent(entry))?'작성 중':journalsOn(day).filter(([,entry])=>entry.done).length+'편 완료','data-start-journal="true"'],
-    ['check','묵상 체크',read+' / '+state.readingGoal+'장','data-nav="today-reading"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
-    ['note','생각 노트',thoughts+'건','data-nav="thoughts"'],
+    ['note','생각 노트',thoughts+'건','data-action="open-today-thoughts"'],
   ];
   return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
     '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 묵상 달력 '+icon('right')+'</button></div>'+
@@ -821,6 +818,12 @@ function todaySummary(day,journal) {
       '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong>'+
       (symbol==='check'?'<progress class="today-reading-progress" aria-hidden="true" max="'+state.readingGoal+'" value="'+Math.min(read,state.readingGoal)+'"></progress>':'')+
       '</button>').join('')+'</div></section>';
+}
+function todayThoughts(day){
+  const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
+  return '<section class="today-thoughts-section" id="today-thoughts" aria-labelledby="today-thoughts-title"><header class="row today-section-header"><div><h2 id="today-thoughts-title">오늘의 생각</h2><span>'+items.length+'개의 기록</span></div><button type="button" class="text-action" data-nav="thoughts">전체 생각노트 '+icon('right')+'</button></header><div class="card today-thoughts-card">'+
+    (items.length?'<div class="today-thoughts-list">'+items.map(item=>'<button type="button" class="today-thought-preview" data-prayer="'+item.id+'" aria-label="생각노트 열기"><p>'+esc(item.body)+'</p>'+icon('right')+'</button>').join('')+'</div>':'<div class="today-thoughts-empty"><span>'+icon('note')+'</span><p>오늘 남긴 생각노트가 없어요.</p><small>떠오른 생각을 편하게 남겨보세요.</small></div>')+
+    '<button type="button" class="today-thought-add" data-action="add-thought">'+icon('edit')+' 생각노트 추가</button></div></section>';
 }
 function todayPlan(day=dateKey()) {
   const canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
@@ -831,9 +834,9 @@ function todayPlan(day=dateKey()) {
 }
 function todayPlanCard(day){
   const {done,next}=todayPlan(day),fromJournal=journalChapters(state.journal[day]);
-  const row=(key,complete)=>'<div class="today-plan-row"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
+  const row=(key,complete)=>'<div class="today-plan-row '+(complete?'is-complete':'')+'"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
   const range=state.readingRange;
-  return '<section class="card today-plan-card" aria-labelledby="today-plan-title"><header class="row"><div><p class="eyebrow">READING PLAN</p><h2 id="today-plan-title">오늘의 통독</h2></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
+  return '<section class="card today-plan-card" aria-labelledby="today-plan-title"><header class="row"><div><p class="eyebrow">매일 말씀 읽기</p><h2 id="today-plan-title">오늘의 통독</h2></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><progress class="today-plan-progress" max="'+state.readingGoal+'" value="'+Math.min(done.length,state.readingGoal)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
 function todayReadingScreen() {
   const day=dateKey(),canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
@@ -863,7 +866,7 @@ function todayScreen() {
       '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
-    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today);
+    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today)+todayThoughts(today);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -3102,6 +3105,7 @@ const actions = {
   'apply-mark'() { applyMark(); },
   'erase-mark'() { applyMark(true); },
   'add-prayer'() { showPrayerEditor(); },
+  'open-today-thoughts'() { document.getElementById('today-thoughts')?.scrollIntoView({behavior:'smooth',block:'start'}); },
   'add-thought'() { showThoughtEditor(); },
   'add-year'() { showYearEditor(); },
   'add-selected-year'() { if (chosen.size) showYearEditor(undefined,[...chosen]); },
