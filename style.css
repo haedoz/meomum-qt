@@ -3040,3 +3040,10 @@ bdi[lang="grc"] {
 .bible-study-tabs button[aria-current=page] svg{opacity:1}
 @media(min-width:740px){#main:is(.reader-view,.study-view):has(> .bible-study-tabs){padding-top:24px}.bible-study-tabs{margin-bottom:20px}.bible-study-tabs button{min-height:46px}}
 @media(max-width:360px){.bible-study-tabs button{gap:5px;padding-inline:7px;font-size:12px}.bible-study-tabs button svg{width:15px;height:15px}}
+/* Keep study modes visible when resuming or jumping to a verse. */
+#main:is(.reader-view,.study-view):has(> .bible-study-tabs){padding-top:4px}
+#main>.bible-study-tabs{position:sticky;top:calc(var(--top-bar-height) + env(safe-area-inset-top) + 4px);z-index:4;height:40px;min-height:40px;padding:4px;gap:3px;margin:0 0 4px;border:0;border-radius:13px;background:var(--light);box-shadow:none}
+#main>.bible-study-tabs button{min-height:32px;padding:6px 10px;border-radius:10px;gap:6px;font-size:12px;line-height:1.2}
+#main>.bible-study-tabs button svg{width:15px;height:15px}
+#main>.bible-study-tabs button[aria-current=page]{box-shadow:0 1px 4px #142b4510}
+#main:is(.reader-view,.study-view):has(> .bible-study-tabs)>.reader-controls{top:calc(var(--top-bar-height) + env(safe-area-inset-top) + 48px);padding-block:4px}
