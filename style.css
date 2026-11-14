@@ -3125,3 +3125,22 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .record-pagination strong{color:var(--ink);font-size:15px}
 .record-pagination small{display:block;margin-top:4px;font-size:11px}
 .record-result{scroll-margin-top:calc(var(--top-bar-height) + 14px)}
+
+/* Integrated period picker and quiet numbered pagination. */
+.reading-toolbar .reader-picker-trigger,.reading-toolbar .compare-toggle{height:38px;min-height:38px;border-radius:11px}
+.reading-toolbar .reader-picker-trigger{font-size:13px}
+.reading-mode-menu>summary{width:38px;min-width:38px;min-height:38px;border-radius:11px}
+.reader-view .reading-toolbar .reader-controls{grid-template-columns:minmax(0,.9fr) 36px minmax(0,1.1fr) minmax(0,.55fr)}
+.reading-toolbar .compare-toggle{width:36px}.reading-toolbar .compare-toggle svg{width:17px;height:17px}
+.record-filter-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.record-period-trigger{display:flex;align-items:center;width:100%;gap:10px;margin-top:9px;padding:12px;border-radius:14px;background:var(--light);text-align:left}
+.record-period-trigger>svg{width:18px;height:18px;color:var(--muted);flex:none}.record-period-trigger>svg:last-child{margin-left:auto;width:14px}
+.record-period-trigger>span{display:flex;align-items:baseline;gap:10px}.record-period-trigger small{font-size:11px;color:var(--muted)}.record-period-trigger strong{font-size:13px;font-weight:600}
+.record-period-picker>p{font-size:13px;line-height:1.5;margin:0 0 18px}.record-period-years{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:17px}
+.record-period-years button{padding:9px 13px;border-radius:11px;background:var(--light);font-size:14px}.record-period-years button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink)}
+.record-period-months{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.record-period-months button{padding:14px 8px;border-radius:12px;background:var(--light);font-size:14px}.record-period-months .period-year-all{grid-column:1/-1}.record-period-months button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);font-weight:650}.record-period-months button:disabled{opacity:.28}
+.period-all{display:block;width:100%;padding:15px;margin-top:15px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.record-pagination{flex-direction:column;gap:9px;border:0;background:none;box-shadow:none;padding:8px 0;margin:23px 0 12px}.record-page-caption{font-size:11px;color:var(--muted)}
+.record-page-controls{display:flex;align-items:center;justify-content:center;gap:5px;padding:5px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.record-page-controls button{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;padding:0;font-size:13px;color:var(--muted);background:transparent}
+.record-page-controls button[aria-current=page]{background:var(--accent-soft);color:var(--accent-ink);font-weight:650}.record-page-controls button:disabled{opacity:.25}.record-page-controls svg{width:15px;height:15px}

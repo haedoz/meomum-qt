@@ -2111,7 +2111,18 @@ function recordList(rows = recordRows()) {
       '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
       (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button>'+
     '</div></div>'+
-    (matching.length ? groupsHtml+'<nav class="record-pagination" aria-label="말씀 기록 페이지"><button type="button" data-record-page="'+(recordPage-1)+'" '+(recordPage===0?'disabled':'')+' aria-label="이전 페이지">'+icon('left')+'</button><span><strong>'+(recordPage+1)+'</strong> / '+pages+'<small>페이지 · 전체 '+matching.length+'건</small></span><button type="button" data-record-page="'+(recordPage+1)+'" '+(recordPage===pages-1?'disabled':'')+' aria-label="다음 페이지">'+icon('right')+'</button></nav>' : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
+    (matching.length ? groupsHtml+recordPagination(pages,matching.length) : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
+}
+function recordPagination(pages,total){
+  const start=Math.max(0,Math.min(recordPage-2,pages-5));
+  const numbers=Array.from({length:Math.min(5,pages)},(_,i)=>start+i);
+  return '<nav class="record-pagination" aria-label="말씀 기록 페이지"><span class="record-page-caption">'+total+'건 · '+(recordPage+1)+' / '+pages+'페이지</span><div class="record-page-controls"><button type="button" data-record-page="'+(recordPage-1)+'" '+(recordPage===0?'disabled':'')+' aria-label="이전 페이지">'+icon('left')+'</button>'+numbers.map(page=>'<button type="button" class="record-page-number" data-record-page="'+page+'" aria-label="'+(page+1)+'페이지" '+(page===recordPage?'aria-current="page"':'')+'>'+(page+1)+'</button>').join('')+'<button type="button" data-record-page="'+(recordPage+1)+'" '+(recordPage===pages-1?'disabled':'')+' aria-label="다음 페이지">'+icon('right')+'</button></div></nav>';
+}
+function showRecordPeriod(year){
+  const rows=recordRows(),years=recordPickerItems('year',rows).map(([id])=>id).filter(id=>id!=='undated').sort().reverse();
+  year=year||recordSelection.year||years[0]||String(new Date().getFullYear());
+  const months=new Set(rows.filter(row=>row.day?.startsWith(year+'-')).map(row=>row.day.slice(0,7)));
+  dialog('기록 기간','<div class="record-period-picker"><p class="muted">연도를 고르고 전체 또는 원하는 월을 선택하세요.</p><div class="record-period-years">'+years.map(id=>'<button type="button" data-record-period-year="'+id+'" aria-pressed="'+(id===year)+'">'+id+'년</button>').join('')+'</div><div class="record-period-months"><button type="button" class="period-year-all" data-record-period-value="'+year+'" aria-pressed="'+(recordSelection.year===year&&!recordSelection.month)+'">'+year+'년 전체</button>'+Array.from({length:12},(_,i)=>{const value=year+'-'+String(i+1).padStart(2,'0');return '<button type="button" data-record-period-value="'+value+'" '+(!months.has(value)?'disabled':'')+' aria-pressed="'+(recordSelection.month===value)+'">'+(i+1)+'월</button>';}).join('')+'</div><button type="button" class="period-all" data-record-period-value="">전체 기간 보기</button></div>');
 }
 function personalSearchEntries() {
   const entries = [];
@@ -2215,7 +2226,7 @@ function recordsScreen() {
   const counts = {all:rows.length,highlight:0,note:0,journal:0};
   for (const {mark} of rows) for (const kind of markKinds(mark)) if (counts[kind] !== undefined) counts[kind]++;
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
-  const filterChips = Object.entries(recordPickerLabels).map(([key,[label]])=>{
+  const filterChips = Object.entries(recordPickerLabels).filter(([key])=>key==='edition'||key==='book').map(([key,[label]])=>{
     const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
     const isFiltered = Boolean(recordSelection[key]);
     const text = isFiltered ? (selected ? selected[1] : label) : label;
@@ -2242,6 +2253,7 @@ function recordsScreen() {
         Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+
       '</div>'+
       '<div class="record-filter-row">'+filterChips+'</div>'+
+      '<button type="button" class="record-period-trigger" data-action="pick-record-period">'+icon('calendar')+'<span><small>기록 기간</small><strong>'+esc(recordSelection.month?recordSelection.month.slice(0,4)+'년 '+Number(recordSelection.month.slice(5))+'월':recordSelection.year?recordSelection.year==='undated'?'날짜 미기록':recordSelection.year+'년 전체':'전체 기간')+'</strong></span>'+icon('down')+'</button>'+
     '</div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
@@ -3589,6 +3601,9 @@ document.addEventListener('click',event => {
   if (target.removeVerseBundle) return confirmItemRemoval('bundle',target.removeVerseBundle);
   if (target.menuChoice) return chooseMenuOrderItem(target.menuChoice);
   if ('recordOption' in target) return chooseRecordOption(button);
+  if ('recordPeriodYear' in target) return showRecordPeriod(target.recordPeriodYear);
+  if ('recordPeriodValue' in target) {const value=target.recordPeriodValue;recordSelection.year=value.slice(0,4);recordSelection.month=value.length===7?value:'';recordPage=0;modal.close();render();return;}
+  if(target.action==='pick-record-period')return showRecordPeriod();
   if (target.action?.startsWith('pick-record-')) return showRecordPicker(target.action.slice('pick-record-'.length));
   if (target.pickEdition) return chooseEdition(target.pickEdition);
   if (target.pickCommentary) return chooseCommentary(target.pickCommentary);
