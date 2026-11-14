@@ -1,4 +1,4 @@
-import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=2';
+import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=4';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=3';
 import { books, chapterCounts } from './books.js';
