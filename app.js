@@ -103,6 +103,7 @@ async function refreshGhDevices(force = false) {
 }
 
 const icons = {
+  map:'<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15"/>',
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
   calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h2m4 0h2"/>',
@@ -692,8 +693,8 @@ function journalsScreen() {
       '</article>';
   }).join('');
 
-  return heading('MY DEVOTIONS','묵상 노트 모아보기','작성하신 모든 묵상 노트를 한곳에서 모아보세요.')+
-    '<div class="section-head journal-feed-heading"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2><button type="button" class="btn primary journal-feed-add" data-add-journal="true"><span aria-hidden="true">＋</span> 묵상 노트 추가</button></div>'+
+  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">MY DEVOTIONS</p><div class="journal-feed-title-row"><h1>묵상 노트 모아보기</h1><button type="button" class="btn primary journal-feed-add" data-add-journal="true"><span aria-hidden="true">＋</span> <span class="journal-add-label">묵상 노트 추가</span></button></div><p class="lead">작성하신 모든 묵상 노트를 한곳에서 모아보세요.</p></header>'+
+    '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2></div>'+
     '<div class="journal-feed stack">'+(cards || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div>';
 }
 function dailyVerseQuote(key) {
@@ -2199,8 +2200,6 @@ function recordsScreen() {
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
-      ['calendar','calendar','달력','묵상 달력'],
-      ['atlas','book','성경 지도','인물과 사건의 여정'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['newyear','book','새해 말씀',state.newYear.length+'건'],
@@ -2491,7 +2490,8 @@ function render(studyFromSelection = false) {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
-  main.innerHTML = screens[view](prayerId || editorId);
+  const readingTabs = ['bible','commentary','original'].includes(view)?'<nav class="bible-study-tabs" aria-label="성경 보기 방식">'+[['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(view===route?'page':'false')+'">'+label+'</button>').join('')+'</nav>':'';
+  main.innerHTML = readingTabs+screens[view](prayerId || editorId);
   if (view==='atlas') mountAtlas(main,render);
   if (document.getElementById('gh-device-list')) refreshGhDevices();
   renderedBible = view==='bible'?readerAddress():'';
@@ -2508,7 +2508,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = ['atlas','calendar','journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['commentary','original'].includes(view)?'bible':['journals','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -3987,7 +3987,7 @@ function migrate(input) {
   result.fontHebrew = (input.fontHebrew === 'custom' && customFonts.he) ? 'custom' : (input.fontHebrew === 'ezra' ? 'ezra' : 'system');
   result.fontGreek = (input.fontGreek === 'custom' && customFonts.grc) ? 'custom' : 'system';
   result.quickMarkers = Array.isArray(input.quickMarkers) && input.quickMarkers.length===3 ? input.quickMarkers : ['#e6bc43','#7cb668','#dc7d9c'];
-  const menuOrder = Array.isArray(input.menuOrder) ? input.menuOrder.filter(route=>menuItems.has(route)) : [];
+  const menuOrder = Array.isArray(input.menuOrder) ? input.menuOrder.map(route=>({commentary:'calendar',original:'atlas'}[route] ?? route)).filter(route=>menuItems.has(route)) : [];
   result.menuOrder = [...new Set([...menuOrder,...menuItems.keys()])];
   if (!Object.hasOwn(editions,result.reader.edition)) result.reader.edition = Object.keys(editions)[0] ?? '';
   const {edition,book,chapter} = result.reader;
