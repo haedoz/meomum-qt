@@ -1,4 +1,4 @@
-import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=7';
+import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=4';
 import { books, chapterCounts } from './books.js';
@@ -104,6 +104,7 @@ async function refreshGhDevices(force = false) {
 }
 
 const icons = {
+  trash:'<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>',
   yearVerse:'<path d="M6 3h12v18l-6-4-6 4V3Z"/><path d="m12 6 1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.3l2-.3 1-2Z"/>',
   map:'<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15"/>',
   book:'<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zm0 0v14"/>',
@@ -198,6 +199,8 @@ let pickingIndividualVerses = false;
 const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let activeJournalId='';
+let todayThoughtsOpen=false;
+let todayPlanMode='books',todayPlanBook='',todayBookPicker=false,todayBookScope='new';
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
 let recordPage = 0;
@@ -809,17 +812,18 @@ function todaySummary(day,journal) {
   const entries = [
     ['comment','묵상 노트',journalsOn(day).some(([,entry])=>!entry.done&&hasJournalContent(entry))?'작성 중':journalsOn(day).filter(([,entry])=>entry.done).length+'편 완료','data-start-journal="true"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
+    ['note','오늘의 생각',thoughts+'건','data-action="open-today-thoughts" aria-expanded="'+todayThoughtsOpen+'"'],
   ];
   return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
     '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 묵상 달력 '+icon('right')+'</button></div>'+
     '<div class="today-summary-grid">'+entries.map(([symbol,label,value,action])=>
       '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong>'+
       (symbol==='check'?'<progress class="today-reading-progress" aria-hidden="true" max="'+state.readingGoal+'" value="'+Math.min(read,state.readingGoal)+'"></progress>':'')+
-      '</button>').join('')+'</div></section>';
+      '</button>').join('')+'</div>'+todayThoughts(day)+'</section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
-  return '<section class="today-thoughts-section" id="today-thoughts" aria-labelledby="today-thoughts-title"><header class="row today-section-header"><div><h2 id="today-thoughts-title">오늘의 생각</h2><span>'+items.length+'개의 기록</span></div><button type="button" class="text-action" data-nav="thoughts">전체 생각노트 '+icon('right')+'</button></header><div class="card today-thoughts-card">'+
+  return '<section class="today-thoughts-section" id="today-thoughts" aria-labelledby="today-thoughts-title" '+(!todayThoughtsOpen?'hidden':'')+'><header class="row today-section-header"><div><h2 id="today-thoughts-title">오늘의 생각</h2><span>'+items.length+'개의 기록</span></div><button type="button" class="text-action" data-nav="thoughts">전체 생각노트 '+icon('right')+'</button></header><div class="card today-thoughts-card">'+
     (items.length?'<div class="today-thoughts-list">'+items.map(item=>'<button type="button" class="today-thought-preview" data-prayer="'+item.id+'" aria-label="생각노트 열기"><p>'+esc(item.body)+'</p>'+icon('right')+'</button>').join('')+'</div>':'<div class="today-thoughts-empty"><span>'+icon('note')+'</span><p>오늘 남긴 생각노트가 없어요.</p><small>떠오른 생각을 편하게 남겨보세요.</small></div>')+
     '<button type="button" class="today-thought-add" data-action="add-thought">'+icon('edit')+' 생각노트 추가</button></div></section>';
 }
@@ -830,11 +834,20 @@ function todayPlan(day=dateKey()) {
   const next=queue.filter(key=>!checked.has(key)).slice(0,Math.max(0,state.readingGoal-done.length));
   return {done,next};
 }
+function todayPlanBrowser(day,next){
+  const book=todayPlanBook || next[0]?.split('/')[0] || state.reader.book || 'GEN';
+  const {counts}=readingProgress(canonChapters(),day.slice(0,4));
+  const due=new Set(next),checkedToday=checkedChaptersOn(day);
+  const switcher='<div class="today-plan-view-switch">'+[['books','성경책별'],['due','오늘 분량']].map(([mode,label])=>'<button type="button" data-today-plan-mode="'+mode+'" aria-pressed="'+(todayPlanMode===mode)+'">'+label+'</button>').join('')+'</div>';
+  if(todayPlanMode==='due')return switcher;
+  const picker=todayBookPicker?'<div class="today-book-picker"><div class="today-book-scopes">'+[['old','구약'],['new','신약']].map(([id,label])=>'<button type="button" data-today-book-scope="'+id+'" aria-pressed="'+(todayBookScope===id)+'">'+label+'</button>').join('')+'</div><div class="today-book-grid">'+books.filter(([id])=>testamentByBook[id]===todayBookScope).map(([id,title])=>'<button type="button" data-today-plan-book="'+id+'" aria-pressed="'+(id===book)+'">'+title+'</button>').join('')+'</div></div>':'';
+  return switcher+'<div class="today-plan-book-heading"><strong>'+esc(titles[book])+'</strong><button type="button" data-today-book-picker="true" aria-expanded="'+todayBookPicker+'">성경책 선택 '+icon('down')+'</button></div>'+picker+'<p class="today-chapter-hint">'+day.slice(0,4)+'년 묵상 체크 · 장을 누르면 본문으로 이동해요.</p><div class="today-plan-chapters">'+chapterNumbers(book).map(chapter=>{const key=book+'/'+chapter;return '<button type="button" class="today-chapter-tile '+(counts.has(key)?'done':'')+(due.has(key)?' due':'')+'" data-open-chapter="'+key+'" aria-label="'+esc(chapterLabel(key))+(due.has(key)?' 오늘 분량':'')+(checkedToday.has(key)?' 오늘 완료':'')+'"><strong>'+chapter+'장</strong><span>'+(checkedToday.has(key)?'오늘 완료':due.has(key)?'오늘 분량':counts.has(key)?'✓ '+counts.get(key)+'회':'—')+'</span></button>';}).join('')+'</div>';
+}
 function todayPlanCard(day){
   const {done,next}=todayPlan(day),fromJournal=journalChapters(state.journal[day]);
   const row=(key,complete)=>'<div class="today-plan-row '+(complete?'is-complete':'')+'"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
   const range=state.readingRange;
-  return '<section class="card today-plan-card" aria-labelledby="today-plan-title"><header class="row"><div><p class="eyebrow">매일 말씀 읽기</p><h2 id="today-plan-title">오늘의 통독</h2></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><progress class="today-plan-progress" max="'+state.readingGoal+'" value="'+Math.min(done.length,state.readingGoal)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p><div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'</div>'+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
+  return '<section class="card today-plan-card" aria-labelledby="today-plan-title"><header class="row"><div><p class="eyebrow">매일 말씀 읽기</p><h2 id="today-plan-title">오늘의 통독</h2></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><progress class="today-plan-progress" max="'+state.readingGoal+'" value="'+Math.min(done.length,state.readingGoal)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+todayPlanBrowser(day,next)+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'</div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
 function todayReadingScreen() {
   const day=dateKey(),canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
@@ -860,11 +873,11 @@ function todayScreen() {
   return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1>오늘의 QT</h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
-    (key?'<div class="today-quote"><span class="today-quote-mark" aria-hidden="true">“</span><div><blockquote>'+esc(quote)+
-      '<span class="today-quote-end" aria-hidden="true">”</span></blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
+    (key?'<div class="today-quote"><div><blockquote>'+esc(quote)+
+      '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
-    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today)+todayThoughts(today);
+    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -1816,7 +1829,7 @@ function calendarScreen() {
       undated.map(prayer=>calendarPrayer(prayer)).join('')+'</details>':'')+'</div></div>';
 }
 function calendarDetail(symbol,label,meta,content) {
-  return '<details class="day-detail"><summary><span class="day-detail-label"><span class="day-detail-icon">'+icon(symbol)+'</span>'+label+'</span>'+
+  return '<details class="day-detail" open><summary><span class="day-detail-label"><span class="day-detail-icon">'+icon(symbol)+'</span>'+label+'</span>'+
     (meta?'<span class="day-detail-meta">'+esc(meta)+'</span>':'')+'</summary>'+
     '<div class="day-detail-body">'+content+'</div></details>';
 }
@@ -1825,8 +1838,8 @@ function calendarText(value) {
     .map(paragraph=>'<p class="day-detail-text">'+esc(paragraph)+'</p>').join('')+'</div>':'';
 }
 function calendarItemActions(edit,remove) {
-  return '<div class="item-actions card-actions">'+(edit?'<button type="button" class="text-action" '+edit+'>수정</button>':'')+
-    (remove?'<button type="button" class="text-action destructive" '+remove+'>삭제</button>':'')+'</div>';
+  return '<div class="item-actions card-actions">'+(edit?'<button type="button" class="text-action" '+edit+'>'+icon('edit')+' 수정</button>':'')+
+    (remove?'<button type="button" class="text-action destructive" '+remove+'>'+icon('trash')+' 삭제</button>':'')+'</div>';
 }
 function calendarPrayer(prayer) {
   const thought = prayer.kind==='thought';
@@ -1880,7 +1893,7 @@ function calendarDaySummary(day,items,records) {
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',groupedRecords(notes,true)):'')+
     (highlights.length?calendarDetail('marker','형광펜·밑줄',highlights.length+'건',groupedRecords(highlights,false)):'')+
     (empty?'<p class="calendar-day-empty">이날 남긴 기록이 없어요.</p>':'')+
-    '<button type="button" class="btn calendar-add-journal" data-nav="journal/'+day+'">'+icon('edit')+' 묵상 노트 쓰기</button></section>';
+    (!journals.length?'<button type="button" class="btn calendar-add-journal" data-nav="journal/'+day+'">'+icon('edit')+' 묵상 노트 쓰기</button>':'')+'</section>';
 
 }
 const recordFilters = {all:'전체',highlight:'형광펜',note:'메모',journal:'묵상 노트'};
@@ -2332,7 +2345,8 @@ function flushReadingBookmark() {
 }
 function readingTop(screen) {
   const headerBottom=document.querySelector('.top').getBoundingClientRect().bottom;
-  const controls=['bible','commentary','original'].includes(screen)?main.querySelector('.reader-controls'):null;
+  const toolbar=['bible','commentary','original'].includes(screen)?main.querySelector('.reading-toolbar'):null;
+  const controls=toolbar ?? (['bible','commentary','original'].includes(screen)?main.querySelector('.reader-controls'):null);
   if(!controls)return headerBottom;
   const style=getComputedStyle(controls),stickyTop=parseFloat(style.top);
   const controlsBottom=style.position==='sticky' && Number.isFinite(stickyTop)?stickyTop+controls.getBoundingClientRect().height:controls.getBoundingClientRect().bottom;
@@ -2502,9 +2516,17 @@ function render(studyFromSelection = false) {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
-  const readingTabs = ['bible','commentary','original'].includes(view)?'<nav class="bible-study-tabs" aria-label="성경 보기 방식">'+[['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(view===route?'page':'false')+'">'+icon({bible:'book',commentary:'comment',original:'note'}[route])+'<span>'+label+'</span></button>').join('')+'</nav>':'';
+  const isReading=['bible','commentary','original'].includes(view);
   cancelVerseArrival();
-  main.innerHTML = readingTabs+screens[view](prayerId || editorId);
+  main.innerHTML=screens[view](prayerId || editorId);
+  if(isReading){
+    const toolbar=document.createElement('div');toolbar.className='reading-toolbar';
+    const modes=[['bible','본문','book'],['commentary','주석','comment'],['original','원전','note']];
+    const active=modes.find(([route])=>route===view);
+    toolbar.innerHTML='<details class="reading-mode-menu"><summary aria-label="성경 본문, 주석, 원전분해 전환">'+icon(active[2])+'<span>'+active[1]+'</span>'+icon('down')+'</summary><nav class="reading-mode-options" aria-label="성경 보기 방식">'+modes.map(([route,label,symbol])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===view?'page':'false')+'">'+icon(symbol)+(route==='bible'?'성경 본문':route==='original'?'원전분해':label)+'</button>').join('')+'</nav></details>';
+    const controls=main.querySelector(':scope > .reader-controls');
+    main.prepend(toolbar);if(controls)toolbar.append(controls);
+  }
   if (view==='atlas') mountAtlas(main,render);
   if (document.getElementById('gh-device-list')) refreshGhDevices();
   renderedBible = view==='bible'?readerAddress():'';
@@ -3065,7 +3087,7 @@ const actions = {
   'apply-mark'() { applyMark(); },
   'erase-mark'() { applyMark(true); },
   'add-prayer'() { showPrayerEditor(); },
-  'open-today-thoughts'() { document.getElementById('today-thoughts')?.scrollIntoView({behavior:'smooth',block:'start'}); },
+  'open-today-thoughts'() { todayThoughtsOpen=!todayThoughtsOpen;render();if(todayThoughtsOpen)document.getElementById('today-thoughts')?.scrollIntoView({behavior:'smooth',block:'start'}); },
   'add-thought'() { showThoughtEditor(); },
   'add-year'() { showYearEditor(); },
   'add-selected-year'() { if (chosen.size) showYearEditor(undefined,[...chosen]); },
@@ -3611,6 +3633,10 @@ document.addEventListener('click',event => {
   if ('searchPage' in target) return changeSearchPage(button);
   if (target.visit) return visit(target.visit);
   if (target.action) return actions[target.action]?.(button);
+  if(target.todayPlanMode){todayPlanMode=target.todayPlanMode==='due'?'due':'books';render();return;}
+  if(target.todayBookPicker){if(!todayBookPicker){const {next}=todayPlan();const book=todayPlanBook||next[0]?.split('/')[0]||state.reader.book;todayBookScope=testamentByBook[book]||'old';}todayBookPicker=!todayBookPicker;render();return;}
+  if(target.todayBookScope){todayBookScope=target.todayBookScope==='old'?'old':'new';render();return;}
+  if(target.todayPlanBook&&books.some(([book])=>book===target.todayPlanBook)){todayPlanBook=target.todayPlanBook;todayBookPicker=false;render();return;}
   if (target.openChapter) return openChapter(target.openChapter);
   if (target.checkChapter) return toggleChapter(target.checkChapter);
   if (target.displayStep) return stepDisplay(button);
