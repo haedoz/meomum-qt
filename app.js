@@ -2490,7 +2490,7 @@ function render(studyFromSelection = false) {
   }
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
-  const readingTabs = ['bible','commentary','original'].includes(view)?'<nav class="bible-study-tabs" aria-label="성경 보기 방식">'+[['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(view===route?'page':'false')+'">'+label+'</button>').join('')+'</nav>':'';
+  const readingTabs = ['bible','commentary','original'].includes(view)?'<nav class="bible-study-tabs" aria-label="성경 보기 방식">'+[['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(view===route?'page':'false')+'">'+icon({bible:'book',commentary:'comment',original:'note'}[route])+'<span>'+label+'</span></button>').join('')+'</nav>':'';
   main.innerHTML = readingTabs+screens[view](prayerId || editorId);
   if (view==='atlas') mountAtlas(main,render);
   if (document.getElementById('gh-device-list')) refreshGhDevices();
