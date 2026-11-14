@@ -485,7 +485,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'journals',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -656,6 +656,17 @@ function journalComments(day,comments) {
       '<p class="record-text">'+esc(item.body)+'</p></article>').join(''):'<p class="muted comment-empty">아직 댓글이 없어요.</p>')+
     '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment','','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<button class="btn primary" type="submit">등록</button></form></section>';
 }
+function devotionHeading(active) {
+  const yearly=active==='newyear';
+  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">MY DEVOTIONS</p><div class="journal-feed-title-row"><h1>묵상 노트 모아보기</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 노트'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===active?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
+}
+function todayYearVerse(day) {
+  const year=Number(day.slice(0,4));
+  const entries=state.newYear.filter(item=>Number(item.year)===year).sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
+  const item=entries[0];
+  const text=item?(item.refs.map(ref=>savedVerseText(ref)||verseText(ref)).filter(Boolean).join(' ')||item.title||item.note):'';
+  return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('book')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+'</small><span>'+(text?esc(text):'한 해 동안 묵상할 말씀을 담아보세요.')+'</span></span>'+icon('right')+'</button>';
+}
 function journalsScreen() {
   const entries = Object.entries(state.journal)
     .filter(([_, entry]) => hasJournalContent(entry))
@@ -693,7 +704,7 @@ function journalsScreen() {
       '</article>';
   }).join('');
 
-  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">MY DEVOTIONS</p><div class="journal-feed-title-row"><h1>묵상 노트 모아보기</h1><button type="button" class="btn primary journal-feed-add" data-add-journal="true"><span aria-hidden="true">＋</span> <span class="journal-add-label">묵상 노트 추가</span></button></div><p class="lead">작성하신 모든 묵상 노트를 한곳에서 모아보세요.</p></header>'+
+  return devotionHeading('journals')+
     '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2></div>'+
     '<div class="journal-feed stack">'+(cards || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div>';
 }
@@ -814,7 +825,7 @@ function todayScreen() {
     (reader.edition?'<button type="button" class="card row today-resume" data-action="resume-bible">'+
       '<span class="tile-icon">'+icon('book')+'</span><span class="today-resume-copy"><span>이어서 읽기</span><strong>'+
       titles[reader.book]+' '+reader.chapter+'장'+(resume?' '+verseNumber(resume)+'절':'')+'</strong></span>'+icon('right')+'</button>':'')+
-    todaySummary(today,state.journal[today]);
+    todayYearVerse(today)+todaySummary(today,state.journal[today]);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -2199,10 +2210,9 @@ function recordsScreen() {
   }).join('');
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
-      ['journals','comment','묵상 노트',journalCount+'건 모아보기'],
+      ['journals','comment','묵상 노트',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
-      ['newyear','book','새해 말씀',state.newYear.length+'건'],
       ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
@@ -3613,6 +3623,11 @@ document.addEventListener('click',event => {
   if (target.delete) return confirmItemRemoval(target.delete,editId);
   if (target.deletePrayer) return confirmItemRemoval('prayer',target.deletePrayer);
   if (target.deleteDailyNote) return confirmItemRemoval('dailyNote',target.deleteDailyNote);
+  if (target.openYear) {
+    navigate('newyear');
+    document.getElementById('yearly-group-'+target.openYear)?.scrollIntoView({block:'start'});
+    return;
+  }
   if (target.addJournal) {
     navigate('journal/'+dateKey());
     main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
@@ -4651,12 +4666,10 @@ async function savePrayer(form) {
 }
 function newYearScreen() {
   const years = [...new Set(state.newYear.map(item=>item.year))].sort((a,b)=>b-a);
-  return '<header class="yearly-screen-head"><div><div class="eyebrow">YEARLY VERSES</div><h1>새해 말씀</h1></div>'+
-    '<button type="button" class="btn primary" data-action="add-year" aria-label="새해 말씀 추가">＋ 추가</button></header>'+
-    '<p class="lead">한 해 동안 붙들고 싶은 말씀을 모아보세요.</p>'+
+  return devotionHeading('newyear')+
     '<div class="yearly-list">'+(years.map(year=>{
       const items = state.newYear.filter(item=>item.year===year);
-      return '<section class="yearly-group"><header class="yearly-group-header row"><h2>'+year+'년</h2><span>'+items.length+
+      return '<section class="yearly-group" id="yearly-group-'+year+'"><header class="yearly-group-header row"><h2>'+year+'년</h2><span>'+items.length+
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
     }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div>';
 }
