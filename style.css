@@ -3144,3 +3144,11 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .record-page-controls{display:flex;align-items:center;justify-content:center;gap:5px;padding:5px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
 .record-page-controls button{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;padding:0;font-size:13px;color:var(--muted);background:transparent}
 .record-page-controls button[aria-current=page]{background:var(--accent-soft);color:var(--accent-ink);font-weight:650}.record-page-controls button:disabled{opacity:.25}.record-page-controls svg{width:15px;height:15px}
+
+/* A quiet warm tint distinguishes the yearly verse. */
+.today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,#d5b984 13%,var(--card)),color-mix(in srgb,#d5b984 5%,var(--card)));border-color:color-mix(in srgb,#bca47c 23%,var(--line))}
+.today-view .today-year-emblem{background:color-mix(in srgb,#c4a56f 17%,var(--card));color:#927247}
+.today-view .today-year-verse>svg{color:#927247}
+:root[data-appearance=dark] .today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,#c4aa80 8%,var(--card)),color-mix(in srgb,#c4aa80 3%,var(--card)));border-color:color-mix(in srgb,#c4aa80 15%,var(--line))}
+:root[data-appearance=dark] .today-view .today-year-emblem{background:color-mix(in srgb,#c4aa80 12%,var(--card));color:#c5b28f}
+:root[data-appearance=dark] .today-view .today-year-verse>svg{color:#c5b28f}
