@@ -661,12 +661,18 @@ function devotionHeading(active) {
   const yearly=active==='newyear';
   return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">MY DEVOTIONS</p><div class="journal-feed-title-row"><h1>묵상 노트 모아보기</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 노트'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===active?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
 }
+function yearDisplayReference(ref) {
+  const saved=readRef(ref),edition=state.reader.edition || saved.edition;
+  const key=[edition,saved.book,saved.chapter,saved.verse].join('/');
+  const body=verseText(key);
+  return {key,edition,label:editionLabel(edition),available:Boolean(body.trim()),body:body || '현재 선택한 번역본에는 이 구절의 본문이 없어요.'};
+}
 function todayYearVerse(day) {
   const year=Number(day.slice(0,4));
   const entries=state.newYear.filter(item=>Number(item.year)===year).sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
   const item=entries[0];
-  const preview=item?(item.refs.map(ref=>{const body=savedVerseText(ref)||verseText(ref);return body?'<span class="today-year-line" lang="'+(localLanguages[readRef(ref).edition] ?? 'ko')+'">'+esc(body)+'</span>':'';}).join('')||'<span class="today-year-line" lang="ko">'+esc(item.title||item.note||'')+'</span>'):'';
-  return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
+  const preview=item?(item.refs.map(ref=>{const shown=yearDisplayReference(ref);return '<span class="today-year-line" lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</span>';}).join('')||'<span class="today-year-line" lang="ko">'+esc(item.title||item.note||'')+'</span>'):'';
+  return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+(item?.refs.length?' · '+esc(yearDisplayReference(item.refs[0]).label):'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
 }
 function journalsScreen() {
   const entries = Object.entries(state.journal)
@@ -4686,9 +4692,9 @@ function newYearCard(item) {
       (Number(item.day.slice(0,4))===item.year?'':item.day.slice(0,4)+'년 ')+shortDate(item.day)+'</time>':'')+
     (item.title && (!item.refs.length || item.title!==reference(item.refs[0]))?'<h3 class="item-title">'+esc(item.title)+'</h3>':'')+'</div>'+
     '<button type="button" class="icon-action" data-year-edit="'+item.id+'" aria-label="새해 말씀 편집" title="새해 말씀 편집">'+icon('edit')+'</button></header>'+
-    item.refs.map(ref=>'<figure class="year-verse"><blockquote class="record-text">'+esc(savedVerseText(ref))+'</blockquote>'+
-      '<figcaption><button type="button" class="note-link" data-visit="'+ref+'"><span>'+esc(reference(ref))+'</span>'+
-      '<small>'+esc(editionLabel(readRef(ref).edition))+'</small>'+icon('arrow')+'</button></figcaption></figure>').join('')+
+    item.refs.map(ref=>{const shown=yearDisplayReference(ref);return '<figure class="year-verse"><blockquote class="record-text" lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</blockquote>'+
+      '<figcaption><button type="button" class="note-link" data-visit="'+shown.key+'" '+(!shown.available?'disabled':'')+'><span>'+esc(reference(shown.key))+'</span>'+
+      '<small>'+esc(shown.label)+'</small>'+icon('arrow')+'</button></figcaption></figure>';}).join('')+
     (item.note?'<div class="yearly-note"><span>메모</span>'+
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
@@ -4707,10 +4713,10 @@ function yearVerseKeys(query) {
 function yearReferencePreview(item) {
   if (!yearRefs.length) return item?.title && !item.refs.length?
     '<p class="year-ref-legacy">'+esc(item.title)+'</p>':'';
-  return yearRefs.map(ref=>'<article class="year-ref-preview"><div class="row"><span>'+
-    esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</span>'+
+  return yearRefs.map(ref=>{const shown=yearDisplayReference(ref);return '<article class="year-ref-preview"><div class="row"><span>'+
+    esc(reference(shown.key))+' · '+esc(shown.label)+'</span>'+
     '<button type="button" class="text-action" data-remove-year-ref="'+ref+'" aria-label="'+
-    esc(reference(ref))+' 제거">빼기</button></div><blockquote>'+esc(savedVerseText(ref))+'</blockquote></article>').join('');
+    esc(reference(ref))+' 제거">빼기</button></div><blockquote lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</blockquote></article>';}).join('');
 }
 function renderYearReferences(form) {
   const item = state.newYear.find(entry=>entry.id===editId);
