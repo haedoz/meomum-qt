@@ -693,8 +693,8 @@ function journalsScreen() {
   }).join('');
 
   return heading('MY DEVOTIONS','묵상 노트 모아보기','작성하신 모든 묵상 노트를 한곳에서 모아보세요.')+
-    '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2></div>'+
-    '<div class="journal-feed stack">'+(cards || '<p class="empty">아직 작성된 묵상 노트가 없어요. 달력이나 오늘 화면에서 묵상을 기록해 보세요.</p>')+'</div>';
+    '<div class="section-head journal-feed-heading"><h2>전체 묵상 <span class="comment-count">'+count+'편</span></h2><button type="button" class="btn primary journal-feed-add" data-add-journal="true"><span aria-hidden="true">＋</span> 묵상 노트 추가</button></div>'+
+    '<div class="journal-feed stack">'+(cards || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div>';
 }
 function dailyVerseQuote(key) {
   const quote = verseText(key);
@@ -3613,6 +3613,11 @@ document.addEventListener('click',event => {
   if (target.delete) return confirmItemRemoval(target.delete,editId);
   if (target.deletePrayer) return confirmItemRemoval('prayer',target.deletePrayer);
   if (target.deleteDailyNote) return confirmItemRemoval('dailyNote',target.deleteDailyNote);
+  if (target.addJournal) {
+    navigate('journal/'+dateKey());
+    main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
+    return;
+  }
   if (target.editJournal) {
     if (!validDay(target.editJournal) || !state.journal[target.editJournal]) return;
     navigate('journal/'+target.editJournal);
