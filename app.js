@@ -1,4 +1,4 @@
-import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=6';
+import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=7';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=3';
 import { books, chapterCounts } from './books.js';
@@ -195,18 +195,17 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'slate',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let activeJournalId='';
 let view, selectedDay = dateKey(), month = selectedDay.slice(0,7), filter = 'all';
 const recordSelection = {edition:'',book:'',year:''};
 let recordPage = 0;
 let oldestRecordsFirst = false;
-let recordGroupBy = 'book';
 const recordPickerLabels = {edition:['번역본','모든 번역본'],book:['성경','모든 성경'],year:['연도','모든 연도']};
 let renderedDailyDate;
 const dailyNoteLimit = 20000;
-let verseArrivalTimer, arrivedVerse;
+let verseArrivalTimer, arrivedVerse, verseAlignmentEpoch=0;
 let toastTimer, jumpTo, activeRoute, prayerFilter = 'open', editId, trackerBook, editingVerseNote;
 let trackerYear;
 const trackerScopes = {all:'전체 성경',old:'구약',new:'신약'};
@@ -810,7 +809,6 @@ function todaySummary(day,journal) {
   const entries = [
     ['comment','묵상 노트',journalsOn(day).some(([,entry])=>!entry.done&&hasJournalContent(entry))?'작성 중':journalsOn(day).filter(([,entry])=>entry.done).length+'편 완료','data-start-journal="true"'],
     ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
-    ['note','생각 노트',thoughts+'건','data-action="open-today-thoughts"'],
   ];
   return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
     '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 묵상 달력 '+icon('right')+'</button></div>'+
@@ -863,7 +861,7 @@ function todayScreen() {
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
     (key?'<div class="today-quote"><span class="today-quote-mark" aria-hidden="true">“</span><div><blockquote>'+esc(quote)+
-      '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
+      '<span class="today-quote-end" aria-hidden="true">”</span></blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
     todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today)+todayThoughts(today);
@@ -2071,7 +2069,6 @@ function recordList(rows = recordRows()) {
 
   let groupsHtml = '';
   if (matching.length) {
-    if (recordGroupBy === 'date') {
       const dateGroups = new Map();
       for (const item of matching) {
         const d = item.day || 'undated';
@@ -2095,44 +2092,10 @@ function recordList(rows = recordRows()) {
           '</div>'+
         '</details>';
       }).join('');
-    } else {
-      const bookOrder = new Map(books.map(([code], idx) => [code, idx]));
-      const bookGroups = new Map();
-      for (const item of matching) {
-        const b = readRef(item.key).book;
-        if (!bookGroups.has(b)) bookGroups.set(b, []);
-        bookGroups.get(b).push(item);
-      }
-      const sortedBooks = [...bookGroups.keys()].sort((a,b) => {
-        if (oldestRecordsFirst) return (bookOrder.get(a) ?? 99) - (bookOrder.get(b) ?? 99);
-        const latestA = bookGroups.get(a)[0]?.day ?? '';
-        const latestB = bookGroups.get(b)[0]?.day ?? '';
-        return latestB.localeCompare(latestA) || (bookOrder.get(a) ?? 99) - (bookOrder.get(b) ?? 99);
-      });
-      groupsHtml = sortedBooks.map(bookCode => {
-        const items = bookGroups.get(bookCode);
-        const bookTitle = titles[bookCode] || bookCode;
-        return '<details class="record-group-accordion" open>'+
-          '<summary class="record-group-summary">'+
-            '<div class="record-group-info">'+
-              '<span class="record-group-title">📖 '+esc(bookTitle)+'</span>'+
-              '<span class="record-group-badge">'+items.length+'건</span>'+
-            '</div>'+
-            '<span class="record-group-chevron">'+icon('down')+'</span>'+
-          '</summary>'+
-          '<div class="record-group-items">'+
-            items.map(renderRecordCard).join('')+
-          '</div>'+
-        '</details>';
-      }).join('');
-    }
+
   }
 
   return '<div class="row record-list-tools">'+
-    '<div class="record-group-toggle" role="radiogroup" aria-label="묶어보기 방식">'+
-      '<button type="button" class="group-toggle-btn '+(recordGroupBy==='book'?'active':'')+'" data-action="group-records-book">성경책별</button>'+
-      '<button type="button" class="group-toggle-btn '+(recordGroupBy==='date'?'active':'')+'" data-action="group-records-date">날짜별</button>'+
-    '</div>'+
     '<div class="row" style="gap:8px; align-items:center;">'+
       '<p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건</p>'+
       (hasFilter ? '<button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 ✕</button>' : '')+
@@ -2321,7 +2284,7 @@ function menuOrderSettings() {
     '<label class="verse-arrival-setting"><span><strong id="verse-arrival-label">이동한 구절을 맨 위에 표시</strong>'+
     '<span id="verse-arrival-description" class="muted">성경·주석·원전분해에 적용돼요. 켜면 검색하거나 직접 스크롤할 때 마지막 절도 상단 선택 줄 바로 아래까지 올릴 수 있어요.</span></span>'+
     '<span class="verse-arrival-switch"><input type="checkbox" role="switch" id="align-verse-at-top" aria-labelledby="verse-arrival-label" '+
-    'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
+    'aria-describedby="verse-arrival-description" '+(state.alignVerseAtTop===true?'checked':'')+'><span aria-hidden="true"></span></span></label></section>';
 }
 function showMenuOrderPicker() {
   pendingMenuOrder = [];
@@ -2377,9 +2340,12 @@ function flushReadingBookmark() {
   if (verse!==undefined) setReadingBookmark(renderedBible+'/'+verse);
 }
 function readingTop(screen) {
-  const headerBottom = document.querySelector('.top').getBoundingClientRect().bottom;
-  const controlsBottom = screen==='bible' || studySelection[screen]?main.querySelector('.reader-controls')?.getBoundingClientRect().bottom:0;
-  return Math.max(headerBottom,controlsBottom ?? 0);
+  const headerBottom=document.querySelector('.top').getBoundingClientRect().bottom;
+  const controls=['bible','commentary','original'].includes(screen)?main.querySelector('.reader-controls'):null;
+  if(!controls)return headerBottom;
+  const style=getComputedStyle(controls),stickyTop=parseFloat(style.top);
+  const controlsBottom=style.position==='sticky' && Number.isFinite(stickyTop)?stickyTop+controls.getBoundingClientRect().height:controls.getBoundingClientRect().bottom;
+  return Math.max(headerBottom,controlsBottom);
 }
 function currentReadingPosition(useSelection = false) {
   const location = readingLocation(view);
@@ -2546,6 +2512,7 @@ function render(studyFromSelection = false) {
   const sameCalendarDay = !changed && view==='calendar' && main.querySelector('.day-summary')?.dataset.date===selectedDay;
   const openSections = sameCalendarDay ? [...main.querySelectorAll('.day-detail[open] > summary')].map(summary=>summary.firstElementChild.textContent) : [];
   const readingTabs = ['bible','commentary','original'].includes(view)?'<nav class="bible-study-tabs" aria-label="성경 보기 방식">'+[['bible','성경 본문'],['commentary','주석'],['original','원전분해']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(view===route?'page':'false')+'">'+icon({bible:'book',commentary:'comment',original:'note'}[route])+'<span>'+label+'</span></button>').join('')+'</nav>':'';
+  cancelVerseArrival();
   main.innerHTML = readingTabs+screens[view](prayerId || editorId);
   if (view==='atlas') mountAtlas(main,render);
   if (document.getElementById('gh-device-list')) refreshGhDevices();
@@ -2599,8 +2566,8 @@ function verseScrollTop(verse) {
   const target = verse.closest('.verse-pair') ?? verse;
   return Math.max(0, Math.round(target.getBoundingClientRect().top + document.scrollingElement.scrollTop - readingTop(view) - 8));
 }
-function updateVerseScrollRoom(arrival) {
-  const extended = Boolean((state.alignVerseAtTop!==false || arrival) && (view==='bible' || studySelection[view]));
+function updateVerseScrollRoom() {
+  const extended = state.alignVerseAtTop===true && ['bible','commentary','original'].includes(view);
   main.classList.toggle('verse-scroll-extended',extended);
   if (!extended) {
     main.style.removeProperty('--verse-arrival-room');
@@ -2609,7 +2576,7 @@ function updateVerseScrollRoom(arrival) {
   }
   const last = Array.from(main.querySelectorAll('[data-reading-verse]')).at(-1);
   const lastVerse = last && studySelection[view]?document.getElementById('study-v-'+last.dataset.readingVerse) ?? last:last;
-  const targetTop = arrival ? verseScrollTop(arrival) : (lastVerse ? verseScrollTop(lastVerse) : 0);
+  const targetTop = lastVerse ? verseScrollTop(lastVerse) : 0;
   const page = document.scrollingElement;
   const existing = Number.parseFloat(main.style.getPropertyValue('--verse-arrival-room')) || 0;
   const naturalEnd = main.getBoundingClientRect().bottom+page.scrollTop-existing;
@@ -2620,18 +2587,27 @@ function updateVerseScrollRoom(arrival) {
 }
 function alignVerseArrival(verse) {
   const page = document.scrollingElement;
-  updateVerseScrollRoom(verse);
+  updateVerseScrollRoom();
   const top = verseScrollTop(verse);
   const maxScroll = Math.max(0,page.scrollHeight-page.clientHeight);
   window.scrollTo(0,Math.min(top,maxScroll));
   rememberReadingArrival(Number(verse.id.split('-').at(-1)));
 }
+function refreshVerseScrollLayout() {
+  if(arrivedVerse?.isConnected)alignVerseArrival(arrivedVerse);
+  else updateVerseScrollRoom();
+}
+function cancelVerseArrival() {
+  verseAlignmentEpoch++;
+  clearTimeout(verseArrivalTimer);
+  arrivedVerse?.classList.remove('verse-arrival');
+  arrivedVerse=undefined;
+}
 function showVerseArrival(id) {
   const verse = document.getElementById(id);
   if (!verse) return;
-  clearTimeout(verseArrivalTimer);
-  arrivedVerse?.classList.remove('verse-arrival');
-  if (arrivedVerse===verse) void verse.offsetWidth;
+  cancelVerseArrival();
+  const epoch=verseAlignmentEpoch;
 
   alignVerseArrival(verse);
   arrivedVerse = verse;
@@ -2639,7 +2615,7 @@ function showVerseArrival(id) {
 
   const targetEl = verse.closest('.verse-pair') ?? verse;
   const ensureAlignment = () => {
-    if (arrivedVerse===verse && verse.isConnected) {
+    if (epoch===verseAlignmentEpoch && arrivedVerse===verse && verse.isConnected) {
       const expectedY = readingTop(view) + 8;
       const currentY = Math.round(targetEl.getBoundingClientRect().top);
       if (Math.abs(currentY - expectedY) > 2) {
@@ -2652,6 +2628,7 @@ function showVerseArrival(id) {
   setTimeout(ensureAlignment, 150);
 
   verseArrivalTimer = setTimeout(()=>{
+    if(epoch!==verseAlignmentEpoch)return;
     verse.classList.remove('verse-arrival');
     arrivedVerse = undefined;
   },1600);
@@ -3022,14 +2999,6 @@ const actions = {
       save();
       render();
     }
-  },
-  'group-records-book'() {
-    recordGroupBy = 'book';
-    render();
-  },
-  'group-records-date'() {
-    recordGroupBy = 'date';
-    render();
   },
   'plan-mode-daily'() {
     modal.querySelectorAll('.plan-mode-tab').forEach(t=>t.classList.toggle('active',t.dataset.action==='plan-mode-daily'));
@@ -3862,7 +3831,7 @@ readerSearchForm.addEventListener('submit',event=>{
 });
 window.addEventListener('resize',()=>{
   resizeEditorWriting();
-  updateVerseScrollRoom();
+  refreshVerseScrollLayout();
   if (modal.open) modal.querySelectorAll('form[name="year-editor"] textarea, .note-editor-dialog textarea').forEach(resizeWriting);
   if (!bibleSearchResults) return;
   const firstVisible = bibleSearchPage*bibleSearchPageSize;
@@ -3889,8 +3858,9 @@ window.addEventListener('scroll',()=>{
     }
   }
 },{passive:true});
+for(const type of ['pointerdown','touchstart','wheel','keydown'])window.addEventListener(type,()=>{if(arrivedVerse)cancelVerseArrival();},{passive:true,capture:true});
 window.addEventListener('pagehide',flushReadingBookmark);
-document.fonts?.addEventListener('loadingdone',()=>updateVerseScrollRoom());
+document.fonts?.addEventListener('loadingdone',refreshVerseScrollLayout);
 function keepScrollInOverlay(event,delta) {
   const overlay = modal.open ? modal : readerSearchPanel.hidden ? null : readerSearchPanel;
   if (!overlay || !event.cancelable) return;
@@ -3979,6 +3949,8 @@ main.addEventListener('change',async event => {
   }
   if (field.id==='align-verse-at-top') {
     state.alignVerseAtTop = field.checked;
+    cancelVerseArrival();
+    updateVerseScrollRoom();
     return save();
   }
   if (field.id==='reading-goal') {
@@ -4510,7 +4482,7 @@ function prayersScreen() {
 }
 function prayerCard(item) {
   if (item.kind==='thought') return thoughtCard(item);
-  return '<article class="card prayer-record"><div class="row prayer-record-meta"><span class="reading-badge">'+
+  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+'<div class="row prayer-record-meta"><span class="reading-badge">'+
     (item.done?'응답받음':'기도 중')+'</span>'+(item.day?'<time class="muted" datetime="'+item.day+'">'+
     item.day.slice(0,4)+'년 '+shortDate(item.day)+'</time>':'')+'</div>'+
     '<h3 class="item-title">'+esc(item.title)+'</h3>'+
@@ -4679,14 +4651,14 @@ function prayerEditorScreen(id) {
       editorField('생각','body',item?thoughtText(item):'','textarea','rows="5" required placeholder="지금 떠오른 생각을 적어보세요."')+
       '</div>'+draftNotice()+'<footer><button class="btn" type="button" data-action="back">나가기</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
   }
-  return '<div class="post-editor prayer-editor">'+writingHeader('prayer','기도 노트',item?'기도제목 편집':'새 기도제목')+
+  return '<div class="post-editor prayer-editor">'+writingHeader('prayer','기도 노트',item?'기도와 응답 기록':'새 기도제목')+
     '<form data-prayer-editor="'+id+'"><div class="writing-panel">'+
     editorField('제목','title',item?.title,'text','required maxlength="150" placeholder="제목을 입력하세요"')+
     editorDateField(item?item.day ?? '':dateKey())+
     editorField('기도 내용','body',item?.body,'textarea','rows="5" placeholder="편하게 적어보세요."')+
-    '</div><details class="post-response" '+(item?.answer || item?.done?'open':'')+'><summary><span>'+icon('check')+'응답 기록</span>'+icon('down')+'</summary>'+
-      editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+
-      '<label class="check-field"><input name="done" type="checkbox" '+(item?.done?'checked':'')+'> 응답받았어요</label></details>'+
+    '</div><details class="post-response" '+(item?'open':'')+'><summary><span>'+icon('check')+'응답 기록</span>'+icon('down')+'</summary>'+
+      '<label class="check-field"><input name="done" type="checkbox" '+(item?.done?'checked':'')+'> 응답받았어요</label>'+
+      editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+'</details>'+
     draftNotice()+'<footer><button class="btn" type="button" data-action="back">나가기</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
 }
 async function savePrayer(form) {
@@ -4710,7 +4682,8 @@ async function savePrayer(form) {
   finishDraft(form,draft);
   prayerFilter = item.done?'answered':'open';
   if (form.isConnected) {
-    if (history.state?.returnFromEditor) history.back();
+    if(item.done)navigate('prayers');
+    else if (history.state?.returnFromEditor) history.back();
     else {
       history.replaceState(history.state,'','#prayers');
       render();
