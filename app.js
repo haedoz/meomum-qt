@@ -2231,15 +2231,8 @@ function recordsScreen() {
   const counts = {all:rows.length,highlight:0,note:0,journal:0};
   for (const {mark} of rows) for (const kind of markKinds(mark)) if (counts[kind] !== undefined) counts[kind]++;
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
-  const filterChips = Object.entries(recordPickerLabels).filter(([key])=>key==='edition'||key==='book').map(([key,[label]])=>{
-    const selected = recordPickerItems(key,rows).find(([id])=>id===recordSelection[key]);
-    const isFiltered = Boolean(recordSelection[key]);
-    const text = isFiltered ? (selected ? selected[1] : label) : label;
-    return '<button type="button" class="filter-chip '+(isFiltered?'active':'')+'" data-action="pick-record-'+key+'" aria-label="'+label+' 필터">'+
-      '<span>'+esc(text)+'</span>'+
-      icon('down')+
-      '</button>';
-  }).join('');
+  recordSelection.edition='';
+  recordSelection.book='';
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 노트',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
@@ -2257,7 +2250,6 @@ function recordsScreen() {
       '<div class="record-type-tabs" role="group" aria-label="기록 종류">'+
         Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+
       '</div>'+
-      '<div class="record-filter-row">'+filterChips+'</div>'+
       '<button type="button" class="record-period-trigger" data-action="pick-record-period">'+icon('calendar')+'<span><small>기록 기간</small><strong>'+esc(recordSelection.month?recordSelection.month.slice(0,4)+'년 '+Number(recordSelection.month.slice(5))+'월':recordSelection.year?recordSelection.year==='undated'?'날짜 미기록':recordSelection.year+'년 전체':'전체 기간')+'</strong></span>'+icon('down')+'</button>'+
     '</div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
@@ -4802,10 +4794,10 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v203')){
+  if(await caches.has('meomum-pages-v204')){
     navigator.storage?.persist?.().catch(()=>{});
-    if(localStorage.getItem('logbible-offline-ready')!=='203'){
-      localStorage.setItem('logbible-offline-ready','203');
+    if(localStorage.getItem('logbible-offline-ready')!=='204'){
+      localStorage.setItem('logbible-offline-ready','204');
       notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
     }
   }
