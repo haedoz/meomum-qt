@@ -1,3 +1,4 @@
+import {mergeSync} from './offline-sync.js';
 import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=4';
@@ -33,7 +34,7 @@ function ghLastSeen(seen) {
   return hours<24?hours+'시간 전':Math.floor(hours/24)+'일 전';
 }
 function ghIsOnline() {
-  return !ghPageLeaving && !document.hidden && localStorage.getItem('logbible-gh-auto')!=='false';
+  return navigator.onLine!==false && !ghPageLeaving && !document.hidden && localStorage.getItem('logbible-gh-auto')!=='false';
 }
 async function markGhOffline() {
   if (!ghPresence) return;
@@ -53,7 +54,7 @@ async function markGhOffline() {
 async function refreshGhDevices(force = false) {
   const token = localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
   const user = localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
-  if (!token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy) return;
+  if (navigator.onLine===false || !token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy) return;
   ghDeviceBusy = true;
   const scope = user;
   try {
@@ -456,15 +457,19 @@ function loadLocal(key) {
   });
 }
 let ghAutoBackupTimer;
+function ghQueueKey(){return 'logbible-gh-pending/'+(localStorage.getItem('logbible-gh-user')||'').replace(/\.json$/i,'').trim();}
+function ghSyncStatus(){
+  if(navigator.onLine===false)return '오프라인 · 기록은 이 기기에 저장돼요';
+  if(localStorage.getItem(ghQueueKey()))return '동기화 대기 · 연결되면 자동으로 이어져요';
+  return '온라인 · 자동 동기화 준비됨';
+}
+function updateGhSyncStatus(){const panel=document.getElementById('gh-sync-status');if(panel)panel.textContent=ghSyncStatus();}
 function triggerGhAutoBackup() {
-  const token = localStorage.getItem('logbible-gh-token');
-  const user = localStorage.getItem('logbible-gh-user')?.trim();
-  const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
-  if (!token || !user || !auto) return;
+  if(!localStorage.getItem('logbible-gh-user'))return;
+  localStorage.setItem(ghQueueKey(),crypto.randomUUID());
+  updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer = setTimeout(() => {
-    actions['gh-backup']?.(true);
-  }, 2500);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2500);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -2280,12 +2285,14 @@ function backupSettings() {
     '<div class="field"><span>깃허브 개인 토큰 (PAT)</span><input class="gh-input" id="gh-token-input" type="password" placeholder="ghp_..." value="'+esc(ghToken)+'" autocomplete="off" spellcheck="false"></div>'+
     '<div class="field"><span>사용자 파일명</span><input class="gh-input" id="gh-user-input" type="text" placeholder="사용하실 이름 영문 입력" value="'+esc(ghUser)+'" autocomplete="off" spellcheck="false"><p class="muted">기록 구분을 위한 영문 이름을 입력하세요. 같은 이름을 쓰는 기기끼리 자동으로 이어져요.</p></div>'+
     '<label class="gh-switch"><input type="checkbox" id="gh-auto-toggle" '+(ghAuto?'checked':'')+' data-action="gh-toggle-auto"><span>자동 동기화</span></label>'+
+    '<p class="muted" id="gh-sync-status" role="status">'+ghSyncStatus()+'</p>'+
     (ghLastSync ? '<p class="muted">마지막 동기화 · '+esc(ghLastSync)+'</p>' : '')+
     '<div class="gh-actions">'+
     '<button type="button" class="btn primary" data-action="gh-backup">☁️ 지금 백업</button>'+
     '<button type="button" class="btn" data-action="gh-restore">🔄 지금 동기화</button>'+
     '</div>'+
-    '<p class="muted" style="font-size:0.8rem; margin-top:8px;">💡 <strong>첫 등록 시:</strong> 새 이름으로 처음 시작할 때는 <strong>[지금 백업]</strong>을 한 번 눌러 깃허브에 첫 파일을 생성해 주세요. 다른 기기에서 이어받을 때는 <strong>[지금 동기화]</strong>를 누르면 바로 가져와요.</p>'+
+    '<p class="muted" style="font-size:0.8rem; margin-top:8px;">같은 토큰과 사용자 파일명을 입력하고 자동 동기화를 켜두면 기록을 이어서 사용할 수 있어요. 연결이 끊겨도 작성한 기록은 기기에 남고, 연결 후 다시 동기화해요.</p>'+
+    '<p class="muted">오프라인에서도 기록은 기기에 저장돼요. 자동 동기화를 켜두면 앱이 열린 상태에서 인터넷 연결이 돌아올 때 변경한 기록을 동기화해요. 성경 자료는 각 기기에 한 번씩 추가해 주세요.</p>'+
     '<p class="muted">입력한 내용은 기기에 즉시 자동 저장되며, 토큰은 이 기기 브라우저에 저장돼요.</p>'+
     '</section>';
 }
@@ -3179,222 +3186,17 @@ const actions = {
     notify(checked ? '클라우드 자동 동기화를 켰어요.' : '클라우드 자동 동기화를 껐어요.');
     render();
     refreshGhDevices(true);
+    if(checked)checkGhAutoSync(true);
   },
-  async 'gh-backup'(btnOrSilent = false) {
-    const silent = btnOrSilent === true;
-    const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
-    if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
-    const userInput = document.querySelector('#gh-user-input')?.value.trim();
-    if (userInput) localStorage.setItem('logbible-gh-user', userInput);
-
-    const rawToken = localStorage.getItem('logbible-gh-token');
-    const rawRepo = ghCloudRepo;
-    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!rawToken) {
-      if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
-      return;
-    }
-    if (!rawUser) {
-      if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
-      return;
-    }
-
-    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
-    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
-    const user = rawUser.trim().replace(/\.json$/i, '').trim();
-
-    if (!silent) notify('깃허브에 백업 중이에요…');
-    try {
-      const timestamp = new Date().toISOString();
-      const editionLabels = {...state.editionLabels,...Object.fromEntries(Object.entries(editions).filter(([id])=>localEditionId(id)))};
-      const payload = {format:'meomum-qt',version:3,data:{...state,editionLabels,backup:timestamp}};
-      const jsonStr = JSON.stringify(payload, null, 2);
-      const utf8Bytes = new TextEncoder().encode(jsonStr);
-      let binary = '';
-      for (let i = 0; i < utf8Bytes.length; i++) binary += String.fromCharCode(utf8Bytes[i]);
-      const contentBase64 = btoa(binary);
-
-      const filePath = `${user}.json`;
-      const encodedPath = encodeURIComponent(filePath);
-      const url = `https://api.github.com/repos/${repo}/contents/${encodedPath}`;
-
-      let sha;
-      const getRes = await fetch(`${url}?_t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
-        }
-      });
-      if (getRes.ok) {
-        const fileData = await getRes.json();
-        sha = fileData.sha;
-      }
-
-      const body = {
-        message: `기록 백업 (${user}) · ${new Date().toLocaleString('ko-KR')}`,
-        content: contentBase64,
-        ...(sha ? { sha } : {})
-      };
-      let putRes = await fetch(url, {
-        method: 'PUT',
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (putRes.status === 409) {
-        const freshGet = await fetch(`${url}?_t=${Date.now()}`, {
-          cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json'
-          }
-        });
-        if (freshGet.ok) {
-          const freshData = await freshGet.json();
-          body.sha = freshData.sha;
-          putRes = await fetch(url, {
-            method: 'PUT',
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/vnd.github+json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-          });
-        }
-      }
-
-      if (!putRes.ok) {
-        const err = await putRes.json().catch(() => ({}));
-        throw new Error(err.message || putRes.statusText);
-      }
-
-      const nowStr = new Date().toLocaleString('ko-KR');
-      localStorage.setItem('logbible-gh-last-sync', nowStr);
-      refreshGhDevices(true);
-      state.backup = timestamp;
-      await storeLocal('journal', state);
-      if (!silent) {
-        notify('깃허브에 안전하게 백업했어요!');
-        render();
-      }
-    } catch (e) {
-      if (!silent) notify('백업 실패: ' + e.message);
-    }
+  async 'gh-backup'(silent=false) {
+    const token=document.querySelector('#gh-token-input')?.value.trim();
+    const user=document.querySelector('#gh-user-input')?.value.trim();
+    if(token)localStorage.setItem('logbible-gh-token',token);
+    if(user)localStorage.setItem('logbible-gh-user',user);
+    triggerGhAutoBackup();
+    await checkGhAutoSync(true,true,silent!==true);
   },
-  async 'gh-restore'(btnOrSilent = false) {
-    const silent = btnOrSilent === true;
-    const tokenInput = document.querySelector('#gh-token-input')?.value.trim();
-    if (tokenInput !== undefined && tokenInput !== '') localStorage.setItem('logbible-gh-token', tokenInput);
-    const userInput = document.querySelector('#gh-user-input')?.value.trim();
-    if (userInput) localStorage.setItem('logbible-gh-user', userInput);
-
-    const rawToken = localStorage.getItem('logbible-gh-token');
-    const rawRepo = ghCloudRepo;
-    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!rawToken) {
-      if (!silent) notify('깃허브 토큰을 먼저 입력해 주세요.');
-      return;
-    }
-    if (!rawUser) {
-      if (!silent) notify('사용자 이름을 먼저 입력해 주세요.');
-      return;
-    }
-
-    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
-    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
-    const user = rawUser.trim().replace(/\.json$/i, '').trim();
-
-    if (!silent) notify('깃허브에서 기록을 가져오는 중이에요…');
-    try {
-      let filePath = `${user}.json`;
-      let encodedPath = encodeURIComponent(filePath);
-      let url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
-      let res = await fetch(url, {
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
-        }
-      });
-      if (!res.ok && res.status === 404) {
-        const listRes = await fetch(`https://api.github.com/repos/${repo}/contents?_t=${Date.now()}`, {
-          cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json'
-          }
-        });
-        if (listRes.ok) {
-          const files = await listRes.json();
-          const target = user.toLowerCase() + '.json';
-          const match = Array.isArray(files) && files.find(f => f.name.toLowerCase() === target);
-          if (match) {
-            filePath = match.name;
-            const correctUser = match.name.replace(/\.json$/i, '');
-            localStorage.setItem('logbible-gh-user', correctUser);
-            encodedPath = encodeURIComponent(filePath);
-            url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
-            res = await fetch(url, {
-              cache: 'no-store',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github+json'
-              }
-            });
-          }
-        }
-      }
-      if (!res.ok) {
-        if (res.status === 404) throw new Error('저장소에 백업 파일(' + filePath + ')이 아직 없어요. 먼저 [지금 백업]을 눌러주세요.');
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || res.statusText);
-      }
-      const fileData = await res.json();
-      const binary = atob(fileData.content.replace(/\s/g, ''));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const jsonStr = new TextDecoder().decode(bytes);
-      const payload = JSON.parse(jsonStr);
-
-      const currentReader = {...state.reader};
-      const currentComparison = Array.isArray(state.comparison) ? [...state.comparison] : [];
-      const currentDisplay = {...state.display};
-      const currentFonts = {
-        fontKorean: state.fontKorean,
-        fontHebrew: state.fontHebrew,
-        fontGreek: state.fontGreek,
-        fontEnglish: state.fontEnglish,
-        fontChoice: state.fontChoice,
-        palette: state.palette,
-        theme: state.theme
-      };
-      const imported = validatedBackup(payload);
-      state = imported;
-      state.reader = currentReader;
-      state.comparison = comparisonEditions(currentComparison, state.reader.edition);
-      state.display = currentDisplay;
-      Object.assign(state, currentFonts);
-      lastMarkerEdit = undefined;
-      pendingImport = undefined;
-      const nowStr = new Date().toLocaleString('ko-KR');
-      localStorage.setItem('logbible-gh-last-sync', nowStr);
-      refreshGhDevices(true);
-      await storeLocal('journal', state);
-      applyDisplay();
-      if (!silent) notify('깃허브에서 최신 기록을 성공적으로 복원했어요!');
-      render();
-    } catch (e) {
-      if (!silent) notify('동기화 실패: ' + e.message);
-    }
-  },
+  async 'gh-restore'() { await actions['gh-backup'](); },
 };
 function stepChapter(offset) {
   const reader = state.reader;
@@ -4996,113 +4798,75 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(() => {});
-checkGhAutoSync();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(async registration=>{
+  await navigator.serviceWorker.ready;
+  const worker=registration.installing||registration.waiting;
+  if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
+  if(await caches.has('meomum-pages-v203')){
+    navigator.storage?.persist?.().catch(()=>{});
+    if(localStorage.getItem('logbible-offline-ready')!=='203'){
+      localStorage.setItem('logbible-offline-ready','203');
+      notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
+    }
+  }
+}).catch(() => {});
+queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
 let isGhSyncing = false;
-async function checkGhAutoSync() {
-  if (isGhSyncing) return;
-  const rawToken = localStorage.getItem('logbible-gh-token');
-  const auto = localStorage.getItem('logbible-gh-auto') !== 'false';
-  if (!rawToken || !auto) return;
-  if (Date.now() - lastGhCheckTime < 2500) return;
-  lastGhCheckTime = Date.now();
-  isGhSyncing = true;
-  refreshGhDevices();
-  try {
-    const rawRepo = ghCloudRepo;
-    const rawUser = localStorage.getItem('logbible-gh-user')?.trim();
-    if (!rawUser) return;
-
-    const token = rawToken.trim().replace(/[^\x21-\x7E]/g, '');
-    const repo = rawRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').trim();
-    const user = rawUser.trim().replace(/\.json$/i, '').trim();
-
-    let filePath = `${user}.json`;
-    let encodedPath = encodeURIComponent(filePath);
-    let url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
-    let res = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json'
+async function checkGhAutoSync(force=false,manual=false,announce=false) {
+  if(isGhSyncing)return;
+  const token=localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
+  const user=localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
+  if(!token||!user){if(announce)notify('토큰과 사용자 파일명을 먼저 입력해 주세요.');return;}
+  if(!manual&&localStorage.getItem('logbible-gh-auto')==='false')return;
+  if(navigator.onLine===false){updateGhSyncStatus();if(announce)notify('기기에 저장했어요. 인터넷에 연결되면 동기화돼요.');return;}
+  if(!force&&Date.now()-lastGhCheckTime<5000)return;
+  // Do not replace an editor while someone is typing; saves queue another pass.
+  if(!manual&&document.activeElement?.matches('textarea,input:not([id^="gh-"])'))return;
+  lastGhCheckTime=Date.now();isGhSyncing=true;
+  const key=ghQueueKey(),baseKey='gh-sync-base/'+user;
+  const headers={Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
+  const url='https://api.github.com/repos/'+ghCloudRepo+'/contents/'+encodeURIComponent(user+'.json');
+  try{
+    const base=await loadLocal(baseKey);
+    if(!base&&!localStorage.getItem(key)&&(Object.keys(state.journal).length||Object.keys(state.marks).length||state.prayers.length||state.newYear.length))localStorage.setItem(key,crypto.randomUUID());
+    for(let attempt=0;attempt<3;attempt++){
+      const res=await fetch(url+'?_t='+Date.now(),{headers,cache:'no-store',signal:AbortSignal.timeout(20000)});
+      if(!res.ok&&res.status!==404)throw Error('서버 응답 '+res.status);
+      const file=res.ok?await res.json():null;
+      const remote=file?validatedBackup(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\s/g,'')),c=>c.charCodeAt(0))))):null;
+      const revision=localStorage.getItem(key);
+      const snapshot=structuredClone(state);
+      const shouldUpload=Boolean(revision)||!file;
+      let merged=shouldUpload?(remote?mergeSync(base,snapshot,remote):snapshot):remote;
+      if(shouldUpload){
+        merged={...merged,backup:new Date().toISOString(),editionLabels:{...merged.editionLabels,...Object.fromEntries(Object.entries(editions).filter(([id])=>localEditionId(id)))}};
+        const bytes=new TextEncoder().encode(JSON.stringify({format:'meomum-qt',version:3,data:merged}));
+        const content=btoa(Array.from(bytes,b=>String.fromCharCode(b)).join(''));
+        const put=await fetch(url,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Sync records · '+user,content,...(file?{sha:file.sha}:{})}),signal:AbortSignal.timeout(20000)});
+        if(put.status===409||put.status===422){if(attempt<2)continue;}
+        if(!put.ok)throw Error('업로드 응답 '+put.status);
       }
-    });
-    if (!res.ok && res.status === 404) {
-      const listRes = await fetch(`https://api.github.com/repos/${repo}/contents?_t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json'
-        }
-      });
-      if (listRes.ok) {
-        const files = await listRes.json();
-        const target = user.toLowerCase() + '.json';
-        const match = Array.isArray(files) && files.find(f => f.name.toLowerCase() === target);
-        if (match) {
-          filePath = match.name;
-          const correctUser = match.name.replace(/\.json$/i, '');
-          localStorage.setItem('logbible-gh-user', correctUser);
-          encodedPath = encodeURIComponent(filePath);
-          url = `https://api.github.com/repos/${repo}/contents/${encodedPath}?_t=${Date.now()}`;
-          res = await fetch(url, {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/vnd.github+json'
-            }
-          });
-        }
-      }
+      // Keep edits made during the request, as well as this device's reading/display.
+      const preferences={reader:state.reader,comparison:state.comparison,display:state.display,palette:state.palette,theme:state.theme,fontChoice:state.fontChoice,fontKorean:state.fontKorean,fontHebrew:state.fontHebrew,fontGreek:state.fontGreek,fontEnglish:state.fontEnglish};
+      const next=mergeSync(snapshot,structuredClone(state),merged);
+      state={...next,...preferences};
+      await storeLocal('journal',state);
+      await storeLocal(baseKey,merged);
+      if(localStorage.getItem(key)===revision)localStorage.removeItem(key);
+      localStorage.setItem('logbible-gh-last-sync',new Date().toLocaleString('ko-KR'));
+      applyDisplay();updateGhSyncStatus();
+      if(!['bible','commentary','original'].includes(view)&&!document.activeElement?.matches('input,textarea')&&!main.querySelector('[data-thought-editor],[data-prayer-editor],[data-journal-field]'))render();
+      if(announce)notify('기록을 안전하게 동기화했어요.');
+      refreshGhDevices();
+      break;
     }
-    if (!res.ok) return;
-    const fileData = await res.json();
-    const binary = atob(fileData.content.replace(/\s/g, ''));
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const jsonStr = new TextDecoder().decode(bytes);
-    const payload = JSON.parse(jsonStr);
-    const remoteTime = payload?.data?.backup || '';
-    const localTime = state?.backup || '';
-    const nowStr = new Date().toLocaleString('ko-KR');
-    localStorage.setItem('logbible-gh-last-sync', nowStr);
-
-    if (remoteTime && (!localTime || remoteTime > localTime)) {
-      const currentReader = {...state.reader};
-      const currentComparison = Array.isArray(state.comparison) ? [...state.comparison] : [];
-      const currentDisplay = {...state.display};
-      const currentFonts = {
-        fontKorean: state.fontKorean,
-        fontHebrew: state.fontHebrew,
-        fontGreek: state.fontGreek,
-        fontEnglish: state.fontEnglish,
-        fontChoice: state.fontChoice,
-        palette: state.palette,
-        theme: state.theme
-      };
-      const imported = validatedBackup(payload);
-      state = imported;
-      state.reader = currentReader;
-      state.comparison = comparisonEditions(currentComparison, state.reader.edition);
-      state.display = currentDisplay;
-      Object.assign(state, currentFonts);
-      lastMarkerEdit = undefined;
-      pendingImport = undefined;
-      await storeLocal('journal', state);
-      applyDisplay();
-      if (!document.activeElement?.matches('input, textarea')) {
-        render();
-      }
-    }
-  } catch {
-    /* Silent background check */
-  } finally {
-    isGhSyncing = false;
-  }
+  }catch(error){if(announce)notify('기록은 기기에 보관 중이에요. 동기화 재시도: '+error.message);}
+  finally{isGhSyncing=false;updateGhSyncStatus();}
 }
-
+window.addEventListener('online',()=>{lastGhCheckTime=0;checkGhAutoSync(true);refreshGhDevices(true);updateGhSyncStatus();});
+window.addEventListener('offline',updateGhSyncStatus);
 document.addEventListener('visibilitychange',()=>{
   if (document.hidden) markGhOffline();
   else { ghPageLeaving=false; refreshGhDevices(true); }
