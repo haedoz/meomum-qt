@@ -3,7 +3,7 @@ import {torahDays,torahVerseCounts} from './torah-data.js';
 import {mergeSync} from './offline-sync.js';
 import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
-import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=5';
+import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=6';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
@@ -4917,7 +4917,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v221')){
+  if(await caches.has('meomum-pages-v223')){
     navigator.storage?.persist?.().catch(()=>{});
   }
 }).catch(() => {});

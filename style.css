@@ -3268,8 +3268,8 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 .torah-passage.bible-passage .torah-verse[aria-haspopup=dialog]:active,.torah-passage.bible-passage .torah-verse.torah-tapped{background:color-mix(in srgb,var(--accent-soft) 85%,var(--card));border-color:transparent;box-shadow:none}
 
 /* Calendar reference links remain together on one compact row. */
-.hebrew-options .torah-schedule-link{margin-inline-start:auto;display:flex;align-items:center;gap:5px;flex:none;background:var(--card)}
-.hebrew-options:has(.torah-schedule-link) .hebrew-guide-button{margin-inline-start:0}
+.hebrew-options .torah-schedule-link{margin-inline-start:0;display:flex;align-items:center;gap:5px;flex:none;background:var(--card)}
+.hebrew-options:has(.torah-schedule-link) .hebrew-guide-button{margin-inline-start:auto}
 .hebrew-scheme-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:600px){.hebrew-options .hebrew-guide-button>span:first-child{display:none}.hebrew-options .btn{font-size:11px;padding-inline:8px}.hebrew-scheme-menu{flex:0 1 auto;min-width:0}.hebrew-scheme-menu>summary{font-size:11px;padding-inline:7px;gap:3px}.hebrew-scheme-label{max-width:66px}}
 @media(max-width:360px){.hebrew-options{gap:4px}.hebrew-options .btn{padding-inline:6px;gap:3px}.hebrew-scheme-menu>summary{padding-inline:5px}.hebrew-scheme-label{max-width:43px}.hebrew-toggle-compact i{width:5px;height:5px}}
@@ -3286,3 +3286,7 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 @media(max-width:739px){.torah-schedule-heading h1{font-size:25px}.torah-schedule-filters{gap:4px;padding:5px}.torah-schedule-filters button{font-size:11px;padding:8px 9px;min-height:34px}.torah-schedule-columns{display:none}.torah-schedule-row{grid-template-columns:43px minmax(0,1fr);gap:12px;padding:18px 16px}.torah-schedule-row:first-of-type{border-top:0}.torah-schedule-row h3{font-size:16px;align-self:center}.torah-schedule-range{grid-column:1/-1;display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:baseline}.torah-schedule-range>span{display:block;font-size:11px;color:var(--muted);white-space:nowrap}.torah-schedule-range p{line-height:1.5}}
 
 @media(max-width:739px){.torah-schedule-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.torah-schedule-filters button{min-width:0;padding-inline:4px}}
+
+.schedule-shared-reading{display:block;font-size:.75em;color:var(--muted);font-weight:400;margin-top:4px}
+
+@media(max-width:739px){.torah-schedule-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
