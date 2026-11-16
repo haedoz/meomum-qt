@@ -4845,12 +4845,8 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v210')){
+  if(await caches.has('meomum-pages-v211')){
     navigator.storage?.persist?.().catch(()=>{});
-    if(localStorage.getItem('logbible-offline-ready')!=='210'){
-      localStorage.setItem('logbible-offline-ready','210');
-      notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
-    }
   }
 }).catch(() => {});
 queueMicrotask(()=>checkGhAutoSync(true));
