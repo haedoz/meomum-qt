@@ -2550,6 +2550,7 @@ function render(studyFromSelection = false) {
   main.classList.toggle('records-view',view==='records');
   main.classList.toggle('atlas-view',view==='atlas');
   main.classList.toggle('settings-view',view==='settings');
+  main.classList.toggle('notebook-view',['journals','newyear','journal','prayers','prayer','prayer-edit','thoughts','reading','book-checks'].includes(view));
   main.classList.toggle('torah-view',view==='torah'||view==='torah-notes');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
   const isPersonal = isPageSearchable(view);
@@ -4844,10 +4845,10 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v208')){
+  if(await caches.has('meomum-pages-v209')){
     navigator.storage?.persist?.().catch(()=>{});
-    if(localStorage.getItem('logbible-offline-ready')!=='208'){
-      localStorage.setItem('logbible-offline-ready','208');
+    if(localStorage.getItem('logbible-offline-ready')!=='209'){
+      localStorage.setItem('logbible-offline-ready','209');
       notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
     }
   }

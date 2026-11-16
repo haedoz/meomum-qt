@@ -3182,3 +3182,7 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .torah-sources{font-size:12px;color:var(--muted);line-height:1.6;margin:18px 0}.torah-sources p{margin-top:10px}.torah-sources a{color:var(--accent-ink)}.torah-feed-card h2{font-size:18px;margin:16px 0 7px}.torah-feed-card time{font-size:12px;color:var(--muted)}.torah-feed-card>.record-text{font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-block:16px}
 @media(min-width:740px){#main.frame.torah-view{width:calc(100% - 40px)}}
 @media(min-width:1000px){#main.frame.torah-view{width:100%}.torah-study-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}.torah-note-editor{position:sticky;top:85px}}
+
+/* Archive lists, note editors and reading checks share the full workspace. */
+@media(min-width:740px){#main.frame.notebook-view{width:calc(100% - 40px)}}
+@media(min-width:1000px){#main.frame.notebook-view{width:100%}}
