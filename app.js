@@ -1,8 +1,9 @@
+import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
 import {torahDays,torahVerseCounts} from './torah-data.js';
 import {mergeSync} from './offline-sync.js';
 import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
-import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=4';
+import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=5';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
 import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=38';
@@ -511,7 +512,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {'hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records','torah-notes':'records',torah:'calendar',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {'torah-schedule':'calendar','hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records','torah-notes':'records',torah:'calendar',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -2514,7 +2515,7 @@ function bundlesScreen() {
 function render(studyFromSelection = false) {
   clearTorahTapFeedback();
   flushReadingBookmark();
-  const screens = {torah:torahScreen,'torah-notes':torahNotesScreen,'hebrew-guide':hebrewGuideScreen,atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {'torah-schedule':torahScheduleScreen,torah:torahScreen,'torah-notes':torahNotesScreen,'hebrew-guide':hebrewGuideScreen,atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const torahDate=hash.startsWith('torah/')&&validDay(hash.slice(6))?hash.slice(6):'';
   if(torahDate)selectedTorahDay=torahDate;
@@ -2595,7 +2596,7 @@ function render(studyFromSelection = false) {
   main.classList.toggle('atlas-view',view==='atlas');
   main.classList.toggle('settings-view',view==='settings');
   main.classList.toggle('notebook-view',['journals','newyear','journal','prayers','prayer','prayer-edit','thoughts','reading','book-checks'].includes(view));
-  main.classList.toggle('torah-view',view==='torah'||view==='torah-notes');
+  main.classList.toggle('torah-view',view==='torah'||view==='torah-notes'||view==='torah-schedule');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
   const isPersonal = isPageSearchable(view);
   readerSearchForm.hidden = !(isPersonal || view==='original' || (view==='bible' && state.reader.edition));
@@ -2648,7 +2649,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = ['hebrew-guide','torah'].includes(view)?'calendar':view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','torah-notes','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['hebrew-guide','torah','torah-schedule'].includes(view)?'calendar':view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','torah-notes','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -3483,7 +3484,7 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
-  if (atlasAction(target) || hebrewAction(target) || hebrewGuideAction(target)) { render(); return; }
+  if (atlasAction(target) || hebrewAction(target) || hebrewGuideAction(target) || torahScheduleAction(target)) { render(); return; }
   if (target.atlasRef) {
     const address = target.atlasRef;
     const edition = [state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));
@@ -4916,7 +4917,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v220')){
+  if(await caches.has('meomum-pages-v221')){
     navigator.storage?.persist?.().catch(()=>{});
   }
 }).catch(() => {});

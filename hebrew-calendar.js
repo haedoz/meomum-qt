@@ -49,7 +49,7 @@ function eventInfo(event) {
 }
 export function hebrewOptions() {
  return '<section class="hebrew-options"><button type="button" class="btn hebrew-toggle-compact" data-hebrew-toggle="true" aria-pressed="'+enabled+'" aria-label="히브리력 '+(enabled?'표시 중':'숨김')+'"><i aria-hidden="true"></i>히브리력</button>'+
- (enabled?'<details class="hebrew-scheme-menu"><summary aria-label="절기 기준 선택">'+(israel?'이스라엘':'해외 공동체')+' <span aria-hidden="true">⌄</span></summary><div class="hebrew-scheme-options"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 유대 공동체</button></div></details>':'')+'<button type="button" class="btn hebrew-guide-button" data-nav="hebrew-guide">유대력 <span>민간·성서</span><span aria-hidden="true">›</span></button></section>';
+ (enabled?'<details class="hebrew-scheme-menu"><summary aria-label="절기 기준 선택">'+'<span class="hebrew-scheme-label">'+(israel?'이스라엘':'해외 공동체')+'</span> <span aria-hidden="true">⌄</span></summary><div class="hebrew-scheme-options"><button type="button" data-hebrew-scheme="israel" aria-pressed="'+israel+'">이스라엘</button><button type="button" data-hebrew-scheme="diaspora" aria-pressed="'+!israel+'">해외 유대 공동체</button></div></details>':'')+'<button type="button" class="btn torah-schedule-link" data-nav="torah-schedule">토라 일정 <span aria-hidden="true">›</span></button><button type="button" class="btn hebrew-guide-button" data-nav="hebrew-guide">유대력 <span>민간·성서</span><span aria-hidden="true">›</span></button></section>';
 }
 export function hebrewDayCell(day) {
  if(!enabled)return '';
