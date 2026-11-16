@@ -3165,3 +3165,6 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 /* Main pages share the calendar/atlas workspace width. */
 @media(min-width:740px){#main.frame:is(.today-view,.reader-view,.study-view,.records-view){width:calc(100% - 40px)}}
 @media(min-width:1000px){#main.frame:is(.today-view,.reader-view,.study-view,.records-view){width:100%}}
+
+@media(min-width:740px){#main.frame.settings-view{width:calc(100% - 40px)}}
+@media(min-width:1000px){#main.frame.settings-view{width:100%}}
