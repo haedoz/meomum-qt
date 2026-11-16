@@ -3161,3 +3161,7 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .atlas-view .atlas-map-card{border-color:color-mix(in srgb,var(--line) 60%,transparent);border-radius:21px}
 .atlas-view .atlas-map-card>header{padding:13px 16px}.atlas-view .atlas-map-card>header h2{font-size:14px;font-weight:600}
 @media(max-width:480px){.atlas-view .atlas-toolbar{gap:8px}.atlas-view .atlas-toolbar button{padding:9px;font-size:12px}.atlas-view .atlas-toolbar>div{gap:5px}}
+
+/* Main pages share the calendar/atlas workspace width. */
+@media(min-width:740px){#main.frame:is(.today-view,.reader-view,.study-view,.records-view){width:calc(100% - 40px)}}
+@media(min-width:1000px){#main.frame:is(.today-view,.reader-view,.study-view,.records-view){width:100%}}
