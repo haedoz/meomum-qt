@@ -721,6 +721,23 @@ function torahCalendarCard(day,label='매일 토라포션'){
   const note=state.torahNotes[day];
   return '<button type="button" class="torah-calendar-card" data-nav="torah/'+day+'"><span class="torah-card-icon">'+icon('book')+'</span><span><small>'+esc(label)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</small><strong>'+esc(portion.name)+'</strong><span>'+esc(torahRangeLabel(portion))+'</span>'+(torahNoteExists(day)?'<em>'+icon('check')+(note.done?'묵상 완료':'메모 작성 중')+'</em>':'')+'</span>'+icon('right')+'</button>';
 }
+let torahPopupTimer,torahTappedVerse;
+function clearTorahTapFeedback(){
+  clearTimeout(torahPopupTimer);torahPopupTimer=undefined;
+  torahTappedVerse?.classList.remove('torah-tapped');torahTappedVerse=undefined;
+}
+function previewTorahVerse(button){
+  clearTorahTapFeedback();
+  if(!validRef(button.dataset.torahVerse))return;
+  torahTappedVerse=button;button.classList.add('torah-tapped');
+  const route=location.hash;
+  torahPopupTimer=setTimeout(()=>{
+    torahPopupTimer=undefined;
+    if(button.isConnected&&view==='torah'&&location.hash===route)showTorahVerse(button.dataset.torahVerse);
+    else clearTorahTapFeedback();
+  },140);
+}
+modal.addEventListener('close',clearTorahTapFeedback);
 function showTorahVerse(key){
   if(!validRef(key))return;
   const {book,chapter,verse,edition}=readRef(key),source=originalPassageSource(book,chapter);
@@ -2495,6 +2512,7 @@ function bundlesScreen() {
     ).join('')+'</div>' : '<p class="empty">아직 저장된 구절 모음이 없어요.<br><small class="muted">성경 본문에서 구절을 선택한 뒤 구절 모음으로 저장할 수 있어요.</small></p>');
 }
 function render(studyFromSelection = false) {
+  clearTorahTapFeedback();
   flushReadingBookmark();
   const screens = {torah:torahScreen,'torah-notes':torahNotesScreen,'hebrew-guide':hebrewGuideScreen,atlas:()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
@@ -3514,7 +3532,7 @@ document.addEventListener('click',event => {
   if (target.action==='pick-book') return showBookPicker();
   if (target.strongCode) return showOriginalMeaning(button);
   if (target.studyReturn) return returnToBible(studySelection[view]?.location,Number(target.studyReturn));
-  if(target.torahVerse)return showTorahVerse(target.torahVerse);
+  if(target.torahVerse)return previewTorahVerse(button);
   if(target.torahMarkRef){if(!validRef(target.torahMarkRef))return;if(target.torahMarkErase)return applyVerseMarks([target.torahMarkRef],undefined,'말씀 표시를 지웠어요.');if(validColor(target.torahMarkColor)){state.markerColor=target.torahMarkColor;state.markerStyle='fill';return applyVerseMarks([target.torahMarkRef],{style:'fill',color:target.torahMarkColor},'형광펜을 적용했어요.');}return;}
   if (target.nav) {
     if (modal.contains(button)) modal.close();
@@ -4898,7 +4916,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v219')){
+  if(await caches.has('meomum-pages-v220')){
     navigator.storage?.persist?.().catch(()=>{});
   }
 }).catch(() => {});
