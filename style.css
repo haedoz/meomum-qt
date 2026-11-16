@@ -3242,3 +3242,6 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .torah-reflection-actions>[data-torah-done]{display:flex;align-items:center;gap:6px;padding:10px 15px;min-height:39px;border-radius:12px;font-size:12px}.torah-reflection-actions>[data-torah-done] svg{width:15px;height:15px}
 @media(min-width:740px){.torah-note-editor{padding:26px 28px 16px}.torah-note-editor textarea{min-height:360px;padding-block:24px 18px}}
 @media(max-width:360px){.torah-reflection-heading>.save{flex-basis:100%;padding-left:47px}.torah-note-editor{padding-inline:18px}.torah-reflection-footer{gap:8px}}
+
+.torah-original-link{display:inline-flex;align-items:center;vertical-align:baseline;gap:4px;min-height:27px;padding:3px 7px;margin-inline-start:8px;border-radius:8px;background:color-mix(in srgb,var(--accent-soft) 60%,var(--card));color:var(--accent-ink);font-family:var(--font-ko,var(--sans));font-size:11px;font-weight:500;line-height:1.25;letter-spacing:0;white-space:nowrap}
+.torah-original-link>svg{width:12px;height:12px}.torah-original-link>svg:last-child{width:10px;height:10px}
