@@ -703,10 +703,10 @@ function torahAddresses(portion){
 }
 function torahRangeLabel(portion){return portion?.ranges.map(([book,c1,v1,c2,v2])=>titles[book]+' '+c1+':'+v1+'–'+(c1===c2?'':c2+':')+v2).join(' · ')||'';}
 function torahNoteExists(day){const note=state.torahNotes[day];return Boolean(note?.body?.trim()||note?.done);}
-function torahCalendarCard(day){
+function torahCalendarCard(day,label='매일 토라포션'){
   const portion=torahDays[day];if(!portion)return '';
   const note=state.torahNotes[day];
-  return '<button type="button" class="torah-calendar-card" data-nav="torah/'+day+'"><span class="torah-card-icon">'+icon('book')+'</span><span><small>매일 토라포션 · '+(portion.part?portion.part+'번째 읽기':'심핫 토라')+'</small><strong>'+esc(portion.name)+'</strong><span>'+esc(torahRangeLabel(portion))+'</span>'+(torahNoteExists(day)?'<em>'+icon('check')+(note.done?'묵상 완료':'메모 작성 중')+'</em>':'')+'</span>'+icon('right')+'</button>';
+  return '<button type="button" class="torah-calendar-card" data-nav="torah/'+day+'"><span class="torah-card-icon">'+icon('book')+'</span><span><small>'+esc(label)+' · '+(portion.part?portion.part+'번째 읽기':'심핫 토라')+'</small><strong>'+esc(portion.name)+'</strong><span>'+esc(torahRangeLabel(portion))+'</span>'+(torahNoteExists(day)?'<em>'+icon('check')+(note.done?'묵상 완료':'메모 작성 중')+'</em>':'')+'</span>'+icon('right')+'</button>';
 }
 function torahScreen(){
   const day=selectedTorahDay||dateKey(),portion=torahDays[day],note=state.torahNotes[day]||{};
@@ -918,7 +918,7 @@ function todayScreen() {
       '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
-    todayYearVerse(today)+todaySummary(today,state.journal[today])+todayPlanCard(today);
+    torahCalendarCard(today,'오늘의 토라포션')+todaySummary(today,state.journal[today])+todayPlanCard(today);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -4845,10 +4845,10 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v209')){
+  if(await caches.has('meomum-pages-v210')){
     navigator.storage?.persist?.().catch(()=>{});
-    if(localStorage.getItem('logbible-offline-ready')!=='209'){
-      localStorage.setItem('logbible-offline-ready','209');
+    if(localStorage.getItem('logbible-offline-ready')!=='210'){
+      localStorage.setItem('logbible-offline-ready','210');
       notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
     }
   }

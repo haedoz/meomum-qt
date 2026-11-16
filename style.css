@@ -3186,3 +3186,5 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 /* Archive lists, note editors and reading checks share the full workspace. */
 @media(min-width:740px){#main.frame.notebook-view{width:calc(100% - 40px)}}
 @media(min-width:1000px){#main.frame.notebook-view{width:100%}}
+
+.today-view>.torah-calendar-card{margin:0 0 25px;padding:15px 17px;border-radius:19px}
