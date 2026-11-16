@@ -3205,3 +3205,14 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .torah-reading-meta{padding:13px 0 17px;margin-bottom:0}.torah-reading-meta>strong{font-size:14px;color:var(--muted)}
 @media(min-width:740px){.torah-passage,.torah-note-editor{padding:28px 30px}.torah-note-editor textarea{min-height:370px;padding:24px}}
 @media(min-width:1000px){.torah-study-layout{display:block}.torah-note-editor{position:static;top:auto}.torah-passage,.torah-note-editor{padding:30px 34px}}
+
+/* Keep Torah context and reading text together without large empty gaps. */
+.torah-page-header{margin-bottom:5px;gap:10px}.torah-page-header h1{margin:5px 0 7px}.torah-page-header .eyebrow{margin:0}
+.torah-page-header>div>.muted{margin:0;line-height:1.35}
+.torah-reading-meta{padding:7px 0 11px;margin:0;gap:8px}.torah-reading-meta button{padding:7px 10px}
+.torah-passage h3{margin:20px 0 12px}.torah-passage h3:first-child{margin-top:0}
+.torah-verse{display:block;position:relative;padding-inline-start:1.65em}
+.torah-verse>span:first-child{position:absolute;inset-inline-start:0;top:4px;width:1.7em;text-align:start;font-size:.8em;line-height:inherit}
+.torah-verse>span:last-child{display:block}
+.torah-note-editor footer{margin-top:12px;padding-top:12px;gap:9px}
+.torah-all-notes{margin-top:6px;padding-block:5px;line-height:1.3}
