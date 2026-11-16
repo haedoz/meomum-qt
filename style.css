@@ -3216,3 +3216,29 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 .torah-verse>span:last-child{display:block}
 .torah-note-editor footer{margin-top:12px;padding-top:12px;gap:9px}
 .torah-all-notes{margin-top:6px;padding-block:5px;line-height:1.3}
+
+/* Keep the end of the Torah memo compact. */
+.torah-note-editor{padding-bottom:16px;margin-bottom:8px}
+.torah-all-notes{margin-bottom:0;padding-bottom:0}
+.torah-sources{margin-top:10px;margin-bottom:0}
+@media(min-width:740px){.torah-note-editor{padding-bottom:18px}}
+
+/* Torah uses the Bible's exact reading geometry and typography. */
+.torah-passage.bible-passage{padding:10px 4px;border:0;background:var(--reading-surface,var(--card));border-radius:var(--surface-radius);display:grid;row-gap:var(--verse-gap,0px)}
+.torah-passage.bible-passage h3{margin:12px 8px 10px}
+.torah-passage.bible-passage .torah-verse{display:grid;position:static;grid-template-columns:var(--verse-num-width) minmax(0,1fr);column-gap:var(--verse-number-gap);padding:3px 0;margin:0;font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);font-weight:400;line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px)}
+.torah-passage.bible-passage .torah-verse>.number{position:static;inset:auto;width:auto;min-width:1.5ch;align-self:start;justify-self:end;text-align:right;font:600 .75rem var(--sans);line-height:calc(var(--reading-size,15px)*var(--reading-leading,1.25));letter-spacing:-.02em;color:var(--accent-ink)}
+.torah-passage.bible-passage .torah-verse>.verse-content{display:block;min-width:0}
+/* A quiet writing sheet instead of a large shaded input box. */
+.torah-note-editor{padding:22px 22px 15px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent-soft) 14%,var(--card)),var(--card) 55%);border:1px solid color-mix(in srgb,var(--line) 50%,transparent);box-shadow:0 6px 24px color-mix(in srgb,var(--glass-shadow) 35%,transparent);border-radius:22px}
+.torah-note-editor>.torah-reflection-heading{display:flex;align-items:center;gap:11px;margin:0;padding:0 0 17px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.torah-reflection-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink)}.torah-reflection-icon svg{width:17px;height:17px}
+.torah-reflection-heading>div{flex:1;min-width:0}.torah-reflection-heading>div>p{font-size:9px;letter-spacing:.12em;font-weight:550;color:var(--muted);margin:0 0 4px}.torah-note-editor .torah-reflection-heading h2{font-size:16px;letter-spacing:-.35px;line-height:1.3}.torah-note-editor .torah-reflection-heading>.save{font-size:10px;white-space:nowrap;color:var(--muted)}
+.torah-note-editor textarea{background:transparent;border:0;border-radius:0;padding:22px 2px 16px;min-height:300px;box-shadow:none;font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);font-weight:400;line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px)}
+.torah-note-editor textarea::placeholder{font-weight:400;opacity:.6;color:var(--muted)}
+.torah-note-editor>.torah-reflection-footer{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px;margin:0;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.torah-reflection-footer>.torah-all-notes{margin:0;padding:8px 0;min-height:0;font-size:12px;display:flex;align-items:center;gap:3px;color:var(--muted)}
+.torah-reflection-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}.torah-reflection-actions>[data-delete-torah]{width:34px;height:36px;display:grid;place-items:center;padding:0;border-radius:11px;background:color-mix(in srgb,var(--ink) 3%,transparent)}.torah-reflection-actions>[data-delete-torah][hidden]{display:none}.torah-reflection-actions>[data-delete-torah] svg{width:15px;height:15px}
+.torah-reflection-actions>[data-torah-done]{display:flex;align-items:center;gap:6px;padding:10px 15px;min-height:39px;border-radius:12px;font-size:12px}.torah-reflection-actions>[data-torah-done] svg{width:15px;height:15px}
+@media(min-width:740px){.torah-note-editor{padding:26px 28px 16px}.torah-note-editor textarea{min-height:360px;padding-block:24px 18px}}
+@media(max-width:360px){.torah-reflection-heading>.save{flex-basis:100%;padding-left:47px}.torah-note-editor{padding-inline:18px}.torah-reflection-footer{gap:8px}}
