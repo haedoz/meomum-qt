@@ -3146,3 +3146,18 @@ form[name=year-editor] textarea{line-height:calc(1em * var(--reading-leading,1.2
 :root[data-appearance=dark] .today-view .today-year-verse{background:linear-gradient(115deg,color-mix(in srgb,var(--accent-soft) 22%,var(--card)),color-mix(in srgb,var(--accent-soft) 7%,var(--card)));border-color:color-mix(in srgb,var(--line) 55%,transparent)}
 :root[data-appearance=dark] .today-view .today-year-emblem{background:color-mix(in srgb,var(--accent-soft) 65%,var(--card));color:var(--accent-ink)}
 :root[data-appearance=dark] .today-view .today-year-verse>svg{color:var(--accent-ink)}
+
+/* Atlas fills the workspace, with readable wrapping selection chips. */
+@media(min-width:740px){#main.frame.atlas-view{width:calc(100% - 40px)}}
+@media(min-width:1000px){#main.frame.atlas-view{width:100%}}
+.atlas-view .atlas-active-strip{flex-wrap:wrap;overflow:visible;gap:8px;margin-top:14px;min-height:0}
+.atlas-view .atlas-active-strip .atlas-layer-chip{display:inline-flex;max-width:100%;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);border-radius:13px;background:var(--card);box-shadow:none;overflow:hidden}
+.atlas-view .atlas-active-strip .atlas-layer-chip.is-focused{border-color:color-mix(in srgb,var(--journey-color) 26%,var(--line));background:color-mix(in srgb,var(--accent-soft) 42%,var(--card))}
+.atlas-view .atlas-active-strip .atlas-layer-chip>button:first-child{display:flex;align-items:center;gap:8px;min-height:38px;padding:9px 11px;font-size:13px;line-height:1.35;font-weight:550;text-align:left;background:transparent;color:var(--ink)}
+.atlas-view .atlas-active-strip .atlas-layer-chip>button:first-child[aria-pressed=true]{background:transparent;color:var(--ink);font-weight:650}
+.atlas-view .atlas-active-strip .atlas-color-dot{width:8px;height:8px;flex:none;border-radius:50%;box-shadow:0 0 0 3px color-mix(in srgb,var(--journey-color) 12%,transparent)}
+.atlas-view .atlas-active-strip .atlas-layer-chip>button:last-child{display:grid;place-items:center;width:30px;min-width:30px;padding:0;margin:6px 5px 6px 0;border-radius:8px;font-size:17px;line-height:1;color:var(--muted);background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.atlas-view .atlas-boundary-options button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
+.atlas-view .atlas-map-card{border-color:color-mix(in srgb,var(--line) 60%,transparent);border-radius:21px}
+.atlas-view .atlas-map-card>header{padding:13px 16px}.atlas-view .atlas-map-card>header h2{font-size:14px;font-weight:600}
+@media(max-width:480px){.atlas-view .atlas-toolbar{gap:8px}.atlas-view .atlas-toolbar button{padding:9px;font-size:12px}.atlas-view .atlas-toolbar>div{gap:5px}}

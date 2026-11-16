@@ -1,6 +1,6 @@
 import {mergeSync} from './offline-sync.js';
 import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
-import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=8';
+import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=4';
 import { books, chapterCounts } from './books.js';
 import { dailyVerseRefs } from './daily-verse-refs.js?v=1';
@@ -2508,6 +2508,7 @@ function render(studyFromSelection = false) {
   main.classList.toggle('journal-view',view==='journal');
   main.classList.toggle('today-view',view==='today');
   main.classList.toggle('records-view',view==='records');
+  main.classList.toggle('atlas-view',view==='atlas');
   document.querySelector('.back-button').hidden = view==='today' || (!history.state?.qtPrevious && (view==='bible' || !location.hash));
   const isPersonal = isPageSearchable(view);
   readerSearchForm.hidden = !(isPersonal || view==='original' || (view==='bible' && state.reader.edition));
@@ -4794,10 +4795,10 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v204')){
+  if(await caches.has('meomum-pages-v205')){
     navigator.storage?.persist?.().catch(()=>{});
-    if(localStorage.getItem('logbible-offline-ready')!=='204'){
-      localStorage.setItem('logbible-offline-ready','204');
+    if(localStorage.getItem('logbible-offline-ready')!=='205'){
+      localStorage.setItem('logbible-offline-ready','205');
       notify('오프라인 사용 준비 완료 · 추가한 성경과 기록을 인터넷 없이 볼 수 있어요.');
     }
   }
