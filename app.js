@@ -2734,6 +2734,32 @@ function showVerseArrival(id) {
   },1600);
 }
 
+document.addEventListener('click',event=>{
+  for(const menu of document.querySelectorAll('.reading-mode-menu[open],.hebrew-scheme-menu[open]'))if(!menu.contains(event.target))menu.open=false;
+});
+// A backdrop tap dismisses any dialog. Drags and taps within its padding do not.
+let modalBackdropGesture;
+function outsideModal(event){
+  const rect=modal.getBoundingClientRect();
+  return event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom;
+}
+modal.addEventListener('pointerdown',event=>{
+  modalBackdropGesture=modal.open?{id:event.pointerId,x:event.clientX,y:event.clientY,outside:outsideModal(event),releasedOutside:false}:undefined;
+});
+modal.addEventListener('pointerup',event=>{
+  const gesture=modalBackdropGesture;
+  if(!gesture||gesture.id!==event.pointerId)return;
+  gesture.releasedOutside=outsideModal(event)&&Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)<12;
+});
+modal.addEventListener('pointercancel',()=>{modalBackdropGesture=undefined;});
+modal.addEventListener('close',()=>{modalBackdropGesture=undefined;});
+modal.addEventListener('click',event=>{
+  const gesture=modalBackdropGesture;
+  modalBackdropGesture=undefined;
+  if(modal.open&&event.target===modal&&gesture?.outside&&gesture.releasedOutside&&outsideModal(event)){
+    event.preventDefault();event.stopPropagation();modal.close();
+  }
+},true);
 function dialog(title,body,formName) {
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
   const titleFocus = formName==='chapter-jump'?'':' autofocus';
@@ -4872,7 +4898,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v218')){
+  if(await caches.has('meomum-pages-v219')){
     navigator.storage?.persist?.().catch(()=>{});
   }
 }).catch(() => {});
