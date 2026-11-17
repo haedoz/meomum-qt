@@ -1,3 +1,4 @@
+import {startAppUpdates} from './app-updates.js';
 import {libraryScreen,sevenStudyScreen,studyLibraryAction} from './study-library.js';
 import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
 import {torahDays,torahVerseCounts} from './torah-data.js';
@@ -108,6 +109,7 @@ async function refreshGhDevices(force = false) {
 }
 
 const icons = {
+  brandBook:'<path d="M3 5q4-1.5 8.5 1v14Q7 17.5 3 19V5Zm10 1q4-2.5 8-1v14q-4-1.5-8 1V6Z"/><path d="M16 5v6l1.5-1 1.5 1V4.5M4 21q3-1 7.5 1m1.5 0q4-2 7-1"/>',
   library:'<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4-1 4 15-4 1z" transform="translate(-1 0)"/>',
   studyMode:'<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/>',
   trash:'<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/>',
@@ -4917,14 +4919,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(async registration=>{
-  await navigator.serviceWorker.ready;
-  const worker=registration.installing||registration.waiting;
-  if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v226')){
-    navigator.storage?.persist?.().catch(()=>{});
-  }
-}).catch(() => {});
+startAppUpdates({version:'meomum-pages-v227',beforeReload:async()=>{flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

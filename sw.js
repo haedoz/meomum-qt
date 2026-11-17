@@ -1,8 +1,9 @@
-const version = "meomum-pages-v226";
-const paths = ["./", "./app.js", "./app.js?v=226", "./atlas-data.js", "./atlas-data.js?v=3", "./atlas-geography.js", "./atlas-overlays.js", "./bdb.js", "./bdb.js?v=38", "./bible-atlas.js", "./bible-atlas.js?v=9", "./books.js", "./daily-verse-refs.js", "./daily-verse-refs.js?v=1", "./fonts/NotoSansKR-VariableFont_wght.ttf", "./fonts/Paperlogy-4Regular.ttf", "./fonts/PretendardVariable.woff2", "./hebrew-calendar.js", "./hebrew-calendar.js?v=6", "./hebrew-guide.js", "./hebrew-guide.js?v=8", "./icon-192.png", "./icon-512.png", "./index.html", "./landscape.svg", "./manifest.webmanifest?v=4", "./offline-sync.js", "./torah-data.js", "./torah-schedule.js", "./study-library.js", "./study-content.js", "./study-images/canaan-nations.png", "./study-content.js", "./study-images/canaan-nations.png", "./style.css?v=226", "./vendor/hebcal.mjs", "./vendor/sql-wasm.mjs", "./vendor/sql-wasm.wasm"];
+const version = "meomum-pages-v227";
+const paths = ["./", "./app.js", "./app.js?v=227", "./atlas-data.js", "./atlas-data.js?v=3", "./atlas-geography.js", "./atlas-overlays.js", "./bdb.js", "./bdb.js?v=38", "./bible-atlas.js", "./bible-atlas.js?v=9", "./books.js", "./daily-verse-refs.js", "./daily-verse-refs.js?v=1", "./fonts/NotoSansKR-VariableFont_wght.ttf", "./fonts/Paperlogy-4Regular.ttf", "./fonts/PretendardVariable.woff2", "./hebrew-calendar.js", "./hebrew-calendar.js?v=6", "./hebrew-guide.js", "./hebrew-guide.js?v=8", "./index.html", "./landscape.svg", "./offline-sync.js", "./torah-data.js", "./torah-schedule.js", "./study-library.js", "./study-content.js", "./style.css?v=227", "./vendor/hebcal.mjs", "./vendor/sql-wasm.mjs", "./vendor/sql-wasm.wasm", "./canaan-map.js", "./app-updates.js", "./logbible-logo.svg", "./icon-180-v2.png", "./icon-192-v2.png", "./icon-512-v2.png", "./manifest.webmanifest?v=5"];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(version);
- await cache.addAll(paths.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})));
+ const urls=[...new Set(paths.map(path=>new URL(path,self.registration.scope).href))];
+ try{await cache.addAll(urls.map(url=>new Request(url,{cache:'reload'})));}catch(error){await caches.delete(version);throw error;}
  await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
@@ -13,9 +14,9 @@ self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
  if(request.method!=='GET'||url.origin!==self.location.origin)return;
  if(request.mode==='navigate'){
-  event.respondWith(fetch(request).catch(async()=>{
+  event.respondWith(fetch(new Request(request,{cache:'no-store'})).then(async response=>{if(response.ok){const cache=await caches.open(version);await cache.put(new URL('./index.html',self.registration.scope),response.clone());}return response;}).catch(async()=>{
    const cache=await caches.open(version);
-   return await cache.match(new URL('./',self.registration.scope))||await cache.match(new URL('./index.html',self.registration.scope));
+   return await cache.match(new URL('./index.html',self.registration.scope))||await cache.match(new URL('./',self.registration.scope));
   }));return;
  }
  if(!/\.(?:pdf|js|mjs|css|wasm|woff2?|ttf|svg|png|webmanifest)$/.test(url.pathname))return;
@@ -28,3 +29,5 @@ self.addEventListener('fetch',event=>{
   return response;
  })());
 });
+
+self.addEventListener('message',event=>{if(event.data?.type==='APP_VERSION')event.ports?.[0]?.postMessage({version});if(event.data?.type==='ACTIVATE_UPDATE')event.waitUntil(self.skipWaiting());});
