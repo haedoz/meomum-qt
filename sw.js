@@ -1,5 +1,5 @@
-const version = "meomum-pages-v238";
-const paths = ["./", "./app.js", "./app.js?v=238", "./atlas-data.js", "./atlas-data.js?v=3", "./atlas-geography.js", "./atlas-overlays.js", "./bdb.js", "./bdb.js?v=38", "./bible-atlas.js", "./bible-atlas.js?v=9", "./books.js", "./daily-verse-refs.js", "./daily-verse-refs.js?v=1", "./fonts/NotoSansKR-VariableFont_wght.ttf", "./fonts/Paperlogy-4Regular.ttf", "./fonts/PretendardVariable.woff2", "./hebrew-calendar.js", "./hebrew-calendar.js?v=6", "./hebrew-guide.js", "./hebrew-guide.js?v=8", "./index.html", "./landscape.svg", "./offline-sync.js", "./torah-data.js", "./torah-schedule.js", "./study-library.js", "./study-content.js", "./spirit-study.js", "./spirit-study-data.js", "./style.css?v=238", "./vendor/hebcal.mjs", "./vendor/sql-wasm.mjs", "./vendor/sql-wasm.wasm", "./canaan-map.js", "./app-updates.js", "./logbible-logo.svg", "./icon-180-v3.png", "./icon-192-v3.png", "./icon-512-v3.png", "./manifest.webmanifest?v=6"];
+const version = "meomum-pages-v239";
+const paths = ["./", "./app-loader.js", "./app-loader.js?v=239", "./app.js", "./app.js?v=239", "./atlas-data.js", "./atlas-data.js?v=3", "./atlas-geography.js", "./atlas-overlays.js", "./bdb.js", "./bdb.js?v=38", "./bible-atlas.js", "./bible-atlas.js?v=9", "./books.js", "./daily-verse-refs.js", "./daily-verse-refs.js?v=1", "./fonts/NotoSansKR-VariableFont_wght.ttf", "./fonts/Paperlogy-4Regular.ttf", "./fonts/PretendardVariable.woff2", "./hebrew-calendar.js", "./hebrew-calendar.js?v=6", "./hebrew-guide.js", "./hebrew-guide.js?v=8", "./index.html", "./landscape.svg", "./offline-sync.js", "./torah-data.js", "./torah-schedule.js", "./study-library.js", "./study-content.js", "./spirit-study.js", "./spirit-study-data.js", "./style.css?v=239", "./vendor/hebcal.mjs", "./vendor/sql-wasm.mjs", "./vendor/sql-wasm.wasm", "./canaan-map.js", "./app-updates.js", "./logbible-logo.svg", "./icon-180-v3.png", "./icon-192-v3.png", "./icon-512-v3.png", "./manifest.webmanifest?v=6"];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(version);
  const urls=[...new Set(paths.map(path=>new URL(path,self.registration.scope).href))];
@@ -22,7 +22,7 @@ self.addEventListener('fetch',event=>{
  if(!/\.(?:pdf|js|mjs|css|wasm|woff2?|ttf|svg|png|webmanifest)$/.test(url.pathname))return;
  event.respondWith((async()=>{
   const cache=await caches.open(version);
-  const saved=await cache.match(request)||await cache.match(request,{ignoreSearch:true});
+  const saved=await cache.match(request)||(!url.search?await cache.match(request,{ignoreSearch:true}):null);
   if(saved)return saved;
   const response=await fetch(request);
   if(response.ok)await cache.put(request,response.clone());

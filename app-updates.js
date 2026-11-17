@@ -8,7 +8,7 @@ export function startAppUpdates({version,beforeReload=async()=>true}){
   channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.version ?? null);};
   try{worker.postMessage({type:'APP_VERSION'},[channel.port2]);}catch{clearTimeout(timer);channel.port1.close();resolve(null);}
  });
- const safeToReload=()=>!document.hidden&&!document.querySelector('dialog[open]')&&!document.documentElement?.dataset.filePickerOpen&&!document.activeElement?.matches('input,textarea,[contenteditable="true"]')&&!document.querySelector('#main textarea,form[data-thought-editor],form[data-prayer-editor],form[data-daily-note],form[data-torah-note]');
+ const safeToReload=()=>document.hidden&&!document.querySelector('dialog[open]')&&!document.documentElement?.dataset.filePickerOpen&&!document.activeElement?.matches('input,textarea,[contenteditable="true"]')&&!document.querySelector('#main textarea,form[data-thought-editor],form[data-prayer-editor],form[data-daily-note],form[data-torah-note]');
  async function apply(){
   if(reloading||!pending||!safeToReload())return;
   reloading=true;
@@ -37,7 +37,7 @@ export function startAppUpdates({version,beforeReload=async()=>true}){
   navigator.storage?.persist?.().catch(()=>{});
   compare();check(true);
  }).catch(()=>{});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden){apply();check();}});
+ document.addEventListener('visibilitychange',()=>{apply();if(!document.hidden)check();});
  window.addEventListener('pageshow',()=>{apply();check();});
  window.addEventListener('online',()=>check(true));
  document.addEventListener('focusout',()=>setTimeout(apply,0));

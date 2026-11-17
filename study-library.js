@@ -14,12 +14,13 @@ function prose(blocks){
  let html='',open=false,list=false,index=0;
  const closeList=()=>{if(list){html+='</div>';list=false;}};
  const closeSection=()=>{closeList();if(open){html+='</div></section>';open=false;}};
- for(const [kind,text] of blocks){
+ for(const [blockIndex,[kind,text]] of blocks.entries()){
   if(kind==='h'){
    closeSection();index++;
+   if(blocks[blockIndex+1]?.[0]==='h'){html+=`<h2 class="study-section-title study-group-title">${safe(text)}</h2>`;continue;}
    const match=text.match(/^(\d+[.)]|[①-⑦])\s*(.*)$/),number=match?match[1]:String(index).padStart(2,'0'),title=match?match[2]:text;
    html+=`<section class="study-topic-section"><h3><span class="study-topic-number">${safe(number)}</span><span>${safe(title)}</span></h3><div class="study-topic-body">`;open=true;
-  }else if(kind==='li'){
+  }else if(kind==='quote'){closeList();html+=`<blockquote class="study-source-quotation">${safe(text)}</blockquote>`;}else if(kind==='li'){
    if(!list){html+='<div class="study-point-grid" role="list">';list=true;}
    const [label,body]=pointParts(text);
    html+=`<div class="study-point" role="listitem"><span class="study-point-symbol">${pointIcon}</span><div>${label?`<h4>${safe(label)}</h4>`:''}<p>${safe(body)}</p></div></div>`;
