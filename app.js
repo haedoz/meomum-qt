@@ -3548,12 +3548,13 @@ document.addEventListener('click',event => {
   if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
   if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
   if(target.ghDeviceRestore){ghDeviceIdentity().then(id=>changeGhDeviceVisibility(id,false));return;}
-  if(target.studySection||'studyTribe' in target||target.studyContrast){
+  if(target.studySection||'studyTribe' in target||target.studyContrast||'studySpirit' in target){
     if('studyTribe' in target)studyLibraryAction({studyTribe:target.studyTribe});
     if(target.studySection)studyLibraryAction({studySection:target.studySection});
     if(target.studyContrast)studyLibraryAction({studyContrast:target.studyContrast});
+    if('studySpirit' in target)studyLibraryAction({studySpirit:target.studySpirit});
     render();
-    const topLevelTab=Boolean(button.closest('.study-section-tabs'));
+    const topLevelTab=Boolean(button.closest('.study-section-tabs'))||'studySpirit' in target;
     const section=topLevelTab?main:target.studyContrast?main.querySelector('.study-comparison-switch'):main.querySelector('.study-full-detail') ?? main.querySelector('.study-reading-content');
     if(section){
       const align=()=>{if(!section.isConnected||view!=='seven-study')return;if(topLevelTab){window.scrollTo({top:0,behavior:'instant'});return;}const header=document.querySelector('.top').getBoundingClientRect().bottom;window.scrollTo({top:Math.max(0,section.getBoundingClientRect().top+window.scrollY-header-10),behavior:'instant'});};
@@ -4989,7 +4990,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v234',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v235',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
