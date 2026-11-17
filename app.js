@@ -4987,7 +4987,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v230',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v231',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
