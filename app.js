@@ -2598,6 +2598,7 @@ function render(studyFromSelection = false) {
   main.classList.toggle('today-view',view==='today');
   main.classList.toggle('records-view',view==='records');
   main.classList.toggle('atlas-view',['atlas','bible-map','seven-study'].includes(view));
+  main.classList.toggle('study-library-view',view==='seven-study');
   main.classList.toggle('settings-view',view==='settings');
   main.classList.toggle('notebook-view',['journals','newyear','journal','prayers','prayer','prayer-edit','thoughts','reading','book-checks'].includes(view));
   main.classList.toggle('torah-view',view==='torah'||view==='torah-notes'||view==='torah-schedule');
@@ -3489,7 +3490,17 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
-  if(target.studySection||'studyTribe' in target){if('studyTribe' in target)studyLibraryAction({studyTribe:target.studyTribe});if(target.studySection)studyLibraryAction({studySection:target.studySection});render();return;}
+  if(target.studySection||'studyTribe' in target){
+    if('studyTribe' in target)studyLibraryAction({studyTribe:target.studyTribe});
+    if(target.studySection)studyLibraryAction({studySection:target.studySection});
+    render();
+    const section=main.querySelector('.study-full-detail') ?? main.querySelector('.study-reading-content');
+    if(section){
+      const align=()=>{if(!section.isConnected||view!=='seven-study')return;const header=document.querySelector('.top').getBoundingClientRect().bottom;window.scrollTo({top:Math.max(0,section.getBoundingClientRect().top+window.scrollY-header-10),behavior:'instant'});};
+      align();requestAnimationFrame(align);
+    }
+    return;
+  }
   if (atlasAction(target) || hebrewAction(target) || hebrewGuideAction(target) || torahScheduleAction(target)) { render(); return; }
   if (target.atlasRef) {
     const address = target.atlasRef;
@@ -4919,7 +4930,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v228',beforeReload:async()=>{flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v229',beforeReload:async()=>{flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
