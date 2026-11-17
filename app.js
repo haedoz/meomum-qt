@@ -3548,9 +3548,10 @@ document.addEventListener('click',event => {
   if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
   if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
   if(target.ghDeviceRestore){ghDeviceIdentity().then(id=>changeGhDeviceVisibility(id,false));return;}
-  if(target.studySection||'studyTribe' in target){
+  if(target.studySection||'studyTribe' in target||target.studyContrast){
     if('studyTribe' in target)studyLibraryAction({studyTribe:target.studyTribe});
     if(target.studySection)studyLibraryAction({studySection:target.studySection});
+    if(target.studyContrast)studyLibraryAction({studyContrast:target.studyContrast});
     render();
     const section=main.querySelector('.study-full-detail') ?? main.querySelector('.study-reading-content');
     if(section){
@@ -4987,7 +4988,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v231',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v232',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
