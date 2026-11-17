@@ -12,7 +12,8 @@ import { bdbSizeSupported, editionKind, editionName, readBdb } from './bdb.js?v=
 
 const ghCloudRepo = 'haedoz/logbible-data';
 let ghDevices = [], ghDeviceScope = '', ghDeviceChecked = 0, ghDeviceBusy = false, ghDeviceInputTimer;
-let ghPresence = null, ghPageLeaving = false;
+let ghPresence = null, ghPageLeaving = false, ghResolvedDeviceId = '', ghOwnDeviceHidden = false;
+const ghDeviceCache = new Map();
 function ghDeviceName() {
   const ua = navigator.userAgent;
   if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1)) return '아이패드';
@@ -22,13 +23,28 @@ function ghDeviceName() {
   if (/Windows/i.test(ua)) return 'Windows PC';
   return '이 기기';
 }
+function ghDeviceMode(){return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches?'app':'browser';}
+function ghModeLabel(mode){return mode==='app'?'홈화면 웹앱':mode==='browser'?'웹 브라우저':'이전 접속';}
+async function ghDeviceIdentity(){
+  if(ghResolvedDeviceId)return ghResolvedDeviceId;
+  let id=localStorage.getItem('logbible-gh-device-id');
+  if(!id)try{id=await loadLocal('sync-device-id');}catch{}
+  if(typeof id!=='string'||! /^[a-zA-Z0-9-]{8,80}$/.test(id))id=crypto.randomUUID();
+  localStorage.setItem('logbible-gh-device-id',id);
+  try{await storeLocal('sync-device-id',id);}catch{}
+  ghResolvedDeviceId=id;return id;
+}
 function ghDeviceMarkup() {
   const user = (localStorage.getItem('logbible-gh-user') || '').replace(/\.json$/i,'').trim();
-  if (!user || ghDeviceScope!==user || !ghDevices.length) return '<p class="muted">'+(ghDeviceBusy?'동기화 기기 확인 중…':'동기화 접속이 확인된 기기가 아직 없어요.')+'</p>';
-  return '<p class="muted">동기화 기기</p><div class="gh-device-chips">'+ghDevices.map(device=>{
-    const recent = device.online===true && Date.now()-device.seen<90000;
-    return '<span class="gh-device '+(recent?'online':'')+'"><i aria-hidden="true"></i><span>'+esc(device.name)+'</span><small>'+(recent?'접속 중':ghLastSeen(device.seen))+'</small></span>';
-  }).join('')+'</div>';
+  const current=ghResolvedDeviceId||localStorage.getItem('logbible-gh-device-id');
+  let html='<div class="gh-devices-heading"><span>동기화 기기</span><small>'+((ghDeviceScope===user)?ghDevices.length:0)+'</small></div>';
+  if (!user || ghDeviceScope!==user || !ghDevices.length) html+='<p class="gh-devices-empty">'+(ghDeviceBusy?'동기화 기기 확인 중…':'표시할 동기화 기기가 없어요.')+'</p>';
+  else html+='<div class="gh-managed-devices">'+ghDevices.map(device=>{
+    const recent = device.online===true && Date.now()-device.seen<90000 && (device.id!==current||ghIsOnline());
+    return '<div class="gh-managed-device '+(recent?'online':'')+'"><i class="gh-device-dot" aria-hidden="true"></i><div class="gh-device-copy"><div><strong>'+esc(device.name)+'</strong>'+(device.id===current?'<span class="gh-this-device">이 기기</span>':'')+'</div><p>'+ghModeLabel(device.mode)+'<span>·</span>'+(recent?'접속 중':ghLastSeen(device.seen))+'</p></div><button type="button" class="gh-device-remove" data-gh-device-remove="'+esc(device.id)+'" aria-label="'+esc(device.name)+' '+ghModeLabel(device.mode)+' 기기 목록에서 삭제"'+(ghDeviceBusy?' disabled':'')+'>'+icon('trash')+'</button></div>';
+  }).join('')+'</div><p class="gh-device-hint">기기 목록만 관리하며, 저장된 묵상과 성경 자료는 유지돼요.</p>';
+  if(ghOwnDeviceHidden&&ghDeviceScope===user)html+='<button type="button" class="text-action gh-device-restore" data-gh-device-restore="true"'+(ghDeviceBusy?' disabled':'')+'>이 기기 다시 표시</button>';
+  return html;
 }
 function ghLastSeen(seen) {
   const minutes = Math.floor(Math.max(0,Date.now()-seen)/60000);
@@ -40,72 +56,99 @@ function ghLastSeen(seen) {
 function ghIsOnline() {
   return navigator.onLine!==false && !ghPageLeaving && !document.hidden && localStorage.getItem('logbible-gh-auto')!=='false';
 }
+const ghDeviceEncode=value=>btoa(Array.from(new TextEncoder().encode(JSON.stringify(value)),byte=>String.fromCharCode(byte)).join(''));
+function ghDeviceDecode(entry){try{return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(entry.content.replace(/\s/g,'')),c=>c.charCodeAt(0))));}catch{return null;}}
+function ghDeviceConnection(){
+ const token=localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,''),user=localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
+ return token&&user?{user,headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'},base:'https://api.github.com/repos/'+ghCloudRepo+'/contents/'}:null;
+}
+function renderGhDevices(){const panel=document.getElementById('gh-device-list');if(panel)panel.innerHTML=ghDeviceMarkup();}
 async function markGhOffline() {
-  if (!ghPresence) return;
+  if (!ghPresence||ghDeviceBusy) return;
   const {url,headers,sha,user} = ghPresence;
   if (user!==localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim()) return;
-  const device = {name:ghDeviceName(),seen:Date.now(),online:false};
-  const content = btoa(Array.from(new TextEncoder().encode(JSON.stringify(device)),byte=>String.fromCharCode(byte)).join(''));
+  const device={name:ghDeviceName(),mode:ghDeviceMode(),seen:Date.now(),online:false};
   try {
-    const response = await fetch(url,{method:'PUT',keepalive:true,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Mark sync device offline',content,sha})});
-    if (response.ok) {
-      const updated = await response.json();
-      if (ghPresence?.url===url) ghPresence.sha = updated.content.sha;
-      ghDeviceChecked = 0;
-    }
-  } catch { /* Heartbeat expiry also handles an interrupted app exit. */ }
+    const response=await fetch(url,{method:'PUT',keepalive:true,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Mark sync device offline',content:ghDeviceEncode(device),sha})});
+    if(response.ok){const updated=await response.json();if(ghPresence?.url===url)ghPresence.sha=updated.content.sha;ghDeviceChecked=0;}
+  }catch{}
 }
-async function refreshGhDevices(force = false) {
-  const token = localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
-  const user = localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
-  if (navigator.onLine===false || !token || !user || localStorage.getItem('logbible-gh-auto')==='false' || ghDeviceBusy) return;
-  ghDeviceBusy = true;
-  const scope = user;
-  try {
-    let id = localStorage.getItem('logbible-gh-device-id');
-    if (!id) { id = crypto.randomUUID(); localStorage.setItem('logbible-gh-device-id',id); }
-    const path = 'sync-devices/'+encodeURIComponent(user)+'/'+id+'.json';
-    const headers = {Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
-    const url = 'https://api.github.com/repos/'+ghCloudRepo+'/contents/';
-    let response;
-    if (force || ghDeviceScope!==user || Date.now()-ghDeviceChecked>=45000) {
-    response = await fetch(url+path,{headers,cache:'no-store'});
-    if (!response.ok && response.status!==404) throw Error('device');
-    const previous = response.ok?await response.json():null;
-    const device = {name:ghDeviceName(),seen:Date.now(),online:ghIsOnline()};
-    const bytes = new TextEncoder().encode(JSON.stringify(device));
-    const content = btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''));
-    response = await fetch(url+path,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Update sync device',content,...(previous?.sha?{sha:previous.sha}:{})})});
-    if (!response.ok) throw Error('device');
-    const updated = await response.json();
-    ghPresence = {url:url+path,headers,sha:updated.content.sha,user};
-    ghDeviceChecked = Date.now();
-    }
-    response = await fetch(url+'sync-devices/'+encodeURIComponent(user),{headers,cache:'no-store'});
-    if (!response.ok) throw Error('devices');
-    const files = await response.json();
-    const devices = await Promise.all(files.filter(file=>file.type==='file' && /\.json$/.test(file.name)).slice(0,30).map(async file=>{
-      const result = await fetch(url+file.path.split('/').map(encodeURIComponent).join('/'),{headers,cache:'no-store'});
-      if (!result.ok) return null;
-      const entry = await result.json();
-      try {
-        const text = atob(entry.content.replace(/\s/g,''));
-        const item = JSON.parse(new TextDecoder().decode(Uint8Array.from(text,c=>c.charCodeAt(0))));
-        return typeof item.name==='string' && Number.isFinite(item.seen)?item:null;
-      } catch { return null; }
-    }));
-    if (localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim()!==scope) return;
-    ghDevices = devices.filter(Boolean).sort((a,b)=>b.seen-a.seen);
-    ghDeviceScope = scope;
-    const panel = document.getElementById('gh-device-list');
-    if (panel) panel.innerHTML = ghDeviceMarkup();
-  } catch { ghDeviceChecked = 0; }
-  finally {
-    ghDeviceBusy = false;
-    if (ghPresence && !ghIsOnline()) markGhOffline();
-    const panel = document.getElementById('gh-device-list');
-    if (panel) panel.innerHTML = ghDeviceMarkup();
+async function refreshGhDevices(force=false){
+ const connection=ghDeviceConnection();
+ if(navigator.onLine===false||!connection||ghDeviceBusy)return;
+ ghDeviceBusy=true;
+ const {user,headers,base}=connection;
+ try{
+  const id=await ghDeviceIdentity(),path='sync-devices/'+encodeURIComponent(user)+'/'+id+'.json';
+  if(force||ghDeviceScope!==user||Date.now()-ghDeviceChecked>=45000){
+   let response=await fetch(base+path,{headers,cache:'no-store'});
+   if(!response.ok&&response.status!==404)throw Error('device');
+   const previous=response.ok?await response.json():null,record=previous?ghDeviceDecode(previous):null;
+   ghOwnDeviceHidden=record?.removed===true;
+   if(ghOwnDeviceHidden){ghPresence=null;}
+   else if(localStorage.getItem('logbible-gh-auto')!=='false'){
+    const device={name:ghDeviceName(),mode:ghDeviceMode(),seen:Date.now(),online:ghIsOnline()};
+    response=await fetch(base+path,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:'Update sync device',content:ghDeviceEncode(device),...(previous?.sha?{sha:previous.sha}:{})})});
+    if(!response.ok)throw Error('device');
+    const updated=await response.json();ghPresence={url:base+path,headers,sha:updated.content.sha,user};
+   }
+   ghDeviceChecked=Date.now();
   }
+  const response=await fetch(base+'sync-devices/'+encodeURIComponent(user),{headers,cache:'no-store'});
+  if(!response.ok&&response.status!==404)throw Error('devices');
+  const files=response.ok?await response.json():[];
+  if(!Array.isArray(files))throw Error('devices');
+  const valid=files.filter(file=>file.type==='file'&&/^[a-zA-Z0-9-]{8,80}\.json$/.test(file.name)&&file.path==='sync-devices/'+user+'/'+file.name);
+  const devices=[];
+  // Cache unchanged records and limit concurrent reads; do not silently omit older entries.
+  for(let offset=0;offset<valid.length;offset+=6){
+   devices.push(...await Promise.all(valid.slice(offset,offset+6).map(async file=>{
+    const cacheKey=user+'/'+file.name,cached=ghDeviceCache.get(cacheKey);
+    if(cached&&cached.sha===file.sha)return cached.device;
+    const result=await fetch(base+file.path.split('/').map(encodeURIComponent).join('/'),{headers,cache:'no-store'});
+    if(!result.ok)return null;
+    const entry=await result.json(),item=ghDeviceDecode(entry);
+    const device=item?.removed!==true&&typeof item?.name==='string'&&Number.isFinite(item?.seen)?{...item,id:file.name.slice(0,-5)}:null;
+    ghDeviceCache.set(cacheKey,{sha:file.sha,device});return device;
+   })));
+  }
+  if(ghDeviceConnection()?.user!==user)return;
+  ghDevices=devices.filter(Boolean).sort((a,b)=>b.seen-a.seen);ghDeviceScope=user;
+ }catch{ghDeviceChecked=0;}finally{ghDeviceBusy=false;if(ghPresence&&!ghIsOnline())markGhOffline();renderGhDevices();}
+}
+function confirmGhDeviceRemoval(id){
+ const device=ghDevices.find(item=>item.id===id);
+ if(!device||ghDeviceScope!==ghDeviceConnection()?.user)return;
+ dialog('기기 목록에서 삭제','<div class="gh-remove-summary"><strong>'+esc(device.name)+'</strong><span>'+ghModeLabel(device.mode)+' · '+ghLastSeen(device.seen)+'</span></div><p>이 접속 기록을 목록에서 삭제할까요? 묵상과 성경 자료는 삭제되지 않으며, 해당 기기의 동기화 권한을 해제하는 기능은 아니에요.</p><div class="gh-remove-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-gh-device-confirm="'+esc(id)+'">목록에서 삭제</button></div>','gh-device-remove');
+}
+async function changeGhDeviceVisibility(id,removed){
+ const connection=ghDeviceConnection();
+ if(!connection||ghDeviceScope!==connection.user||ghDeviceBusy)return;
+ if(navigator.onLine===false){notify('인터넷에 연결한 뒤 기기 목록을 변경해 주세요.');return;}
+ if(removed&&!ghDevices.some(item=>item.id===id))return;
+ if(!removed&&id!==await ghDeviceIdentity())return;
+ ghDeviceBusy=true;renderGhDevices();
+ const {user,headers,base}=connection;
+ try{
+  const url=base+'sync-devices/'+encodeURIComponent(user)+'/'+encodeURIComponent(id)+'.json';
+  for(let attempt=0;attempt<3;attempt++){
+   const response=await fetch(url,{headers,cache:'no-store'});
+   if(!response.ok&&response.status!==404)throw Error('기기 정보를 가져오지 못했어요.');
+   const entry=response.ok?await response.json():null,previous=entry?ghDeviceDecode(entry):null;
+   if(ghDeviceConnection()?.user!==user)throw Error('사용자 설정이 변경됐어요.');
+   const device=removed?{name:previous?.name??'기기',mode:previous?.mode,seen:previous?.seen??Date.now(),online:false,removed:true,removedAt:Date.now()}:{name:ghDeviceName(),mode:ghDeviceMode(),seen:Date.now(),online:ghIsOnline()};
+   const put=await fetch(url,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({message:removed?'Remove device from sync list':'Show sync device',content:ghDeviceEncode(device),...(entry?.sha?{sha:entry.sha}:{})})});
+   if((put.status===409||put.status===422)&&attempt<2)continue;
+   if(!put.ok)throw Error('기기 목록을 변경하지 못했어요.');
+   ghDeviceCache.delete(user+'/'+id+'.json');
+   if(removed)ghDevices=ghDevices.filter(item=>item.id!==id);
+   if(id===ghResolvedDeviceId){ghOwnDeviceHidden=removed;ghPresence=null;}
+   ghDeviceChecked=0;
+   if(modal.querySelector('[name="gh-device-remove"]'))modal.close();
+   notify(removed?'기기 목록에서 삭제했어요.':'이 기기를 다시 표시해요.');
+   return;
+  }
+ }catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');}finally{ghDeviceBusy=false;renderGhDevices();refreshGhDevices(true);}
 }
 
 const icons = {
@@ -140,6 +183,15 @@ const icons = {
 const icon = name => '<svg viewBox="0 0 24 24" aria-hidden="true">'+icons[name]+'</svg>';
 document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = icon(el.dataset.icon));
 const main = document.querySelector('#main');
+const bibleFileInput=document.getElementById('bdb-files') ?? document.body.appendChild(Object.assign(document.createElement('input'),{id:'bdb-files',type:'file',multiple:true}));
+bibleFileInput.className='persistent-bible-file';
+bibleFileInput.setAttribute('aria-label','성경 번역본 및 자료 파일 선택');
+bibleFileInput.removeAttribute('accept');
+function finishBibleFilePicker(){pickingBibleFiles=false;delete document.documentElement.dataset.filePickerOpen;}
+bibleFileInput.addEventListener('change',()=>{const files=Array.from(bibleFileInput.files||[]);bibleFileInput.value='';finishBibleFilePicker();if(files.length)importBibleFiles(files);});
+bibleFileInput.addEventListener('cancel',finishBibleFilePicker);
+window.addEventListener('focus',()=>{if(pickingBibleFiles)setTimeout(finishBibleFilePicker,500);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pickingBibleFiles)setTimeout(finishBibleFilePicker,500);});
 const modal = document.querySelector('#modal');
 const toast = document.querySelector('#toast');
 const readerSearchForm = document.querySelector('#reader-search');
@@ -176,7 +228,7 @@ let personalSearchSubmitted = false;
 const selectedSearchVerses = new Set();
 let readerSwipe, ignoreReaderSwipeClickUntil = 0;
 const localLanguages = {};
-let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false;
+let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false, pickingBibleFiles = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
 const markerColors = {gold:'#e6bc43',sage:'#7cb668',rose:'#dc7d9c',blue:'#6d9ddf'};
 let lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
@@ -272,9 +324,9 @@ function hasLocalEdition(id) {
   return [editions,commentaries,originals,dictionaries].some(group=>Object.hasOwn(group,id));
 }
 async function refreshLocalEditions() {
-  if (!db || importingEditions || deletingEdition) return;
+  if (!db || importingEditions || deletingEdition || pickingBibleFiles) return;
   const library = await readLocalEditions().catch(()=>null);
-  if (!library || importingEditions || deletingEdition) return;
+  if (!library || importingEditions || deletingEdition || pickingBibleFiles) return;
   const available = new Set(library.keys.map(key=>key.slice(6)));
   const removed = installedEditionIds().filter(id=>!available.has(id));
   if (!library.added.length && !removed.length) return;
@@ -381,7 +433,6 @@ function importPanel() {
   return '<div class="section-head"><h2 id="local-library-heading" tabindex="-1">자료 추가하기</h2></div><section class="card stack local-editions">'+
     '<p>사용할 성경 번역본 파일(.bdb)을 추가해 주세요. 주석(.cdb), 원전분해(.sdb), 원어사전(.dct) 파일도 추가할 수 있어요. 가져온 파일은 이 기기에 안전하게 저장돼요.</p>'+
     '<button class="btn primary" data-action="choose-bdb" '+(importingEditions || deletingEdition?'disabled':'')+'>'+(importingEditions?'읽는 중…':'성경 번역본·자료 파일 추가')+'</button>'+
-    '<input id="bdb-files" type="file" accept=".bdb,.cdb,.sdb,.dct,application/vnd.sqlite3,application/x-sqlite3,application/octet-stream" multiple hidden>'+
     '<p id="bdb-status" class="muted" role="status">'+esc(importMessage)+'</p>'+
     '</section>'+
     '<div class="section-head" style="margin-top:24px;"><div class="row"><h2>내 성경 자료 목록</h2><span class="reading-badge">'+installedCards.length+'개 보관 중</span></div></div>'+
@@ -395,7 +446,10 @@ async function importBibleFiles(files) {
   render();
   const results = [];
   try {
-    for (const file of files) {
+    for (const [index,file] of files.entries()) {
+      importMessage=(index+1)+' / '+files.length+' · '+file.name.normalize('NFC')+' 읽는 중…';
+      const status=document.getElementById('bdb-status');if(status)status.textContent=importMessage;
+      await new Promise(resolve=>setTimeout(resolve,0));
       try {
         if (!bdbSizeSupported(file.size)) throw Error('size');
         const edition = await readBdb(new Uint8Array(await file.arrayBuffer()),file.name,chapterCounts);
@@ -410,8 +464,9 @@ async function importBibleFiles(files) {
         await storeLocal('bible:'+edition.id,edition);
         registerLocalEdition(edition);
         results.push(edition.label+' · 추가됨 ('+({bible:'성경 번역본',commentary:'주석',original:'원전분해',dictionary:'원어사전'})[kind]+')');
-      } catch {
-        results.push(file.name.normalize('NFC').slice(0,80)+' · 가져오지 못했어요. 파일 형식이나 저장 공간을 확인해 주세요.');
+      } catch(error) {
+        const reason=error?.name==='QuotaExceededError'?'기기의 저장 공간이 부족해요.':!db||error?.name==='InvalidStateError'?'기기 저장소에 접근하지 못했어요. 앱을 다시 열어 시도해 주세요.':error?.name==='NotReadableError'?'파일을 읽지 못했어요. 파일 앱에서 다운로드를 완료한 뒤 다시 선택해 주세요.':error?.message==='size'?'지원하는 파일 크기는 100바이트부터 96MB까지예요.':'파일 형식을 읽지 못했어요. BDB·CDB·SDB·DCT 파일인지 확인해 주세요.';
+        results.push(file.name.normalize('NFC').slice(0,80)+' · '+reason);
       }
     }
   } finally {
@@ -3100,7 +3155,7 @@ const actions = {
       render();
     }
   },
-  'choose-bdb'() { document.querySelector('#bdb-files').click(); },
+  'choose-bdb'() { if(importingEditions||deletingEdition)return;const input=document.getElementById('bdb-files');input.value='';pickingBibleFiles=true;document.documentElement.dataset.filePickerOpen='true';input.click(); },
   'reset-reading-range'() {
     const canon = canonChapters();
     if (!canon.length) return;
@@ -3490,6 +3545,9 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
+  if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
+  if(target.ghDeviceRestore){ghDeviceIdentity().then(id=>changeGhDeviceVisibility(id,false));return;}
   if(target.studySection||'studyTribe' in target){
     if('studyTribe' in target)studyLibraryAction({studyTribe:target.studyTribe});
     if(target.studySection)studyLibraryAction({studySection:target.studySection});
@@ -3943,7 +4001,6 @@ main.addEventListener('change',async event => {
   if (field.id==='custom-font-file-grc' && field.files[0]) return importCustomFont(field.files[0], 'grc');
   if (field.id==='custom-font-file-en' && field.files[0]) return importCustomFont(field.files[0], 'en');
   if (field.id==='custom-font-file' && field.files[0]) return importCustomFont(field.files[0], 'he');
-  if (field.id==='bdb-files') return importBibleFiles([...field.files]);
   if (field.id==='backup-file' && field.files[0]) {
     try {
       pendingImport = validatedBackup(JSON.parse(await field.files[0].text()));
@@ -4930,13 +4987,13 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v229',beforeReload:async()=>{flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v230',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
 let isGhSyncing = false;
 async function checkGhAutoSync(force=false,manual=false,announce=false) {
-  if(isGhSyncing)return;
+  if(isGhSyncing||pickingBibleFiles||importingEditions)return;
   const token=localStorage.getItem('logbible-gh-token')?.trim().replace(/[^\x21-\x7E]/g,'');
   const user=localStorage.getItem('logbible-gh-user')?.replace(/\.json$/i,'').trim();
   if(!token||!user){if(announce)notify('토큰과 사용자 파일명을 먼저 입력해 주세요.');return;}
@@ -4978,7 +5035,7 @@ async function checkGhAutoSync(force=false,manual=false,announce=false) {
       if(localStorage.getItem(key)===revision)localStorage.removeItem(key);
       localStorage.setItem('logbible-gh-last-sync',new Date().toLocaleString('ko-KR'));
       applyDisplay();updateGhSyncStatus();
-      if(!['bible','commentary','original'].includes(view)&&!document.activeElement?.matches('input,textarea')&&!main.querySelector('[data-torah-note],[data-thought-editor],[data-prayer-editor],[data-journal-field]'))render();
+      if(!pickingBibleFiles&&!importingEditions&&!['bible','commentary','original'].includes(view)&&!document.activeElement?.matches('input,textarea')&&!main.querySelector('[data-torah-note],[data-thought-editor],[data-prayer-editor],[data-journal-field]'))render();
       if(announce)notify('기록을 안전하게 동기화했어요.');
       refreshGhDevices();
       break;

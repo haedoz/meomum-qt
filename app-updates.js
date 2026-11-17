@@ -8,7 +8,7 @@ export function startAppUpdates({version,beforeReload=async()=>true}){
   channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.version ?? null);};
   try{worker.postMessage({type:'APP_VERSION'},[channel.port2]);}catch{clearTimeout(timer);channel.port1.close();resolve(null);}
  });
- const safeToReload=()=>!document.hidden&&!document.querySelector('dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable="true"]')&&!document.querySelector('#main textarea,form[data-thought-editor],form[data-prayer-editor],form[data-daily-note],form[data-torah-note]');
+ const safeToReload=()=>!document.hidden&&!document.querySelector('dialog[open]')&&!document.documentElement?.dataset.filePickerOpen&&!document.activeElement?.matches('input,textarea,[contenteditable="true"]')&&!document.querySelector('#main textarea,form[data-thought-editor],form[data-prayer-editor],form[data-daily-note],form[data-torah-note]');
  async function apply(){
   if(reloading||!pending||!safeToReload())return;
   reloading=true;
@@ -17,7 +17,8 @@ export function startAppUpdates({version,beforeReload=async()=>true}){
  async function compare(){
   const installed=await workerVersion(navigator.serviceWorker.controller);
   const shellVersion=document.querySelector('meta[name=app-version]')?.content;
-  if(installed&&(installed!==version||shellVersion!==version)){pending=true;await apply();}
+  const newer=Number(installed?.match(/v(\d+)$/)?.[1])>Number(version.match(/v(\d+)$/)?.[1]);
+  if(installed&&(newer||(installed===version&&shellVersion!==version))){pending=true;await apply();}
  }
  async function check(force=false){
   if(checking||navigator.onLine===false||document.hidden||!registration)return;
