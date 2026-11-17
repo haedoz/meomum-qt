@@ -1,4 +1,4 @@
-import {spiritStudyScreen,spiritStudyAction} from './spirit-study.js';
+import {spiritStudyAction} from './spirit-study.js';
 import {startAppUpdates} from './app-updates.js';
 import {libraryScreen,sevenStudyScreen,studyLibraryAction} from './study-library.js';
 import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
@@ -573,7 +573,7 @@ function navigate(screen, context, studyFromSelection = false) {
 }
 function goBack() {
   if (history.state?.qtPrevious) return history.back();
-  const fallback = {'spirit-study':'atlas','bible-map':'atlas','seven-study':'atlas','torah-schedule':'calendar','hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records','torah-notes':'records',torah:'calendar',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
+  const fallback = {'bible-map':'atlas','seven-study':'atlas','torah-schedule':'calendar','hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records','torah-notes':'records',torah:'calendar',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
   history.replaceState(null,'','#'+target);
   render();
@@ -2576,7 +2576,8 @@ function bundlesScreen() {
 function render(studyFromSelection = false) {
   clearTorahTapFeedback();
   flushReadingBookmark();
-  const screens = {'torah-schedule':torahScheduleScreen,torah:torahScreen,'torah-notes':torahNotesScreen,'hebrew-guide':hebrewGuideScreen,atlas:libraryScreen,'spirit-study':spiritStudyScreen,'seven-study':sevenStudyScreen,'bible-map':()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  const screens = {'torah-schedule':torahScheduleScreen,torah:torahScreen,'torah-notes':torahNotesScreen,'hebrew-guide':hebrewGuideScreen,atlas:libraryScreen,'seven-study':sevenStudyScreen,'bible-map':()=>atlasScreen(address=>{const edition=[state.reader.edition,...Object.keys(editions)].find(id=>verseText(id+'/'+address));return edition?verseText(edition+'/'+address):'';}),today:todayScreen,'today-reading':todayReadingScreen,bible:readerScreen,calendar:calendarScreen,thoughts:thoughtsScreen,journals:journalsScreen,records:recordsScreen,bundles:bundlesScreen,settings:settingsScreen,prayers:prayersScreen,newyear:newYearScreen,journal:journalScreen,prayer:prayerScreen,reading:readingScreen,'book-checks':bookChecksScreen,commentary:()=>studyScreen('commentary'),original:()=>studyScreen('original'),'prayer-edit':prayerEditorScreen};
+  if(location.hash==='#spirit-study'){studyLibraryAction({studySection:'spirits'});history.replaceState(history.state,'','#seven-study');}
   const hash = location.hash==='#search'?'bible':(location.hash.slice(1) || state.menuOrder[0]);
   const torahDate=hash.startsWith('torah/')&&validDay(hash.slice(6))?hash.slice(6):'';
   if(torahDate)selectedTorahDay=torahDate;
@@ -2654,8 +2655,8 @@ function render(studyFromSelection = false) {
   main.classList.toggle('journal-view',view==='journal');
   main.classList.toggle('today-view',view==='today');
   main.classList.toggle('records-view',view==='records');
-  main.classList.toggle('atlas-view',['atlas','bible-map','seven-study','spirit-study'].includes(view));
-  main.classList.toggle('study-library-view',['seven-study','spirit-study'].includes(view));
+  main.classList.toggle('atlas-view',['atlas','bible-map','seven-study'].includes(view));
+  main.classList.toggle('study-library-view',['seven-study'].includes(view));
   main.classList.toggle('settings-view',view==='settings');
   main.classList.toggle('notebook-view',['journals','newyear','journal','prayers','prayer','prayer-edit','thoughts','reading','book-checks'].includes(view));
   main.classList.toggle('torah-view',view==='torah'||view==='torah-notes'||view==='torah-schedule');
@@ -2712,7 +2713,7 @@ function render(studyFromSelection = false) {
   }
   resizeEditorWriting();
   updateVerseScrollRoom();
-  const navView = ['bible-map','seven-study','spirit-study'].includes(view)?'atlas':['hebrew-guide','torah','torah-schedule'].includes(view)?'calendar':view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','torah-notes','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
+  const navView = ['bible-map','seven-study'].includes(view)?'atlas':['hebrew-guide','torah','torah-schedule'].includes(view)?'calendar':view==='today-reading'?'today':['commentary','original'].includes(view)?'bible':['journals','torah-notes','prayers','thoughts','newyear','reading','book-checks','prayer','prayer-edit','journal'].includes(view)?'records':view;
   state.menuOrder.forEach((route,index)=>{
     const button = menuItems.get(route);
     if (menuBar.children[index]!==button) menuBar.insertBefore(button,menuBar.children[index]);
@@ -3547,7 +3548,7 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
-  if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='spirit-study')window.scrollTo({top:0,behavior:'instant'});});return;}
+  if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
   if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
   if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
   if(target.ghDeviceRestore){ghDeviceIdentity().then(id=>changeGhDeviceVisibility(id,false));return;}
@@ -4992,7 +4993,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v237',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v238',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
