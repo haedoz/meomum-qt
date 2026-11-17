@@ -2627,6 +2627,7 @@ function render(studyFromSelection = false) {
   const isReading=['bible','commentary','original'].includes(view);
   cancelVerseArrival();
   main.innerHTML=screens[view](prayerId || editorId);
+  main.querySelectorAll('[data-icon]').forEach(el=>{if(icons[el.dataset.icon])el.innerHTML=icon(el.dataset.icon);});
   if(isReading){
     const toolbar=document.createElement('div');toolbar.className='reading-toolbar';
     const modes=[['bible','본문','book'],['commentary','주석','comment'],['original','원전','note']];
@@ -4920,7 +4921,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js',{up
   await navigator.serviceWorker.ready;
   const worker=registration.installing||registration.waiting;
   if(worker&&worker.state!=='activated')await new Promise(resolve=>worker.addEventListener('statechange',()=>{if(['activated','redundant'].includes(worker.state))resolve();}));
-  if(await caches.has('meomum-pages-v225')){
+  if(await caches.has('meomum-pages-v226')){
     navigator.storage?.persist?.().catch(()=>{});
   }
 }).catch(() => {});
