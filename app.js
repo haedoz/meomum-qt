@@ -3553,9 +3553,10 @@ document.addEventListener('click',event => {
     if(target.studySection)studyLibraryAction({studySection:target.studySection});
     if(target.studyContrast)studyLibraryAction({studyContrast:target.studyContrast});
     render();
-    const section=main.querySelector('.study-full-detail') ?? main.querySelector('.study-reading-content');
+    const topLevelTab=Boolean(button.closest('.study-section-tabs'));
+    const section=topLevelTab?main:target.studyContrast?main.querySelector('.study-comparison-switch'):main.querySelector('.study-full-detail') ?? main.querySelector('.study-reading-content');
     if(section){
-      const align=()=>{if(!section.isConnected||view!=='seven-study')return;const header=document.querySelector('.top').getBoundingClientRect().bottom;window.scrollTo({top:Math.max(0,section.getBoundingClientRect().top+window.scrollY-header-10),behavior:'instant'});};
+      const align=()=>{if(!section.isConnected||view!=='seven-study')return;if(topLevelTab){window.scrollTo({top:0,behavior:'instant'});return;}const header=document.querySelector('.top').getBoundingClientRect().bottom;window.scrollTo({top:Math.max(0,section.getBoundingClientRect().top+window.scrollY-header-10),behavior:'instant'});};
       align();requestAnimationFrame(align);
     }
     return;
@@ -4988,7 +4989,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v232',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v233',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
