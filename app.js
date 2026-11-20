@@ -2327,7 +2327,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,240))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,241))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -4201,7 +4201,9 @@ function applyDisplay() {
   root.style.setProperty('--reading-tracking',displayValue('letterSpace',state.display.letterSpace)+'px');
   const dark = state.theme==='dark' || (state.theme==='system' && matchMedia('(prefers-color-scheme: dark)').matches);
   root.dataset.appearance = dark?'dark':'light';
-  try{localStorage.setItem('logbible-launch-paper',getComputedStyle(root).getPropertyValue('--paper').trim());localStorage.setItem('logbible-launch-ink',getComputedStyle(root).getPropertyValue('--muted').trim());}catch{}
+  root.style.colorScheme=dark?'dark':'only light';
+  root.style.backgroundColor=getComputedStyle(root).getPropertyValue('--paper').trim();
+  try{localStorage.setItem('logbible-launch-mode',state.theme);localStorage.setItem('logbible-launch-paper',getComputedStyle(root).getPropertyValue('--paper').trim());localStorage.setItem('logbible-launch-ink',getComputedStyle(root).getPropertyValue('--muted').trim());}catch{}
   document.querySelector('meta[name=color-scheme]').content = dark?'dark':'only light';
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(root).getPropertyValue('--paper').trim();
 }
@@ -4994,7 +4996,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v240',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v241',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
