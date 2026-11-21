@@ -959,19 +959,12 @@ function cardHit(label,attributes) {
   return '<button type="button" class="card-hit" aria-label="'+esc(label)+'" '+attributes+'></button>';
 }
 function todaySummary(day,journal) {
-  const prayers = state.prayers.filter(item=>item.day===day);
-  const thoughts = prayers.filter(item=>item.kind==='thought').length;
-  const entries = [
-    ['comment','묵상 노트',journalsOn(day).filter(([,entry])=>entry.done||hasJournalContent(entry)).length+'건','data-start-journal="true"'],
-    ['prayer','기도',prayers.length-thoughts+'건','data-nav="prayers"'],
-    ['note','오늘의 생각',thoughts+'건','data-action="open-today-thoughts" aria-expanded="'+todayThoughtsOpen+'"'],
+  const entries=[
+    ['comment','묵상 노트','data-start-journal="true"'],
+    ['prayer','기도','data-action="add-prayer"'],
+    ['note','오늘의 생각','data-action="add-thought"'],
   ];
-  return '<section class="today-summary" aria-labelledby="today-summary-heading"><div class="row today-summary-heading">'+
-    '<h2 id="today-summary-heading">오늘의 요약</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 묵상 달력 '+icon('right')+'</button></div>'+
-    '<div class="today-summary-grid">'+entries.map(([symbol,label,value,action])=>
-      '<button type="button" class="today-summary-item" '+action+'><span>'+icon(symbol)+label+'</span><strong>'+value+'</strong>'+
-      (symbol==='check'?'<progress class="today-reading-progress" aria-hidden="true" max="'+state.readingGoal+'" value="'+Math.min(read,state.readingGoal)+'"></progress>':'')+
-      '</button>').join('')+'</div>'+todayThoughts(day)+'</section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading">오늘의 기록</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -2333,7 +2326,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,248))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,249))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -5017,7 +5010,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v248',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v249',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
