@@ -153,8 +153,6 @@ async function changeGhDeviceVisibility(id,removed){
 }
 
 const icons = {
-  mannaDawn:'<path d="M3 17h18M5 21h14M7 17a5 5 0 0 1 10 0M12 3v3M4.2 8.2l2.1 2.1m13.5-2.1-2.1 2.1M2 13h2m16 0h2"/>',
-  companionSteps:'<ellipse cx="8" cy="7" rx="2.3" ry="4" transform="rotate(-22 8 7)"/><path d="M6.4 13c1.8-.8 3.4-.4 3.8 1l.4 1.5c.3 1.3-2.8 2.1-3.2.8z"/><ellipse cx="16" cy="13" rx="2.3" ry="4" transform="rotate(22 16 13)"/><path d="M14.2 19c1.8.8 3.4.4 3.8-1l.4-1.5c.3-1.3-2.8-2.1-3.2-.8z"/>', 
   spiritFlame:'<path d="M13 3c1 5-4 6-3 10 2-1 3-3 3-4 4 3 6 5 6 8a7 7 0 0 1-14 0c0-4 3-7 8-14Z"/>',
   brandBook:'<path d="m12 7-8-4v14l8 4 8-4V3l-8 4Zm0 0v14M6 8v6m3-5v6M16 5v6l2-1V4"/>',
   library:'<path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l4-1 4 15-4 1z" transform="translate(-1 0)"/>',
@@ -535,7 +533,7 @@ function triggerGhAutoBackup() {
   localStorage.setItem(ghQueueKey(),crypto.randomUUID());
   updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2550);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2560);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -971,7 +969,7 @@ function todaySummary(day,journal) {
     ['prayer','기도 노트','data-action="add-prayer"'],
     ['note','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span class="companion-title-symbol" aria-hidden="true">'+icon('companionSteps')+'</span><span>동행의 발자취</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행의 발걸음</span><span class="companion-title-trail" aria-hidden="true"></span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -1022,7 +1020,7 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'오늘의 말씀 본문으로 이동':'성경 번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':'data-nav="settings" data-import-link';
-  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-symbol" aria-hidden="true">'+icon('mannaDawn')+'<span class="manna-title-glint"></span></span><span>오늘의 만나</span></h1></header>'+
+  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-text">오늘의 만나</span></h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
     (key?'<div class="today-quote"><div><blockquote>'+esc(quote)+
@@ -2333,7 +2331,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,255))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,256))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -5017,7 +5015,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v255',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v256',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

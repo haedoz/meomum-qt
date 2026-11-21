@@ -3444,15 +3444,15 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 :root[data-appearance=dark] :is(.devotion-feed-page,.yearly-page,.post-editor,.prayer-record,.thought-list,dialog,.torah-note-editor) .destructive{color:#ee939c!important}
 .btn.saved-complete{background:var(--light);color:var(--green);border:1px solid color-mix(in srgb,var(--green) 25%,var(--line));font-weight:650}
 
-/* Small theme-aware identity marks for the daily headings. */
-.today-view .today-heading{padding-bottom:0;margin-bottom:17px;gap:12px}
-.today-view .today-heading h1{display:flex;align-items:center;gap:10px;line-height:1.25;font-size:clamp(24px,3vw,29px);letter-spacing:-.045em}
-.manna-title-symbol{position:relative;display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:13px;background:linear-gradient(140deg,color-mix(in srgb,var(--green) 10%,var(--card)),var(--card));color:var(--green);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 40%,transparent)}
-.manna-title-symbol svg{width:23px;height:23px;stroke-width:1.45}
-.manna-title-glint{position:absolute;right:5px;top:5px;width:4px;height:4px;border-radius:50%;background:var(--green);opacity:.35}
-.today-view .today-compose .today-summary-heading{margin:0 1px 10px;align-items:center}
-.today-view .today-compose .today-summary-heading h2{display:flex;align-items:center;gap:7px;font-size:15px;letter-spacing:-.025em}
-.companion-title-symbol{display:grid;place-items:center;width:26px;height:26px;flex:none;border-radius:9px;background:color-mix(in srgb,var(--green) 7%,var(--card));color:var(--green)}
-.companion-title-symbol svg{width:16px;height:16px;stroke-width:1.45}
+/* Editorial headings: no icon badges or extra cards. */
+.today-view .today-heading{padding-bottom:0;margin-bottom:18px;gap:12px}
+.today-view .today-heading h1{display:flex;align-items:center;line-height:1.3;font-size:clamp(25px,3vw,30px);letter-spacing:-.045em}
+.manna-title-text{position:relative;isolation:isolate;display:inline-block;padding-bottom:4px}
+.manna-title-text:after{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:4px;height:5px;background:color-mix(in srgb,var(--green) 17%,transparent);border-radius:0;transform:skewX(-14deg)}
+.today-view .today-compose .today-summary-heading{margin:0 1px 11px;align-items:center}
+.today-view .today-compose .today-summary-heading h2{display:flex;align-items:center;gap:11px;font-size:16px;font-weight:650;letter-spacing:-.03em}
+.companion-title-trail{position:relative;width:28px;height:1px;flex:none;background:color-mix(in srgb,var(--green) 23%,transparent)}
+.companion-title-trail:before,.companion-title-trail:after{content:"";position:absolute;top:-2px;width:5px;height:5px;border-radius:50%;background:var(--green)}
+.companion-title-trail:before{left:0;opacity:.3}.companion-title-trail:after{right:0;opacity:.65}
 .today-view .today-heading .date-tag{font-size:11px;color:var(--muted);white-space:nowrap}
-@media(max-width:480px){.today-view .today-heading{display:flex;flex-direction:row-reverse;justify-content:space-between;flex-wrap:wrap;gap:8px}.today-view .today-heading h1{font-size:24px}.today-view .today-heading .date-tag{font-size:10px}.manna-title-symbol{width:33px;height:33px;border-radius:11px}}
+@media(max-width:480px){.today-view .today-heading{display:flex;flex-direction:row-reverse;justify-content:space-between;flex-wrap:wrap;gap:8px}.today-view .today-heading h1{font-size:25px}.today-view .today-heading .date-tag{font-size:10px}}
