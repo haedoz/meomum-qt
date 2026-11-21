@@ -3459,3 +3459,26 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 .manna-title-text{padding-bottom:0}
 .today-view .today-plan-card>header .eyebrow{margin:0;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
 .today-view .today-plan-card>header{align-items:center}
+
+/* English masthead and reading-plan identity. */
+.today-view .today-heading h1{font-family:var(--font-en,var(--sans));font-size:clamp(31px,4vw,40px);font-weight:650;letter-spacing:-.065em;line-height:1.1}
+.today-view .today-plan-card>header .daily-reading-label{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:650;letter-spacing:-.03em}
+.daily-reading-label>svg{width:22px;height:22px;color:var(--green);stroke-width:1.5}
+.today-view .today-plan-card>header .pill{border-radius:9px;padding:6px 10px;color:var(--green);background:color-mix(in srgb,var(--green) 8%,var(--card));font-variant-numeric:tabular-nums;font-size:12px}
+.today-view .today-plan-card>header{padding-bottom:2px}
+/* Selected passages stay in a single scrolling dialog, with a solid title. */
+dialog:has(form[name=selected-study]){width:min(calc(100% - 24px),900px);padding:0;border:1px solid var(--line);border-radius:23px;max-height:86dvh;overflow:hidden}
+form[name=selected-study]{display:flex;flex-direction:column;max-height:86dvh;gap:0;min-height:0}
+form[name=selected-study]>.row:first-child{position:relative;flex:none;z-index:1;background:var(--card);padding:15px 16px;border-bottom:1px solid var(--line);gap:10px}
+form[name=selected-study] #active-dialog-title{font-size:18px;font-weight:650;letter-spacing:-.03em}
+form[name=selected-study] .dialog-close{min-height:33px;font-size:12px;padding:7px 12px;border:0;background:var(--light);border-radius:10px;box-shadow:none}
+.study-selection-popup{overflow:auto;overscroll-behavior:contain;padding:0 15px 16px;min-height:0;font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px)}
+.study-popup-meta{display:flex;justify-content:space-between;gap:12px;padding:12px 0;color:var(--muted);font-size:11px}
+.study-popup-verse{padding:13px 0 16px;border-top:1px solid var(--line)}
+.study-popup-verse>header{font-size:13px;font-weight:650;color:var(--green);margin-bottom:8px}
+.study-popup-scripture{font:inherit;margin:0 0 12px;padding:0 0 0 9px;border-left:2px solid color-mix(in srgb,var(--green) 35%,transparent);color:var(--muted)}
+.study-popup-detail{font:inherit;color:var(--ink);overflow-wrap:anywhere}
+.study-popup-detail .commentary-copy{font:inherit}
+.study-popup-detail .commentary-copy p{margin:0 0 .7em;font:inherit}
+.study-popup-empty{color:var(--muted);padding:8px 0;font:inherit}
+.study-shortcuts [data-study-preview]>svg{width:15px;height:15px}

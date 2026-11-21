@@ -165,7 +165,11 @@ const icons = {
   calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h2m4 0h2"/>',
   folder:'<path d="M3 6h7l2 2h9v12H3z"/><path d="M8 13h8m-8 3h5"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="m9 3-.5 3-2 1-3-.5-1.5 3 2 2v2l-2 2 1.5 3 3-.5 2 1 .5 3h4l.5-3 2-1 3 .5 1.5-3-2-2v-2l2-2-1.5-3-3 .5-2-1-.5-3z" transform="translate(1 -1)"/>',
-  prayer:'<path d="M12 21c-4-3-8-6-8-11a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 5-4 8-8 11z"/>',
+  prayer:'<path d="M12 3v12m0-12c-1.5 0-2 1.2-2.2 2.6L9 11l-3 4 4 5 2-5m0-12c1.5 0 2 1.2 2.2 2.6L15 11l3 4-4 5-2-5M3 17l4-3 4 6-4 2m14-5-4-3-4 6 4 2"/>',
+  thoughtBulb:'<path d="M8.5 16c0-2-3-3.3-3-6.5a6.5 6.5 0 0 1 13 0c0 3.2-3 4.5-3 6.5M8.5 17h7M9 20h6m-5 3h4M12 1V0M3 4 1.5 2.5M21 4l1.5-1.5M1 10h2m18 0h2"/>',
+  scripture:'<path d="M4 3h13a2 2 0 0 1 2 2v16H6a2 2 0 0 1-2-2V3Zm0 14h15M9 8h6m-3-3v8"/>',
+  studyComment:'<path d="M4 4h16v12H10l-6 4V4Zm4 4h8m-8 4h5"/>',
+  studyAnalysis:'<path d="m7 5-5 7 5 7m10-14 5 7-5 7M14 3l-4 18M9 9h6m-6 6h6"/>',
   marker:'<path d="m7 13 7-8a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-8 7m-4-4 4 4m-4-4-3 4 3 3 4-3M3 21h7"/>',
   compare:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/>',
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
@@ -533,7 +537,7 @@ function triggerGhAutoBackup() {
   localStorage.setItem(ghQueueKey(),crypto.randomUUID());
   updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2580);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2590);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -801,6 +805,23 @@ function previewTorahVerse(button){
   },140);
 }
 modal.addEventListener('close',clearTorahTapFeedback);
+function showSelectedStudy(mode){
+  if(!['commentary','original'].includes(mode))return;
+  const seen=new Set();
+  const refs=[...chosen].filter(validRef).filter(key=>{const address=verseAddress(key);if(seen.has(address))return false;seen.add(address);return true;}).sort((a,b)=>{
+    const x=readRef(a),y=readRef(b);return books.findIndex(([id])=>id===x.book)-books.findIndex(([id])=>id===y.book)||x.chapter-y.chapter||x.verse-y.verse;
+  });
+  if(!refs.length)return notify('먼저 구절을 선택해 주세요.');
+  const original=mode==='original',source=studySource(mode),label=original?'원전분해':'주석';
+  const sections=refs.map(key=>{
+    const {book,chapter,verse}=readRef(key),body=source?.verses[book]?.[chapter]?.[verse]||'';
+    let content;
+    if(original){const raw=originalPassageSource(book,chapter);content=body||raw.chapters?.[chapter]?.[verse]?originalVerseReading(body,verse,raw,chapter):'<p class="study-popup-empty">이 구절의 원전분해 자료가 없어요.</p>';}
+    else content=body?'<div class="commentary-copy">'+commentaryParagraphs(body).join('')+'</div>':'<p class="study-popup-empty">이 구절의 주석 자료가 없어요.</p>';
+    return '<section class="study-popup-verse"><header><span>'+esc(reference(key))+'</span></header><p class="study-popup-scripture">'+esc(verseText(key))+'</p><div class="study-popup-detail">'+content+'</div></section>';
+  }).join('');
+  dialog(label+' 모아보기','<div class="study-selection-popup"><div class="study-popup-meta"><span>'+refs.length+'개 구절</span><span>'+esc(source?.label||label)+'</span></div>'+sections+(!source?'<button type="button" class="btn" data-nav="settings" data-import-link>자료 추가</button>':'')+'</div>','selected-study');
+}
 function showTorahVerse(key){
   if(!validRef(key))return;
   const {book,chapter,verse,edition}=readRef(key),source=originalPassageSource(book,chapter);
@@ -967,7 +988,7 @@ function todaySummary(day,journal) {
   const entries=[
     ['comment','묵상 노트','data-start-journal="true"'],
     ['prayer','기도 노트','data-action="add-prayer"'],
-    ['note','생각 노트','data-action="add-thought"'],
+    ['thoughtBulb','생각 노트','data-action="add-thought"'],
   ];
   return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행의 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
 }
@@ -997,7 +1018,7 @@ function todayPlanCard(day){
   const {done,next}=todayPlan(day),fromJournal=journalChapters(state.journal[day]);
   const row=(key,complete)=>'<div class="today-plan-row '+(complete?'is-complete':'')+'"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
   const range=state.readingRange;
-  return '<section class="card today-plan-card" aria-label="통독 계획"><header class="row"><div><p class="eyebrow">매일 말씀 읽기</p></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><progress class="today-plan-progress" max="'+state.readingGoal+'" value="'+Math.min(done.length,state.readingGoal)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+todayPlanBrowser(day,next)+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'</div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
+  return '<section class="card today-plan-card" aria-label="통독 계획"><header class="row"><div><p class="eyebrow daily-reading-label">'+icon('book')+'<span>매일 말씀 읽기</span></p></div><span class="pill">'+done.length+' / '+state.readingGoal+'장</span></header><progress class="today-plan-progress" max="'+state.readingGoal+'" value="'+Math.min(done.length,state.readingGoal)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+todayPlanBrowser(day,next)+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'</div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
 function todayReadingScreen() {
   const day=dateKey(),canon=canonChapters(),progress=readingProgress(canon),planned=planChapters(canon,state.readingRange);
@@ -1020,7 +1041,7 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'오늘의 말씀 본문으로 이동':'성경 번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':'data-nav="settings" data-import-link';
-  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-text">오늘의 만나</span></h1></header>'+
+  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-text">Today&#39;s</span></h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
     (key?'<div class="today-quote"><div><blockquote>'+esc(quote)+
@@ -1926,8 +1947,8 @@ function verseActions() {
     '<button class="btn" data-action="note">메모</button>'+
     '<button type="button" class="btn icon-action" data-action="copy-verses" aria-label="구절 복사" title="구절 복사">'+icon('copy')+'</button>'+
     '<button class="btn primary" data-action="attach">묵상에 담기</button></div>'+
-    '<div class="verse-actions-row study-shortcuts"><button type="button" class="btn" data-nav="commentary">주석 보기</button>'+
-    '<button type="button" class="btn" data-nav="original">원전분해 보기</button>'+
+    '<div class="verse-actions-row study-shortcuts"><button type="button" class="btn" data-study-preview="commentary">'+icon('studyComment')+'주석 보기</button>'+
+    '<button type="button" class="btn" data-study-preview="original">'+icon('studyAnalysis')+'원전분해 보기</button>'+
     '<button type="button" class="btn" data-action="add-selected-year">새해 말씀에 담기</button></div></div>';
 }
 function calendarScreen() {
@@ -2331,7 +2352,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,258))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,259))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -2384,7 +2405,7 @@ function recordsScreen() {
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 기록',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
       ['prayers','prayer','기도 노트','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
-      ['thoughts','note','생각 노트',thoughts+'건'],
+      ['thoughts','thoughtBulb','생각 노트',thoughts+'건'],
       ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
     (state.verseBundles.length?'<div class="section-head"><h2>구절 모음</h2></div>'+state.verseBundles.map(bundle=>
@@ -2695,9 +2716,9 @@ function render(studyFromSelection = false) {
   main.querySelectorAll('[data-icon]').forEach(el=>{if(icons[el.dataset.icon])el.innerHTML=icon(el.dataset.icon);});
   if(isReading){
     const toolbar=document.createElement('div');toolbar.className='reading-toolbar';
-    const modes=[['bible','본문','book'],['commentary','주석','comment'],['original','원전','note']];
+    const modes=[['bible','본문','scripture'],['commentary','주석','studyComment'],['original','원전','studyAnalysis']];
     const active=modes.find(([route])=>route===view);
-    toolbar.innerHTML='<details class="reading-mode-menu"><summary aria-label="성경 본문, 주석, 원전분해 전환">'+icon('studyMode')+'</summary><nav class="reading-mode-options" aria-label="성경 보기 방식">'+modes.map(([route,label,symbol])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===view?'page':'false')+'">'+icon(symbol)+(route==='bible'?'성경 본문':route==='original'?'원전분해':label)+'</button>').join('')+'</nav></details>';
+    toolbar.innerHTML='<details class="reading-mode-menu"><summary aria-label="성경 본문, 주석, 원전분해 전환">'+icon(active?.[2]||'scripture')+'</summary><nav class="reading-mode-options" aria-label="성경 보기 방식">'+modes.map(([route,label,symbol])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===view?'page':'false')+'">'+icon(symbol)+(route==='bible'?'성경 본문':route==='original'?'원전분해':label)+'</button>').join('')+'</nav></details>';
     const controls=main.querySelector(':scope > .reader-controls');
     main.prepend(toolbar);if(controls)toolbar.append(controls);
   }
@@ -3552,6 +3573,7 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if(target.studyPreview)return showSelectedStudy(target.studyPreview);
   if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
   if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
   if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
@@ -4688,7 +4710,7 @@ function prayerEditorScreen(id) {
   const item = state.prayers.find(prayer=>prayer.id===id);
   if (!item && !['new','thought'].includes(id)) return '<p class="empty">이 기록을 찾을 수 없어요.</p>';
   if (id==='thought' || item?.kind==='thought') {
-    return '<div class="post-editor thought-editor">'+writingHeader('note','생각 노트',item?'생각 노트 편집':'새 생각 노트')+
+    return '<div class="post-editor thought-editor">'+writingHeader('thoughtBulb','생각 노트',item?'생각 노트 편집':'새 생각 노트')+
       '<form data-thought-editor="'+id+'"><div class="writing-panel">'+
       editorDateField(item?item.day ?? '':dateKey())+
       editorField('생각','body',item?thoughtText(item):'','textarea','rows="5" required placeholder="지금 떠오른 생각을 적어보세요."')+
@@ -5015,7 +5037,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v258',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v259',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
