@@ -836,6 +836,19 @@ function todayYearVerse(day) {
   const preview=item?(item.refs.map(ref=>{const shown=yearDisplayReference(ref);return '<span class="today-year-line" lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</span>';}).join('')||'<span class="today-year-line" lang="ko">'+esc(item.title||item.note||'')+'</span>'):'';
   return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+(item?.refs.length?' · '+esc(yearDisplayReference(item.refs[0]).label):'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
 }
+function journalPassageMarkup(refs){
+  const groups=[];
+  for(const key of refs){
+    const position=readRef(key),last=groups.at(-1);
+    if(last&&last.edition===position.edition&&last.book===position.book&&last.chapter===position.chapter&&last.end+1===position.verse){last.end=position.verse;last.keys.push(key);}
+    else groups.push({...position,key,end:position.verse,keys:[key]});
+  }
+  return groups.map(group=>{
+    const short=searchAliases[books.findIndex(([id])=>id===group.book)]||titles[group.book];
+    const label=short+' '+group.chapter+':'+group.verse+(group.end!==group.verse?'-'+group.end:'');
+    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span></div>').join('')+'</div></section>';
+  }).join('');
+}
 function torahDevotionCard(day,note){
   return '<article class="card stack journal-feed-card torah-feed-card"><header class="row"><time datetime="'+day+'" class="kicker">'+esc(longDate(day))+'</time><span class="devotion-kind devotion-kind-torah">'+icon('book')+'토라포션</span></header><h2>'+esc(torahDays[day]?.name||'토라포션')+'</h2><p class="muted">'+esc(torahRangeLabel(torahDays[day]))+'</p><p class="record-text">'+esc(note.body||'')+'</p><footer class="journal-feed-actions"><button type="button" class="text-action destructive" data-delete-torah="'+day+'">삭제</button><button type="button" class="btn" data-nav="torah/'+day+'">'+icon('edit')+' 수정 · 본문 읽기</button></footer></article>';
 }
@@ -850,22 +863,10 @@ function journalsScreen() {
     if(kind==='torah')return torahDevotionCard(day,entry);
     const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
     const validRefs = (entry.verses || []).filter(validRef);
-    let versesHtml = '';
-    if (validRefs.length) {
-      versesHtml = '<blockquote class="calendar-quote-body journal-feed-quote">'+
-        validRefs.map(ref => {
-          const body = savedVerseText(ref) || verseText(ref);
-          return '<div class="journal-feed-verse-item">'+
-            '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button> '+
-            '<span class="verse-text">'+esc(body)+'</span>'+
-          '</div>';
-        }).join('')+
-      '</blockquote>';
-    }
+    const versesHtml=journalPassageMarkup(validRefs);
 
     return '<article class="card stack journal-feed-card" style="gap:10px">'+
       '<div class="row"><time datetime="'+day+'" class="kicker">'+esc(date)+'</time><span class="devotion-kind">'+icon('comment')+'묵상 노트</span>'+
-      (entry.done ? '<span class="pill" style="font-size:0.75rem;min-height:28px;padding:2px 10px;background:var(--light);color:var(--green)">✓ QT 완료</span>' : '')+
       '</div>'+
       (entry.title ? '<h2 style="font-size:1.1875rem;margin:2px 0">'+esc(entry.title)+'</h2>' : '')+
       versesHtml+
@@ -880,9 +881,9 @@ function journalsScreen() {
   const days=[...new Set(entries.map(([day])=>day))];
   const grouped=days.map(day=>'<section class="devotion-day-group"><header class="devotion-day-heading"><h2>'+esc(longDate(day))+'</h2><span>'+entries.filter(([date])=>date===day).length+'건</span></header><div class="stack">'+cards.filter((_,index)=>entries[index][0]===day).join('')+'</div></section>').join('');
 
-  return devotionHeading('journals')+
+  return '<div class="devotion-feed-page">'+devotionHeading('journals')+
     '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'건</span></h2></div>'+
-    '<div class="journal-feed stack">'+(grouped || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div>';
+    '<div class="journal-feed stack">'+(grouped || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div></div>';
 }
 function dailyVerseQuote(key) {
   const quote = verseText(key);
@@ -2332,7 +2333,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,247))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,248))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -5016,7 +5017,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v247',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v248',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
