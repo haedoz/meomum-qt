@@ -3437,3 +3437,9 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 .devotion-feed-page .journal-feed-actions button:last-child{background:color-mix(in srgb,var(--green) 9%,var(--card))}
 
 .today-view .today-compose .today-summary-item{gap:9px;min-height:88px;padding:12px 10px}.today-view .today-compose .today-summary-item strong{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--muted)}.today-view .today-compose .today-summary-item strong svg{width:12px;height:12px;padding:0;border-radius:0;background:none}.today-view .today-compose .today-summary-item>span{flex-direction:column;align-items:flex-start;gap:7px;font-size:12px}
+
+/* Clear selected categories and destructive actions across record editors. */
+.devotion-sections button[aria-current=page],.prayer-overview button[aria-pressed=true],.thought-year-filter button[aria-pressed=true]{background:var(--green);color:var(--on-primary,#fff);font-weight:700;box-shadow:none}
+:is(.devotion-feed-page,.yearly-page,.post-editor,.prayer-record,.thought-list,dialog,.torah-note-editor) .destructive{color:#b53d4d!important}
+:root[data-appearance=dark] :is(.devotion-feed-page,.yearly-page,.post-editor,.prayer-record,.thought-list,dialog,.torah-note-editor) .destructive{color:#ee939c!important}
+.btn.saved-complete{background:var(--light);color:var(--green);border:1px solid color-mix(in srgb,var(--green) 25%,var(--line));font-weight:650}

@@ -533,7 +533,7 @@ function triggerGhAutoBackup() {
   localStorage.setItem(ghQueueKey(),crypto.randomUUID());
   updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2500);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2520);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -747,7 +747,7 @@ function journalScreen() {
     editorField('묵상 내용','reflection',entry.reflection,'textarea','aria-label="묵상 본문" data-journal-field="reflection" rows="5" placeholder="마음에 남은 말씀과 생각을 적어보세요."')+
     '</div><footer class="post-actions">'+
     '<button class="text-action destructive" data-delete-journal="'+day+'" '+(!hasJournalContent(entry)?'hidden':'')+'>묵상 삭제</button>'+
-    '<button class="btn '+(entry.done?'':'primary')+'" data-done="'+day+'" aria-pressed="'+Boolean(entry.done)+'">'+(entry.done?'✓ QT 완료':'QT 마치기')+'</button>'+
+    '<button class="btn '+(entry.done?'saved-complete':'primary')+'" data-done="'+day+'" aria-pressed="'+Boolean(entry.done)+'">'+(entry.done?'✓ QT 완료':'QT 마치기')+'</button>'+
     '</footer></article>'+
     (state.dailyNotes[day]?dailyNoteCard(day):'')+(entry.done?journalComments(day,entry.comments ?? []):'');
 }
@@ -760,8 +760,8 @@ function journalComments(day,comments) {
 }
 function devotionHeading(active) {
   const yearly=active==='newyear',torah=active==='torah-notes';
-  const title=yearly?'새해 말씀':torah?'토라포션 묵상':'묵상 노트 모아보기';
-  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">'+(yearly?'YEARLY VERSES':'MY DEVOTIONS')+'</p><div class="journal-feed-title-row"><h1>'+title+'</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 노트'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+((yearly?route==="newyear":route==="journals")?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
+  const title=yearly?'새해 말씀':torah?'토라포션 묵상':'묵상 기록 모아보기';
+  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">'+(yearly?'YEARLY VERSES':'MY DEVOTIONS')+'</p><div class="journal-feed-title-row"><h1>'+title+'</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 기록'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+((yearly?route==="newyear":route==="journals")?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
 }
 function yearDisplayReference(ref) {
   const saved=readRef(ref),edition=state.reader.edition || saved.edition;
@@ -824,7 +824,7 @@ function torahScreen(){
     return head+'<button type="button" class="verse torah-verse" data-torah-verse="'+key+'" aria-haspopup="dialog" aria-label="'+esc(titles[book]+' '+chapter+'장 '+verse+'절 원전분해와 형광펜')+'" lang="'+(localLanguages[edition]||'ko')+'"><span class="number">'+verse+'</span><span class="verse-content">'+markedText(body||'현재 번역본에 이 구절이 없어요.',marker)+'</span></button>';
   }).join('');
   const textContent=edition?passage:'<p class="muted">설정에서 한국어 성경 번역본을 한 번 추가하면 이 범위를 선택한 번역본으로 읽을 수 있어요.</p><button class="btn" data-nav="settings" data-import-link>성경 자료 추가</button>';
-  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><p>MY REFLECTION</p><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status">기기에 자동 저장</span></header><label class="field"><textarea aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><button type="button" class="text-action torah-all-notes" data-nav="torah-notes">묵상 모아보기 '+icon('right')+'</button><div class="torah-reflection-actions"><button type="button" class="text-action destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+' aria-label="토라포션 묵상 삭제">'+icon('trash')+'</button><button type="button" class="btn '+(note.done?'':'primary')+'" data-torah-done="'+day+'">'+icon('check')+(note.done?'묵상 완료':'묵상 마치기')+'</button></div></footer></section></div><details class="torah-sources"><summary>읽기 기준과 자료</summary><p>첨부한 5787년 토라포션 표의 한글 이름과 해외 공동체 일정을 사용합니다. 주간 포션의 7개 알리야를 일요일부터 토요일까지 배정한 학습 범위이며, 절기의 회당 특별 낭독 범위와는 다를 수 있어요. 심핫 토라에는 마지막 포션과 창세기 첫 부분을 함께 표시해요.</p><p>한국어 성경의 장·절 번호로 변환했으며, 본문은 이 기기에 추가한 번역본에서만 가져옵니다. 하프타라·브릿 하다샤는 이번 일별 토라 범위에 포함하지 않습니다.</p><p><a href="https://www.chabad.org/dailystudy/default.asp?tdate='+Number(day.slice(5,7))+'/'+Number(day.slice(8))+'/'+day.slice(0,4)+'" target="_blank" rel="noopener">Chabad 날짜별 학습</a> · <a href="https://www.hebcal.com/home/4277/leyning-torah-reading-api" target="_blank" rel="noopener">Hebcal 읽기 범위</a> · <a href="https://github.com/sillsdev/libpalaso/blob/master/SIL.Scripture/Resources/eng.vrs.txt" target="_blank" rel="noopener">SIL 장·절 대응표</a></p></details></section>';
+  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><p>MY REFLECTION</p><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status">기기에 자동 저장</span></header><label class="field"><textarea aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><button type="button" class="text-action torah-all-notes" data-nav="torah-notes">묵상 모아보기 '+icon('right')+'</button><div class="torah-reflection-actions"><button type="button" class="text-action destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+' aria-label="토라포션 묵상 삭제">'+icon('trash')+'</button><button type="button" class="btn '+(note.done?'saved-complete':'primary')+'" aria-pressed="'+Boolean(note.done)+'" data-torah-done="'+day+'">'+icon('check')+(note.done?'묵상 완료':'묵상 마치기')+'</button></div></footer></section></div><details class="torah-sources"><summary>읽기 기준과 자료</summary><p>첨부한 5787년 토라포션 표의 한글 이름과 해외 공동체 일정을 사용합니다. 주간 포션의 7개 알리야를 일요일부터 토요일까지 배정한 학습 범위이며, 절기의 회당 특별 낭독 범위와는 다를 수 있어요. 심핫 토라에는 마지막 포션과 창세기 첫 부분을 함께 표시해요.</p><p>한국어 성경의 장·절 번호로 변환했으며, 본문은 이 기기에 추가한 번역본에서만 가져옵니다. 하프타라·브릿 하다샤는 이번 일별 토라 범위에 포함하지 않습니다.</p><p><a href="https://www.chabad.org/dailystudy/default.asp?tdate='+Number(day.slice(5,7))+'/'+Number(day.slice(8))+'/'+day.slice(0,4)+'" target="_blank" rel="noopener">Chabad 날짜별 학습</a> · <a href="https://www.hebcal.com/home/4277/leyning-torah-reading-api" target="_blank" rel="noopener">Hebcal 읽기 범위</a> · <a href="https://github.com/sillsdev/libpalaso/blob/master/SIL.Scripture/Resources/eng.vrs.txt" target="_blank" rel="noopener">SIL 장·절 대응표</a></p></details></section>';
 }
 function torahNotesScreen(){return journalsScreen();}
 function showTorahEdition(){dialog('토라포션 번역본','<div class="reader-picker-options">'+Object.keys(editions).map(id=>'<button type="button" class="btn" data-torah-edition="'+id+'" aria-current="'+(id===state.reader.edition)+'">'+esc(editionLabel(id))+'</button>').join('')+'</div>');}
@@ -861,7 +861,7 @@ function journalsScreen() {
   const entries = [
     ...allJournalEntries().filter(([_,entry])=>hasJournalContent(entry)),
     ...Object.entries(state.torahNotes).filter(([day])=>torahNoteExists(day)).map(([day,note])=>[day,note,'','torah'])
-  ].sort(([dayA],[dayB])=>dayB.localeCompare(dayA));
+  ].map((entry,index)=>({entry,index})).sort((a,b)=>b.entry[0].localeCompare(a.entry[0])||(b.entry[1].created||b.entry[1].updated||'').localeCompare(a.entry[1].created||a.entry[1].updated||'')||b.index-a.index).map(({entry})=>entry);
 
   const count = entries.length;
   const cards = entries.map(([day, entry, noteId, kind]) => {
@@ -967,9 +967,9 @@ function todaySummary(day,journal) {
   const entries=[
     ['comment','묵상 노트','data-start-journal="true"'],
     ['prayer','기도','data-action="add-prayer"'],
-    ['note','오늘의 생각','data-action="add-thought"'],
+    ['note','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading">오늘의 기록</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading">나의 기록</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -2331,7 +2331,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,250))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,252))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -2382,7 +2382,7 @@ function recordsScreen() {
   recordSelection.book='';
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
-      ['journals','comment','묵상 노트',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
+      ['journals','comment','묵상 기록',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
@@ -4738,7 +4738,7 @@ function newYearScreen() {
   const years = [...new Set(state.newYear.map(item=>item.year))].sort((a,b)=>b-a);
   return '<div class="yearly-page">'+devotionHeading('newyear')+
     '<div class="yearly-list">'+(years.map(year=>{
-      const items = state.newYear.filter(item=>item.year===year);
+      const items = state.newYear.filter(item=>item.year===year).sort((a,b)=>(b.day||String(b.year)+'-01-01').localeCompare(a.day||String(a.year)+'-01-01'));
       return '<section class="yearly-group" id="yearly-group-'+year+'"><header class="yearly-group-header row"><h2>'+year+'년</h2><span>'+items.length+
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
     }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div></div>';
@@ -5015,7 +5015,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v250',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v252',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
