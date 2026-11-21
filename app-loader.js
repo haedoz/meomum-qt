@@ -1,5 +1,5 @@
 // Prepare the current shell before revealing the application; no visible reload cycle.
-const build=new URL(import.meta.url).searchParams.get('v')||'253';
+const build=new URL(import.meta.url).searchParams.get('v')||'254';
 const expected='meomum-pages-v'+build;
 const workerVersion=worker=>new Promise(resolve=>{
  if(!worker)return resolve(null);
