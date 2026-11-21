@@ -837,15 +837,20 @@ function todayYearVerse(day) {
   return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+(item?.refs.length?' · '+esc(yearDisplayReference(item.refs[0]).label):'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
 }
 function journalPassageMarkup(refs){
-  const groups=[];
+  const groups=[],byChapter=new Map();
   for(const key of refs){
-    const position=readRef(key),last=groups.at(-1);
-    if(last&&last.edition===position.edition&&last.book===position.book&&last.chapter===position.chapter&&last.end+1===position.verse){last.end=position.verse;last.keys.push(key);}
-    else groups.push({...position,key,end:position.verse,keys:[key]});
+    const position=readRef(key),id=[position.edition,position.book,position.chapter].join('/');
+    let group=byChapter.get(id);
+    if(!group){group={...position,keys:[]};byChapter.set(id,group);groups.push(group);}
+    if(!group.keys.includes(key))group.keys.push(key);
   }
+  for(const group of groups)group.keys.sort((a,b)=>readRef(a).verse-readRef(b).verse);
   return groups.map(group=>{
     const short=searchAliases[books.findIndex(([id])=>id===group.book)]||titles[group.book];
-    const label=short+' '+group.chapter+':'+group.verse+(group.end!==group.verse?'-'+group.end:'');
+    const ranges=[];
+    for(const key of group.keys){const n=readRef(key).verse,last=ranges.at(-1);if(last&&last[1]+1===n)last[1]=n;else ranges.push([n,n]);}
+    const label=short+' '+group.chapter+':'+ranges.map(([a,b])=>a===b?a:a+'-'+b).join(', ');
+    group.key=group.keys[0];
     return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span></div>').join('')+'</div></section>';
   }).join('');
 }
@@ -2326,7 +2331,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,249))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,250))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -5010,7 +5015,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v249',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v250',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
