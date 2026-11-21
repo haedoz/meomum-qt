@@ -3378,3 +3378,24 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 .devotion-kind{font-size:11px;color:var(--green);background:var(--light);padding:4px 8px;border-radius:8px;white-space:nowrap}.journal-feed-card>header{flex-wrap:wrap;gap:8px}
 
 .devotion-day-group{display:grid;gap:10px;margin-top:12px}.devotion-day-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-inline:3px}.devotion-day-heading h2{font-size:14px;font-weight:650;letter-spacing:-.02em}.devotion-day-heading>span{font-size:11px;color:var(--muted)}.devotion-day-group .journal-feed-card time{display:none}.devotion-kind{display:inline-flex;align-items:center;gap:5px}.devotion-kind svg{width:13px;height:13px}.devotion-kind-torah{background:color-mix(in srgb,var(--green) 7%,var(--card));border:1px solid color-mix(in srgb,var(--green) 12%,transparent)}.devotion-day-group .journal-feed-card{margin-bottom:0}.devotion-day-group .journal-feed-card .row{justify-content:space-between}
+
+/* Compact yearly spacing and wider devotion text columns. */
+.yearly-page .journal-feed-page-heading{padding-bottom:0;margin-bottom:14px}
+.yearly-page .journal-feed-page-heading>.eyebrow{margin-bottom:7px}
+.yearly-page .journal-feed-title-row{margin:0}
+.yearly-page .journal-feed-page-heading .lead{margin-top:9px}
+.yearly-page .devotion-sections{margin-bottom:14px;padding:4px}
+.yearly-page .devotion-sections button{min-height:34px;padding-block:6px}
+.yearly-page .yearly-group{gap:8px}
+.yearly-page .yearly-record{padding-block:12px 13px}
+.yearly-page .yearly-card-top{margin-bottom:9px;min-height:26px}
+.yearly-page .year-verse figcaption{margin-top:5px}
+.yearly-page .year-verse .note-link{min-height:24px}
+.yearly-page .yearly-note{margin-top:9px;padding-block:9px}
+.yearly-page .yearly-note .record-text{margin-top:4px}
+.devotion-day-group .journal-feed-card{padding:13px 12px;gap:8px!important}
+.devotion-day-group .journal-feed-quote{margin:0;padding:7px 8px;border-left-width:2px!important;max-width:none;width:100%;box-sizing:border-box}
+.devotion-day-group .journal-feed-verse-item{margin:0;max-width:none}
+.devotion-day-group .journal-feed-verse-item+.journal-feed-verse-item{margin-top:var(--verse-gap,0px)}
+.devotion-day-group .journal-feed-card>.record-text{margin-inline:0;padding-inline:0;max-width:none}
+@media(min-width:900px){.yearly-page .yearly-record{padding-block:14px}.devotion-day-group .journal-feed-card{padding-inline:14px}}
