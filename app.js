@@ -2327,7 +2327,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,241))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,242))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -4739,15 +4739,30 @@ function newYearScreen() {
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
     }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div>';
 }
+function yearVerseGroups(refs) {
+  const groups=[];
+  for(const ref of refs){
+    const shown=yearDisplayReference(ref),position=readRef(shown.key),last=groups.at(-1);
+    if(last && last.edition===position.edition && last.book===position.book && last.chapter===position.chapter && last.end+1===position.verse){
+      last.end=position.verse;last.verses.push(shown);
+    }else groups.push({...position,key:shown.key,end:position.verse,verses:[shown]});
+  }
+  return groups;
+}
+function yearVerseGroupMarkup(group) {
+  const first=group.verses[0],label=reference(group.key)+(group.end!==group.verse?'-'+group.end:'');
+  return '<figure class="year-verse"><blockquote class="record-text" lang="'+(localLanguages[group.edition] ?? 'ko')+'">'+
+    group.verses.map(shown=>'<span class="year-group-line">'+esc(shown.body)+'</span>').join('')+'</blockquote>'+
+    '<figcaption><button type="button" class="note-link" data-visit="'+group.key+'" '+(!first.available?'disabled':'')+'><span>'+esc(label)+'</span>'+
+    '<small>'+esc(first.label)+'</small>'+icon('arrow')+'</button></figcaption></figure>';
+}
 function newYearCard(item) {
   return '<article class="card yearly-record"><header class="row yearly-card-top"><div>'+
     (item.day?'<time class="muted" datetime="'+item.day+'">'+
       (Number(item.day.slice(0,4))===item.year?'':item.day.slice(0,4)+'년 ')+shortDate(item.day)+'</time>':'')+
     (item.title && (!item.refs.length || item.title!==reference(item.refs[0]))?'<h3 class="item-title">'+esc(item.title)+'</h3>':'')+'</div>'+
     '<button type="button" class="icon-action" data-year-edit="'+item.id+'" aria-label="새해 말씀 편집" title="새해 말씀 편집">'+icon('edit')+'</button></header>'+
-    item.refs.map(ref=>{const shown=yearDisplayReference(ref);return '<figure class="year-verse"><blockquote class="record-text" lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</blockquote>'+
-      '<figcaption><button type="button" class="note-link" data-visit="'+shown.key+'" '+(!shown.available?'disabled':'')+'><span>'+esc(reference(shown.key))+'</span>'+
-      '<small>'+esc(shown.label)+'</small>'+icon('arrow')+'</button></figcaption></figure>';}).join('')+
+    yearVerseGroups(item.refs).map(yearVerseGroupMarkup).join('')+
     (item.note?'<div class="yearly-note"><span>메모</span>'+
       '<p class="record-text">'+esc(item.note)+'</p></div>':'')+'</article>';
 }
@@ -4996,7 +5011,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v241',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v242',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
