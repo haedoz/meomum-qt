@@ -1350,7 +1350,7 @@ function showVerseBundle(verses,id) {
     '<section class="search-selected-verse"><div class="row"><h3>'+esc(reference(ref))+' · '+esc(label)+'</h3>'+
     (verseText(ref)?'<button type="button" class="text-action" data-search-visit="'+ref+'">본문 보기</button>':'')+'</div>'+
     '<p>'+esc(body)+'</p></section>').join('');
-  const saveButton = id?'':'<button type="button" class="btn primary" data-action="save-verse-bundle">기록함에 저장</button>';
+  const saveButton = id?'':'<button type="button" class="btn primary" data-action="save-verse-bundle">기록실에 저장</button>';
   dialog('선택한 구절 '+verses.length+'개','<div class="bundle-actions">'+saveButton+
     '<button type="button" class="btn" data-copy-bundle="'+(id ?? 'selection')+'">복사</button></div>'+
     '<p class="muted" role="status" data-bundle-status></p>'+passages,id?'saved-verse-bundle':'search-selected');
@@ -1363,7 +1363,7 @@ async function saveVerseBundle(button) {
   button.disabled = true;
   state.verseBundles.unshift(bundle);
   if (await save()) {
-    status.textContent = '기록함의 구절 모음에 저장했어요.';
+    status.textContent = '기록실의 구절 모음에 저장했어요.';
   } else {
     state.verseBundles = state.verseBundles.filter(item=>item.id!==bundle.id);
     status.textContent = '저장하지 못했어요. 다시 시도해 주세요.';
@@ -2380,7 +2380,7 @@ function recordsScreen() {
   const activeFilters = Object.values(recordSelection).filter(Boolean).length;
   recordSelection.edition='';
   recordSelection.book='';
-  return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
+  return heading('VERSE COLLECTION','기록실','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 기록',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
@@ -2923,7 +2923,7 @@ function showVerseNote(key,verses = noteVerseNumbers(key,state.marks[key])) {
     editorField('나의 메모','note',mark?.note,'textarea','id="verse-note" rows="3" placeholder="마음에 남은 생각을 적어보세요."')+
     draftNotice()+'</div><footer class="row verse-note-actions">'+
     (mark?.note?'<button type="button" class="text-action destructive" data-delete-note="'+key+'">메모 삭제</button>':
-      '<span class="muted">기록함에 저장돼요</span>')+
+      '<span class="muted">기록실에 저장돼요</span>')+
     '<button type="button" class="btn primary" data-action="save-note">'+icon('check')+' 저장</button></footer>','verse-note-editor');
   const form = modal.querySelector('form');
   form.classList.add('note-editor-dialog');
