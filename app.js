@@ -2328,7 +2328,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,244))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,245))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -4733,12 +4733,12 @@ async function savePrayer(form) {
 }
 function newYearScreen() {
   const years = [...new Set(state.newYear.map(item=>item.year))].sort((a,b)=>b-a);
-  return devotionHeading('newyear')+
+  return '<div class="yearly-page">'+devotionHeading('newyear')+
     '<div class="yearly-list">'+(years.map(year=>{
       const items = state.newYear.filter(item=>item.year===year);
       return '<section class="yearly-group" id="yearly-group-'+year+'"><header class="yearly-group-header row"><h2>'+year+'년</h2><span>'+items.length+
         '건</span></header>'+items.map(newYearCard).join('')+'</section>';
-    }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div>';
+    }).join('') || '<p class="empty">구절 주소를 입력하거나 성경에서 구절을 골라 담아보세요.</p>')+'</div></div>';
 }
 function yearVerseGroups(refs) {
   const groups=[];
@@ -5012,7 +5012,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v244',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v245',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

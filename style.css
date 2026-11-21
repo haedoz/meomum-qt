@@ -3343,3 +3343,34 @@ dialog:has(form[name="torah-verse-preview"]){width:min(calc(100% - 28px),680px);
 .study-library-view .study-group-title{margin:18px 3px 10px!important}.study-source-quotation{margin:10px 0 3px;padding:12px 14px;border-left:3px solid var(--study-emphasis);border-radius:0 12px 12px 0;background:var(--study-inset);font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking);word-break:keep-all;overflow-wrap:break-word}
 
 .year-group-line{display:flex;align-items:baseline;gap:.5em}.year-group-number{flex:none;min-width:1.4em;color:var(--muted);font-size:.78em;font-weight:600;font-variant-numeric:tabular-nums}.year-group-body{flex:1;min-width:0;overflow-wrap:anywhere}.year-group-line+.year-group-line{margin-top:var(--verse-gap,0px)}
+
+/* A quiet reading surface for yearly verses; typography follows reader settings. */
+.yearly-page .journal-feed-page-heading{display:block;padding-bottom:12px;margin-bottom:20px;border-bottom:0}
+.yearly-page .journal-feed-page-heading>.eyebrow{font-size:10px;letter-spacing:.14em;margin-bottom:10px;opacity:.7}
+.yearly-page .journal-feed-title-row{align-items:center;gap:12px}
+.yearly-page .journal-feed-title-row h1{margin:0;font-size:25px;letter-spacing:-.04em}
+.yearly-page .journal-feed-add{min-height:39px;padding:9px 13px;border-radius:13px;font-size:12px;gap:5px;box-shadow:none}
+.yearly-page .journal-feed-page-heading .lead{margin-top:12px;font-size:13px;line-height:1.5;color:var(--muted)}
+.yearly-page .yearly-list{margin-top:0;gap:24px}
+.yearly-page .yearly-group{gap:11px}
+.yearly-page .yearly-group-header{padding-inline:3px}
+.yearly-page .yearly-group-header h2{font-size:19px;letter-spacing:-.035em}
+.yearly-page .yearly-group-header>span{font-size:11px;padding:4px 8px;border-radius:8px;background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.yearly-page .yearly-record{padding:17px 15px 18px;border-radius:23px;border:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:var(--card);box-shadow:0 5px 20px #00000003}
+.yearly-page .yearly-card-top{margin-bottom:15px;min-height:28px;gap:10px}
+.yearly-page .yearly-card-top time{font-size:11px;color:var(--muted)}
+.yearly-page .yearly-card-top .icon-action{width:30px;height:30px;min-height:30px;border:0;border-radius:10px;background:var(--light);color:var(--green);box-shadow:none}
+.yearly-page .yearly-card-top .icon-action svg{width:15px;height:15px}
+.yearly-page .year-verse{border:0;padding:0;margin:0}
+.yearly-page .year-group-line{gap:.45em}
+.yearly-page .year-group-number{min-width:1.15em;font-size:.7em;font-weight:600;color:var(--green);opacity:.75}
+.yearly-page .year-group-body,.yearly-page .yearly-note .record-text{font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);font-weight:400;line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px)}
+.yearly-page .year-verse figcaption{margin-top:11px;padding-inline-start:1.2em}
+.yearly-page .year-verse .note-link{min-height:26px;font-size:11px;gap:6px;color:var(--muted)}
+.yearly-page .year-verse .note-link>span{color:var(--green);font-weight:500}
+.yearly-page .year-verse .note-link small{font-size:10px;opacity:.8}
+.yearly-page .year-verse+.year-verse{margin-top:16px}
+.yearly-page .yearly-note{margin-top:15px;padding:13px 12px 12px;border:0;border-radius:14px;background:color-mix(in srgb,var(--green) 4%,var(--card))}
+.yearly-page .yearly-note>span{font-size:10px;color:var(--muted)}
+.yearly-page .yearly-note .record-text{margin-top:6px}
+@media(min-width:900px){.yearly-page .yearly-record{padding:20px}.yearly-page .yearly-note{padding:14px}}
