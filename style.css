@@ -3482,3 +3482,5 @@ form[name=selected-study] .dialog-close{min-height:33px;font-size:12px;padding:7
 .study-popup-detail .commentary-copy p{margin:0 0 .7em;font:inherit}
 .study-popup-empty{color:var(--muted);padding:8px 0;font:inherit}
 .study-shortcuts [data-study-preview]>svg{width:15px;height:15px}
+
+.jewish-cycle-month-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}.jewish-cycle-month-title .jewish-cycle-alias{font-family:var(--sans);font-size:12px;font-weight:400;line-height:1.4;color:var(--muted)}.jewish-cycle-month-title .jewish-cycle-alias bdi{font-size:1em!important;font-weight:400}
