@@ -760,7 +760,8 @@ function journalComments(day,comments) {
 }
 function devotionHeading(active) {
   const yearly=active==='newyear',torah=active==='torah-notes';
-  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">MY DEVOTIONS</p><div class="journal-feed-title-row"><h1>묵상 노트 모아보기</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 노트'],['torah-notes','토라포션'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+(route===active?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
+  const title=yearly?'새해 말씀':torah?'토라포션 묵상':'묵상 노트 모아보기';
+  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">'+(yearly?'YEARLY VERSES':'MY DEVOTIONS')+'</p><div class="journal-feed-title-row"><h1>'+title+'</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header>';
 }
 function yearDisplayReference(ref) {
   const saved=readRef(ref),edition=state.reader.edition || saved.edition;
@@ -2327,7 +2328,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,242))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,243))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -2378,7 +2379,7 @@ function recordsScreen() {
   recordSelection.book='';
   return heading('VERSE COLLECTION','기록함','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
-      ['journals','comment','묵상 노트',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
+      ['newyear','yearVerse','새해 말씀',state.newYear.length+'건'],
       ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
@@ -5011,7 +5012,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v242',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v243',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

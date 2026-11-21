@@ -1,5 +1,5 @@
 // Prepare the current shell before revealing the application; no visible reload cycle.
-const build=new URL(import.meta.url).searchParams.get('v')||'242';
+const build=new URL(import.meta.url).searchParams.get('v')||'243';
 const expected='meomum-pages-v'+build;
 const workerVersion=worker=>new Promise(resolve=>{
  if(!worker)return resolve(null);
@@ -30,10 +30,10 @@ async function prepareWorker(){
  });
 }
 try{
- await prepareWorker().catch(()=>{});
- const stylesheet=document.createElement('link');stylesheet.rel='stylesheet';stylesheet.href='./style.css?v='+build;
- const loaded=new Promise((resolve,reject)=>{stylesheet.onload=resolve;stylesheet.onerror=()=>reject(Error('화면 스타일을 불러오지 못했어요.'));});
- document.head.append(stylesheet);
+ // Refresh the worker in the background; opening the app must not wait for an update.
+ void prepareWorker().catch(()=>{});
+ const stylesheet=document.querySelector('link[data-app-style]');
+ const loaded=stylesheet.sheet?Promise.resolve():new Promise((resolve,reject)=>{stylesheet.addEventListener('load',resolve,{once:true});stylesheet.addEventListener('error',()=>reject(Error('화면 스타일을 불러오지 못했어요.')),{once:true});});
  await loaded;
  await import('./app.js?v='+build);
 }catch(error){
