@@ -1,3 +1,4 @@
+import {HDate} from './vendor/hebcal.mjs';
 const rows=[
  ['니산','נִיסָן','아빕 · אָבִיב','3–4월','30일','유다','ה · 헤','보리 등 곡물 수확 시작 · 늦은 비','EXO/12/2'],
  ['이야르','אִיָּר','지브 · זִו','4–5월','29일','잇사갈','ו · 바브','수확이 이어지는 때 · 건기로 전환','1KI/6/1'],
@@ -13,6 +14,15 @@ const rows=[
  ['아다르','אֲדָר','','2–3월','평년 29일','납달리','ק · 코프','봄으로 전환 · 감귤류 등 겨울 과실','EST/3/7']
 ];
 let section='cycle',order='civil',cycleMonth=0;
+export function prepareHebrewGuide(day){
+ const date=new Date(day+'T12:00:00');
+ if(Number.isNaN(date.getTime()))return;
+ const month=new HDate(date).getMonth();
+ // The wheel has twelve sectors: both leap-year Adars share the Adar sector.
+ cycleMonth=Math.min(month,12)-1;
+ section='cycle';
+}
+
 const safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function hebrewGuideAction(t){
  if(t.hebrewGuideSection && ['months','cycle'].includes(t.hebrewGuideSection)){section=t.hebrewGuideSection;return true;}

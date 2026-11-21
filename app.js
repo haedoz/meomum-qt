@@ -4,7 +4,7 @@ import {libraryScreen,sevenStudyScreen,studyLibraryAction} from './study-library
 import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
 import {torahDays,torahVerseCounts} from './torah-data.js';
 import {mergeSync} from './offline-sync.js';
-import {hebrewGuideScreen,hebrewGuideAction} from './hebrew-guide.js?v=8';
+import {hebrewGuideScreen,hebrewGuideAction,prepareHebrewGuide} from './hebrew-guide.js?v=9';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=6';
 import { books, chapterCounts } from './books.js';
@@ -537,7 +537,7 @@ function triggerGhAutoBackup() {
   localStorage.setItem(ghQueueKey(),crypto.randomUUID());
   updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2590);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2600);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -2352,7 +2352,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,259))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,260))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -2614,6 +2614,7 @@ function render(studyFromSelection = false) {
   const next = torahDate?'torah':day?'journal':prayerId?'prayer':editorId?'prayer-edit':Object.hasOwn(screens,hash) && !['journal','prayer','prayer-edit'].includes(hash)?hash:'bible';
   const route = torahDate || day || prayerId || editorId?hash:next;
   const changed = activeRoute!==route;
+  if(changed && next==='hebrew-guide')prepareHebrewGuide(view==='calendar'?selectedDay:dateKey());
   let studyJump;
   if (changed) {
     if (modal.open &&
@@ -5037,7 +5038,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v259',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v260',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
