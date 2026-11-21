@@ -966,7 +966,7 @@ function cardHit(label,attributes) {
 function todaySummary(day,journal) {
   const entries=[
     ['comment','묵상 노트','data-start-journal="true"'],
-    ['prayer','기도','data-action="add-prayer"'],
+    ['prayer','기도 노트','data-action="add-prayer"'],
     ['note','생각 노트','data-action="add-thought"'],
   ];
   return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading">나의 기록</h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
@@ -2039,7 +2039,7 @@ function calendarDaySummary(day,items,records) {
     torahCalendarCard(day)+'<p class="calendar-summary-hint">기록을 눌러 자세히 확인하세요.</p>'+
     (note?calendarDetail('comment','말씀 묵상','1건','<div class="tappable-card">'+cardHit('말씀 묵상 열기','data-edit-daily-note="'+day+'"')+calendarText(note.body)+calendarItemActions('data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"')+'</div>'):'')+
     (journals.length?calendarDetail('note','묵상 노트',journals.length+'편',journalCards):'')+
-    (prayers.length?calendarDetail('prayer','기도',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
+    (prayers.length?calendarDetail('prayer','기도 노트',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
     (thoughts.length?calendarDetail('note','생각 노트',thoughts.length+'건',thoughts.map(calendarPrayer).join('')):'')+
     (chapters.length?calendarDetail('check','묵상 체크',chapters.length+'장','<div class="calendar-chapter-grid">'+chapters.map(key=>'<button type="button" class="calendar-chapter-pill" data-open-chapter="'+key+'"><span class="chapter-check-mark">✓</span><strong>'+esc(chapterLabel(key))+'</strong>'+icon('right')+'</button>').join('')+'</div>'):'')+
     (notes.length?calendarDetail('edit','구절 메모',notes.length+'건',groupedRecords(notes,true)):'')+
@@ -2383,7 +2383,7 @@ function recordsScreen() {
   return heading('VERSE COLLECTION','기록실','형광펜, 밑줄, 메모를 모아보고 원하는 말씀을 찾아보세요.')+
     '<div class="record-shortcuts">'+[
       ['journals','comment','묵상 기록',journalCount+'건 · 새해 말씀 '+state.newYear.length+'건'],
-      ['prayers','prayer','기도','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
+      ['prayers','prayer','기도 노트','기도 중 '+(prayers.length-answered)+'건 · 응답 '+answered+'건'],
       ['thoughts','note','생각 노트',thoughts+'건'],
       ['reading','check','통독 체크','일독 계획 · 성경책별 기록'],
     ].map(([route,symbol,label,detail])=>'<button class="record-shortcut" data-nav="'+route+'">'+icon(symbol)+'<strong>'+label+'</strong><span>'+detail+'</span></button>').join('')+'</div>'+
