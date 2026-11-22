@@ -4504,9 +4504,8 @@ function thoughtsScreen() {
   const list = [...groups].map(([year,notes])=>'<section class="thought-group"><header class="thought-group-header">'+
     '<h2>'+(year?year+'년':'날짜 미기록')+'</h2><span>'+notes.length+'건</span></header>'+
     notes.map(note=>thoughtCard(note,true)).join('')+'</section>').join('');
-  return heading('THOUGHT NOTES','생각 노트','어떤 생각이든 자유롭게 적어보세요.')+
-    '<button type="button" class="btn primary block thought-add" data-action="add-thought">＋ 생각 기록 추가</button><div class="thought-list">'+
-    (list || '<p class="empty">아직 남긴 생각이 없어요.</p>')+'</div>';
+  return '<section class="thought-page"><header class="page-heading thought-page-heading"><p class="eyebrow">THOUGHT NOTES</p><div class="thought-title-row"><h1>생각 노트</h1><button type="button" class="btn primary thought-add" data-action="add-thought"><span aria-hidden="true">＋</span> 생각 노트 추가</button></div><p class="lead">어떤 생각이든 자유롭게 적어보세요.</p></header><div class="thought-list">'+
+    (list || '<p class="empty">아직 남긴 생각이 없어요.</p>')+'</div></section>';
 }
 function prayersScreen() {
   const groups = {open:[],answered:[]};
@@ -5012,7 +5011,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v267',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v269',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
