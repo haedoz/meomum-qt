@@ -4657,14 +4657,14 @@ function thoughtsScreen() {
     .sort((a,b)=>(b.day ?? '').localeCompare(a.day ?? ''));
   const groups = new Map();
   for (const item of items) {
-    const year = item.day?.slice(0,4) ?? '';
-    if (!groups.has(year)) groups.set(year,[]);
+    const year=item.day||'';
+    if(!groups.has(year))groups.set(year,[]);
     groups.get(year).push(item);
   }
   const list = [...groups].map(([year,notes])=>'<section class="thought-group"><header class="thought-group-header">'+
-    '<h2>'+(year?year+'년':'날짜 미기록')+'</h2><span>'+notes.length+'건</span></header>'+
+    '<h2>'+icon('calendar')+(year?esc(longDate(year)):'날짜 미기록')+'</h2><span>'+notes.length+'건</span></header>'+
     notes.map(note=>thoughtCard(note,true)).join('')+'</section>').join('');
-  return '<section class="thought-page"><header class="page-heading thought-page-heading"><p class="eyebrow">THOUGHT NOTES</p><div class="thought-title-row"><h1>생각 노트</h1><button type="button" class="btn primary thought-add" data-action="add-thought"><span aria-hidden="true">＋</span> 생각 노트 추가</button></div><p class="lead">어떤 생각이든 자유롭게 적어보세요.</p></header><div class="thought-list">'+
+  return '<section class="thought-page"><header class="page-heading thought-page-heading"><p class="eyebrow">THOUGHT NOTES</p><div class="thought-title-row"><h1>생각 노트</h1><button type="button" class="btn primary thought-add" data-action="add-thought"><span aria-hidden="true">＋</span> 생각 노트 추가</button></div><p class="lead">어떤 생각이든 자유롭게 적어보세요.</p></header><div class="devotion-total thought-total"><span>'+icon('thoughtBulb')+' 남긴 생각</span><strong>'+items.length+'<small>건</small></strong></div><div class="thought-list">'+
     (list || '<p class="empty">아직 남긴 생각이 없어요.</p>')+'</div></section>';
 }
 function prayersScreen() {
@@ -4681,9 +4681,8 @@ function prayersScreen() {
 }
 function prayerCard(item) {
   if (item.kind==='thought') return thoughtCard(item);
-  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+'<div class="row prayer-record-meta">'+(item.day?'<time class="muted" datetime="'+item.day+'">'+item.day.slice(0,4)+'년 '+shortDate(item.day)+'</time>':'')+'</div>'+
-    '<h3 class="item-title">'+esc(item.title)+'</h3>'+
-    (item.body?'<p class="record-text">'+esc(item.body)+'</p>':'')+
+  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+noteEntryHeader('prayer',item.title,item.day)+
+    (item.body?'<section class="note-entry-copy"><span class="note-entry-caption">'+icon('note')+' 기도 내용</span><p class="record-text">'+esc(item.body)+'</p></section>':'')+
     (item.answer?'<div class="answer"><strong>응답 기록</strong><p class="record-text">'+esc(item.answer)+'</p></div>':'')+
     calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</article>';
 }
@@ -4799,12 +4798,9 @@ function thoughtText(item) {
   return [item.title,item.body,item.answer].filter(Boolean).join('\n\n');
 }
 function thoughtCopy(item){return '<div class="thought-copy"><p>'+esc(thoughtText(item))+'</p></div>';}
-function thoughtCard(item,inList = false) {
-  const date = inList && item.day?
-    '<time class="thought-card-date" datetime="'+item.day+'">'+shortDate(item.day)+'</time>':'';
-  return '<article class="card thought-card">'+date+thoughtCopy(item)+'<div class="row thought-card-footer">'+
-    (inList?'':'<span class="muted">'+(item.day?longDate(item.day):'날짜 미기록')+'</span>')+
-    calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</div></article>';
+function noteEntryHeader(symbol,title,day){return '<header class="note-entry-header"><h3>'+icon(symbol)+'<span>'+esc(title)+'</span></h3>'+(day?'<time datetime="'+day+'" title="'+esc(longDate(day))+'">'+shortDate(day)+'</time>':'')+'</header>';}
+function thoughtCard(item,inList=false){
+  return '<article class="card thought-card">'+noteEntryHeader('thoughtBulb','생각 노트',item.day)+'<section class="note-entry-copy">'+thoughtCopy(item)+'</section><footer class="thought-card-footer">'+calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</footer></article>';
 }
 function showThoughtEditor(item) {
   navigate('prayer-edit/'+(item?.id ?? 'thought'));
@@ -5175,7 +5171,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v293',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v294',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
