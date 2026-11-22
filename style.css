@@ -3751,3 +3751,12 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .calendar-mark-card.torah .record-torah-excerpt{background:var(--torah-soft);border-inline-start-color:color-mix(in srgb,#69aaa2 50%,transparent)}
 :root[data-appearance=dark] .mark-kind-pill.torah{color:#a6d3cd;background:color-mix(in srgb,#69aaa2 12%,var(--card));border-color:color-mix(in srgb,#69aaa2 22%,transparent)}
 :root[data-appearance=dark] .calendar-mark-card.torah .record-journal-content{background:color-mix(in srgb,#69aaa2 7%,var(--card))}
+
+.record-torah-range{padding:7px 0 10px}.record-torah-range>span,.record-torah-note>span{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:5px}.record-torah-range p{margin:0;color:var(--ink);font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking)}
+.record-torah-note{padding:11px 0 2px;border-top:1px solid color-mix(in srgb,var(--line) 65%,transparent)}.record-torah-note .record-journal-text{background:none;padding:0;border:0;white-space:pre-wrap;font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking);font-weight:400}
+
+/* Reflection copy uses a neutral memo surface; the kind badge carries the color. */
+.calendar-mark-card.torah .record-torah-note{padding:10px 11px;border:1px solid #8080800c;border-radius:11px;background:color-mix(in srgb,#808080 6%,var(--card));margin-top:3px}
+.calendar-mark-card.torah .record-torah-note .record-journal-text{background:transparent!important;color:var(--ink);border:0;box-shadow:none;padding:0;margin:0}
+.calendar-mark-card.torah .record-torah-note>span{color:var(--muted);margin-bottom:6px}
+:root[data-appearance=dark] .calendar-mark-card.torah .record-torah-note{background:color-mix(in srgb,#a0a0a0 7%,var(--card));border-color:#ffffff08}

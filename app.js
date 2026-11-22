@@ -2228,7 +2228,7 @@ function renderRecordCard(item) {
   if (mark.journal) {
     const hasRefs = Boolean(mark.allRefs?.length);
     badgeTitle=mark.torah?esc(torahDays[day]?torahRangeLabel(torahDays[day]):mark.journalTitle||'토라포션'):hasRefs?esc(groupedPassageRefs(mark.allRefs).map(group=>passageGroupLabel(group,false)).join(' · ')):esc(mark.journalTitle||'나의 묵상');
-    const versesHtml=hasRefs?(mark.torah?'<div class="record-torah-excerpt"><p>'+esc(savedVerseText(mark.allRefs[0])||verseText(mark.allRefs[0]))+'</p><span>'+mark.allRefs.length+'구절 · 본문 읽기에서 전체 보기</span></div>':'<div class="record-journal-passages">'+journalPassageMarkup(mark.allRefs)+'</div>'):'';
+    const versesHtml=hasRefs&&!mark.torah?'<div class="record-journal-passages">'+journalPassageMarkup(mark.allRefs)+'</div>':'';
 
     let reflectionHtml = '';
     if (mark.journalReflection?.trim()) {
@@ -2243,6 +2243,13 @@ function renderRecordCard(item) {
     }
 
     content = versesHtml + reflectionHtml;
+    if(mark.torah){
+      const portion=torahDays[day];
+      badgeTitle=esc(portion?.name||mark.journalTitle||'토라포션');
+      const range=portion?torahRangeLabel(portion):hasRefs?groupedPassageRefs(mark.allRefs).map(group=>passageGroupLabel(group,false)).join(' · '):'';
+      content='<div class="record-torah-range"><span>묵상한 말씀</span><p>'+esc(range||'구절 범위 정보 없음')+'</p></div>'+
+        '<section class="record-torah-note"><span>나의 묵상</span><div class="record-journal-text">'+esc(mark.journalReflection||'')+'</div></section>';
+    }
   } else if (mark.note) {
     const passage = recordPassage(key,verses);
     const excerpt = passage.length?passage.map(([number,body])=>
@@ -5095,7 +5102,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v280',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v282',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
