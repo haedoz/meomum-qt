@@ -3562,3 +3562,15 @@ form[name=selected-study] .dialog-close{min-height:33px;font-size:12px;padding:7
 .today-view .today-compose .today-summary-heading h2:before{content:"\201C";position:absolute;left:-2px;top:-10px;font:400 43px/1 Georgia,serif;color:var(--green);opacity:.3;pointer-events:none}
 .today-view .today-compose .today-calendar-link{font-size:11px;white-space:nowrap;color:var(--muted)}
 @media(max-width:480px){.today-view .today-compose .today-summary-heading{padding:9px 8px 9px 10px}.today-view .today-compose .today-summary-heading h2{font-size:16px;padding-left:20px}.today-view .today-compose .today-calendar-link{font-size:10px}}
+
+/* Restrained headings: plain gothic type, no backdrop behind either title. */
+.today-view .today-heading{min-height:0;padding:4px 1px 0;margin-bottom:17px;isolation:auto;overflow:visible}
+.today-view .today-heading h1{font-family:var(--font-ko,var(--sans));font-style:normal;font-size:clamp(25px,2.7vw,32px);font-weight:450;letter-spacing:.075em;line-height:1.25;margin:0;background:none;box-shadow:none}
+.today-view .today-heading h1:before,.today-view .today-heading h1:after,.manna-title-text:before,.manna-title-text:after{content:none;display:none}
+.manna-title-text{display:block;padding:0;background:none;box-shadow:none}
+.today-view .today-heading .date-tag{padding:0;background:none;border:0;border-radius:0;box-shadow:none;color:var(--muted);font-size:11px;font-weight:400}
+.today-view .today-compose .today-summary-heading{position:relative;min-height:0;padding:0;margin:0 1px 11px;border:0;border-radius:0;background:none;box-shadow:none;isolation:auto}
+.today-view .today-compose .today-summary-heading h2{position:relative;min-height:0;padding:0 0 0 10px;margin:0;border:0;font-size:16px;font-weight:550;line-height:1.4;letter-spacing:-.02em}
+.today-view .today-compose .today-summary-heading h2:before{content:"";position:absolute;left:0;top:.23em;bottom:.23em;width:2px;height:auto;border-radius:1px;background:var(--green);opacity:.4;font:inherit;color:inherit}
+.today-view .today-compose .today-calendar-link{font-size:11px;font-weight:400;color:var(--muted)}
+@media(max-width:480px){.today-view .today-heading h1{font-size:26px;letter-spacing:.065em}.today-view .today-heading .date-tag{font-size:10px}.today-view .today-compose .today-summary-heading h2{font-size:15px}}
