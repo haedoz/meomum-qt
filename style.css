@@ -3783,3 +3783,32 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .calendar-mark-card:is(.torah,.journal) .calendar-mark-footer{flex-wrap:wrap;row-gap:7px}.calendar-mark-card:is(.torah,.journal) .calendar-mark-footer .card-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto;gap:6px}
 
 #record-list .calendar-mark-footer .card-actions :is(.btn,.text-action){min-height:34px!important;padding:6px 11px!important;border-radius:10px!important;font-size:12px!important;font-weight:500!important;line-height:20px!important;gap:5px!important}#record-list .calendar-mark-footer .card-actions svg{width:16px!important;height:16px!important;flex:none}
+
+/* Compact remove controls occupy their own row track even at tight line spacing. */
+.journal-editor .devotion-passage-line.removable{grid-template-columns:1.35em minmax(0,1fr) 25px;align-items:start;min-height:27px;padding-block:2px;row-gap:0}
+.journal-editor .passage-remove{width:24px;min-width:24px;height:24px;min-height:24px;border-radius:7px;padding:0;margin:0;align-self:start;background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.journal-editor .passage-remove svg{width:13px;height:13px;min-width:13px}
+.post-comments .record-text,.comment-compose textarea,.devotion-comment-summary p{font-weight:400!important;font-family:var(--font-ko)!important;font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking)}
+.devotion-comment-summary{border-top:1px solid var(--line);padding-top:9px;margin-top:6px}.devotion-comment-summary h3{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:var(--muted);margin:0 0 7px}.devotion-comment-summary h3 svg{width:13px;height:13px}.devotion-comment-summary article+article{margin-top:9px}.devotion-comment-summary p{white-space:pre-wrap;margin:0}.devotion-comment-summary time{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+.journal-feed-page-heading{border-bottom:1px solid var(--line);padding-bottom:14px!important;margin-bottom:14px!important}.journal-feed-title-row h1{display:flex;align-items:center;gap:8px}.journal-feed-title-row h1>svg{width:21px;height:21px;flex:none;stroke-width:1.6;color:var(--muted)}
+.devotion-kind{color:#79608f;background:color-mix(in srgb,#aa89c1 10%,var(--card));border:1px solid color-mix(in srgb,#aa89c1 18%,transparent)}.devotion-kind-torah{color:#397e79;background:color-mix(in srgb,#69aaa2 11%,var(--card));border-color:color-mix(in srgb,#69aaa2 20%,transparent)}
+:root[data-appearance=dark] .devotion-kind{color:#d2bfe0;background:color-mix(in srgb,#aa89c1 9%,var(--card))}:root[data-appearance=dark] .devotion-kind-torah{color:#a6d3cd;background:color-mix(in srgb,#69aaa2 9%,var(--card))}
+.devotion-reflection-copy{white-space:pre-wrap;font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking);font-weight:400;background:color-mix(in srgb,#808080 6%,var(--card));padding:10px 11px;border-radius:10px;margin:4px 0}
+.completion-label{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);margin-inline-start:auto}.completion-label svg{width:15px;height:15px}.post-actions:has(.completion-label){gap:8px}
+.attach-journal-list{display:grid;gap:7px}.attach-journal-list button{display:flex;align-items:center;justify-content:space-between;text-align:start;gap:10px;border:1px solid var(--line);border-radius:12px;padding:11px;background:var(--card)}.attach-journal-list strong{display:block;font-size:13px;font-weight:550}.attach-journal-list small{display:block;font-size:11px;color:var(--muted);margin-top:4px}.attach-journal-list svg{width:15px;height:15px;flex:none}
+.today-extra-reading{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.journal-editor textarea,.torah-note-editor textarea,.comment-compose textarea,.note-editor-dialog textarea{scroll-margin-bottom:30px;overflow-anchor:none;resize:none;overflow:hidden;max-height:none}
+html:has(textarea:focus),body:has(textarea:focus){scroll-behavior:auto!important;overflow-anchor:none}
+.journal-editor :is(input,textarea)[readonly],.torah-note-editor textarea[readonly]{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+.journal-editor .writing-panel{gap:12px;padding:12px}.devotion-feed-page .journal-feed-card{gap:9px;padding:12px}.torah-feed-passages:empty{display:none}
+/* A lighter edition list with a compact source tag, preserving the accepted reading width. */
+.reader-view .comparison-stack{background:color-mix(in srgb,var(--green) 2%,var(--card))!important;border-inline-start:1px solid color-mix(in srgb,var(--green) 20%,var(--line))!important;border-radius:0 9px 9px 0}
+.bible-passage .comparison-stack .comparison-edition{display:inline-flex;justify-self:start;width:fit-content;padding:2px 5px;background:color-mix(in srgb,var(--green) 6%,transparent)!important;border-radius:4px;font-size:10px!important;line-height:1.2!important;opacity:1;color:var(--muted)}
+.bible-passage .comparison-stack .verse-support>.verse-content{padding-block:7px;row-gap:5px}.bible-passage .comparison-stack .comparison-text{color:var(--ink);font-weight:400}
+.search-arrival-row{animation:search-location-pulse .85s ease-in-out 3;border-radius:9px}
+@keyframes search-location-pulse{0%,100%{background:transparent}45%{background:color-mix(in srgb,var(--green) 13%,var(--card))}}
+@media(prefers-reduced-motion:reduce){.search-arrival-row{animation:none;background:color-mix(in srgb,var(--green) 10%,var(--card))}}
+
+.journal-editor textarea[data-journal-field=reflection],.torah-note-editor textarea,[data-thought-editor] textarea,[data-prayer-editor] textarea{min-height:140px!important}.comment-compose textarea{min-height:65px!important}.journal-editor textarea[readonly],.torah-note-editor textarea[readonly]{min-height:0!important}
+
+@keyframes search-location-pulse{0%,100%{background:transparent;opacity:1}45%{background:color-mix(in srgb,var(--green) 13%,var(--card));opacity:.72}}
