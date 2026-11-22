@@ -702,9 +702,10 @@ function writingHeader(symbol,label,title,meta = '') {
 }
 function requestRemoval(title,message){
   return new Promise(resolve=>{
-    const confirmDialog=document.createElement('dialog');confirmDialog.className='removal-confirmation';
-    confirmDialog.innerHTML='<form method="dialog" class="stack"><h2>'+esc(title)+'</h2><p>'+esc(message)+'</p><footer><button type="button" class="btn" data-removal-cancel>취소</button><button type="button" class="btn danger" data-removal-accept>삭제</button></footer></form>';
+    const confirmDialog=document.createElement('dialog');confirmDialog.className='removal-confirmation polished-removal';
+    confirmDialog.innerHTML='<form method="dialog" class="stack"><div class="row"><h2>'+esc(title)+'</h2><button type="button" class="btn dialog-close" data-removal-close aria-label="닫기">'+icon('close')+'</button></div><p>'+esc(message)+'</p><footer><button type="button" class="btn" data-removal-cancel>취소</button><button type="button" class="btn danger" data-removal-accept>삭제</button></footer></form>';
     document.body.append(confirmDialog);let accepted=false;
+    confirmDialog.querySelector('[data-removal-close]').onclick=event=>{event.stopPropagation();confirmDialog.close();};
     confirmDialog.querySelector('[data-removal-cancel]').onclick=event=>{event.stopPropagation();confirmDialog.close();};
     confirmDialog.querySelector('[data-removal-accept]').onclick=event=>{event.stopPropagation();accepted=true;confirmDialog.close();};
     let outside=false;const isOutside=event=>{const r=confirmDialog.getBoundingClientRect();return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;};
@@ -2988,9 +2989,10 @@ function dialog(title,body,formName) {
   const previousEditor=modal.querySelector('form[name=torah-note-edit]');if(previousEditor)persistTorahEdit(previousEditor);
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
   const titleFocus = formName==='chapter-jump'?'':' autofocus';
+  const removal=/삭제/.test(title)||formName==='journal-verse-removal';modal.classList.toggle('polished-removal',removal);
   modal.innerHTML = '<form method="dialog" class="stack"'+(formName?' name="'+formName+'"':'')+
     '><div class="row"><h2 id="active-dialog-title" tabindex="-1"'+titleFocus+'>'+title+
-    '</h2><button class="btn dialog-close" '+close+'>닫기</button></div>'+body+'</form>';
+    '</h2><button class="btn dialog-close" aria-label="닫기" '+close+'>'+(removal?icon('close'):'닫기')+'</button></div>'+body+'</form>';
   if (!modal.open) modal.showModal();
 }
 function updateMark(key,property,value) {
@@ -5225,7 +5227,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v304',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v305',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
