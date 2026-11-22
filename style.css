@@ -3484,3 +3484,61 @@ form[name=selected-study] .dialog-close{min-height:33px;font-size:12px;padding:7
 .study-shortcuts [data-study-preview]>svg{width:15px;height:15px}
 
 .jewish-cycle-month-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}.jewish-cycle-month-title .jewish-cycle-alias{font-family:var(--sans);font-size:12px;font-weight:400;line-height:1.4;color:var(--muted)}.jewish-cycle-month-title .jewish-cycle-alias bdi{font-size:1em!important;font-weight:400}
+
+/* November record and reading refinements. */
+.today-view .today-heading h1{font-family:"Iowan Old Style",Georgia,serif;font-weight:500;font-size:clamp(34px,4vw,43px);font-style:italic;letter-spacing:-.045em;line-height:1.05}
+.manna-title-text{display:inline-flex;align-items:baseline;gap:1px}.today-title-suffix{color:var(--green);font-size:.85em;font-weight:400}
+.today-view .today-verse-card .today-quote,.today-view .today-verse-card .today-quote>div{display:block;width:100%;max-width:none;min-width:0}
+.today-view .today-verse-card .today-quote blockquote{max-width:none!important;width:100%;margin-inline:0;white-space:normal;word-break:normal;overflow-wrap:break-word;text-wrap:pretty;font-weight:500}
+.bible-passage .verse-support{background:color-mix(in srgb,var(--green) 3%,var(--card));border:0;border-radius:10px;color:color-mix(in srgb,var(--ink) 78%,var(--muted));box-shadow:none;margin-block:2px 6px}
+.bible-passage .verse-support .verse-content{border-inline-start:1px solid color-mix(in srgb,var(--green) 18%,transparent);background:transparent;padding:6px 9px;color:inherit}
+.bible-passage .verse-support .comparison-edition{font-size:10px;font-weight:500;color:var(--muted);opacity:.8;margin-bottom:2px}
+.bible-passage .verse-support[aria-pressed=true]{background:color-mix(in srgb,var(--green) 10%,var(--card))}
+.record-period-sort-row{display:flex;align-items:stretch;gap:8px;margin-top:9px;min-width:0}
+.record-period-sort-row .record-period-trigger{margin:0;flex:1;min-width:0;width:auto}
+.record-period-sort-row .record-sort{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex:none;min-height:40px;padding:8px 11px;border-radius:12px;background:color-mix(in srgb,var(--card) 80%,transparent);border:1px solid color-mix(in srgb,var(--line) 65%,transparent);font-size:12px;color:var(--green)}
+.record-period-sort-row .record-sort svg{width:12px;height:12px}
+.record-list-tools:empty{display:none}.record-list-tools{margin:7px 0}
+.record-journal-passages .devotion-passage{padding:9px 10px;background:color-mix(in srgb,var(--green) 3%,var(--card));border:1px solid color-mix(in srgb,var(--line) 45%,transparent);border-radius:11px}
+.record-journal-passages .devotion-passage+.devotion-passage{margin-top:7px}
+.record-journal-passages .devotion-passage .note-link{font-size:12px;min-height:26px;background:none;padding:1px 0;text-decoration:none}
+.record-journal-passages .devotion-passage-line{font-size:var(--reading-size,15px)}
+.calendar-mark-card .calendar-quote-body{background:color-mix(in srgb,var(--green) 3%,var(--card))!important;border-left-width:2px!important;border-radius:0 10px 10px 0;padding:9px 10px;margin:7px 0}
+.calendar-mark-card .record-note-content,.calendar-mark-card .record-journal-content{background:color-mix(in srgb,var(--green) 3%,var(--card));border:0;border-radius:11px;padding:10px 11px;margin:8px 0 0}
+.calendar-mark-card .record-journal-text,.calendar-mark-card .record-note-body{font-family:var(--font-ko,var(--sans));font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px);white-space:pre-wrap;font-weight:400}
+.calendar-mark-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.calendar-mark-footer>.note-link{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-width:max-content;font-size:12px;line-height:1.3;text-decoration:none}
+.calendar-mark-footer>.note-link svg{width:13px;height:13px;flex:none}
+.journal-editor .journal-verses-card{padding:10px 11px;border-radius:14px;margin:10px 0;border:1px solid var(--line);background:var(--card)}
+.journal-editor .journal-verses-header{padding:0 0 8px;margin-bottom:8px;min-height:0;gap:8px}
+.journal-editor .journal-verses-header h3{font-size:12px;font-weight:600;color:var(--muted)}
+.journal-selection-count{font-size:11px;color:var(--muted);white-space:nowrap}
+.journal-editor .journal-verses-list{display:grid;gap:12px}
+.journal-editor .devotion-passage .note-link{font-size:12px;min-height:26px;padding:2px 0;background:none}
+.devotion-passage-line.removable{grid-template-columns:1.35em minmax(0,1fr) 25px;align-items:start}
+.passage-remove{display:grid;place-items:center;width:24px;height:24px;padding:3px;margin:0;min-height:24px;border:0;background:none;opacity:.75}
+.passage-remove svg{width:13px;height:13px}
+.prayer-overview button[aria-pressed=true],.prayer-overview button[aria-pressed=true] strong,.prayer-overview button[aria-pressed=true] span{color:#fff!important}
+:root[data-appearance=dark] .prayer-overview button[aria-pressed=true]{background:color-mix(in srgb,var(--green) 25%,#24272e)}
+/* Shared glass action treatment; reading and editing text stays on solid surfaces. */
+:is(.calendar-mark-footer,.journal-feed-actions,.prayer-record .card-actions,.torah-reflection-actions,.post-actions) :is(.btn,.text-action){min-height:32px;padding:6px 11px;border-radius:10px;border:1px solid color-mix(in srgb,var(--line) 55%,transparent);background:linear-gradient(150deg,color-mix(in srgb,var(--card) 94%,transparent),color-mix(in srgb,var(--light) 75%,transparent));box-shadow:inset 0 1px 0 #ffffff35,0 1px 4px #00000003;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px;line-height:1.3;white-space:nowrap;color:var(--green)}
+:is(.calendar-mark-footer,.journal-feed-actions,.prayer-record .card-actions,.post-actions) .destructive{color:#b53d4d!important}
+:root[data-appearance=dark] :is(.calendar-mark-footer,.journal-feed-actions,.prayer-record .card-actions,.post-actions) .destructive{color:#ee939c!important}
+.post-actions .btn.primary,.torah-reflection-actions .btn.primary{background:var(--green);color:var(--on-primary);border-color:transparent}
+.torah-popup-tabs{display:flex;gap:5px;border-radius:12px;background:var(--light);padding:4px;margin:12px 0}
+.torah-popup-tabs button{display:flex;align-items:center;justify-content:center;gap:6px;flex:1;min-height:35px;border-radius:9px;font-size:12px;color:var(--muted);border:0}
+.torah-popup-tabs button[aria-pressed=true]{background:var(--card);color:var(--green);box-shadow:0 1px 4px #00000009;font-weight:600}
+.torah-popup-tabs svg{width:15px;height:15px}
+.torah-commentary-sources{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.torah-commentary-sources button{font-size:11px;min-height:29px;padding:5px 8px;border-radius:9px;border:1px solid var(--line);color:var(--muted)}
+.torah-commentary-sources button[aria-pressed=true]{background:var(--light);color:var(--green);border-color:transparent;font-weight:600}
+.torah-popup-original .commentary-copy{font:inherit}.torah-popup-original .commentary-copy p{margin:0 0 .7em;font:inherit}
+@media(max-width:480px){.record-period-sort-row{gap:5px}.record-period-sort-row .record-period-trigger{padding:9px 8px;gap:6px}.record-period-sort-row .record-period-trigger>span{gap:5px;flex-wrap:wrap}.record-period-sort-row .record-period-trigger small{font-size:10px}.record-period-sort-row .record-sort{padding-inline:8px;font-size:11px}.calendar-mark-header{flex-wrap:wrap;gap:6px}.journal-editor .journal-verses-card{padding-inline:9px}}
+
+.record-journal-passages .note-link{position:relative;z-index:2}.record-journal-passages .devotion-passage header{margin-bottom:6px}.record-journal-passages .devotion-passage-lines{gap:var(--verse-gap,0px)}
+.calendar-mark-footer{flex-wrap:nowrap}
+.calendar-mark-footer>.item-actions.card-actions{width:auto;flex:0 0 auto;margin:0 0 0 auto;flex-wrap:nowrap;max-width:none;gap:6px}
+.calendar-mark-footer>.note-link{flex:0 0 auto}
+.record-journal-passages .verse-text{font-weight:400}
+.calendar-mark-card .record-journal-title{color:var(--green);font-size:var(--reading-size,15px);font-weight:600;margin-bottom:5px}
+.calendar-mark-card .record-note-label{color:var(--muted);font-size:11px;font-weight:500}

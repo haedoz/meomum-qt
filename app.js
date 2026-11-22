@@ -537,7 +537,7 @@ function triggerGhAutoBackup() {
   localStorage.setItem(ghQueueKey(),crypto.randomUUID());
   updateGhSyncStatus();
   clearTimeout(ghAutoBackupTimer);
-  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2610);
+  ghAutoBackupTimer=setTimeout(()=>checkGhAutoSync(true),2620);
 }
 async function save() {
   const status = document.querySelector('#save-status');
@@ -651,7 +651,7 @@ function savedVerseText(key) {
 function dailyVerse(day,edition) {
   const available = dailyVerseRefs.map(ref=>edition+'/'+ref).filter(ref=>verseText(ref).trim());
   if (!available.length) return;
-  let hash = 2166136261;
+  let hash = 2166136262;
   for (const char of day) hash = Math.imul(hash ^ char.charCodeAt(0),16777619);
   return available[(hash>>>0)%available.length];
 }
@@ -705,42 +705,7 @@ function journalScreen() {
   const entry = journalEntry(day);
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
-  if (validRefs.length) {
-    const chMap = new Map();
-    for (const ref of validRefs) {
-      const {edition, book, chapter, verse} = readRef(ref);
-      const chKey = [edition, book, chapter].join('/');
-      if (!chMap.has(chKey)) chMap.set(chKey, []);
-      chMap.get(chKey).push(verse);
-    }
-    const chSummaries = [...chMap.entries()].map(([chKey, vNums]) => {
-      vNums.sort((a,b) => a - b);
-      return selectionReference(chKey + '/' + vNums[0], vNums);
-    });
-    const combinedRefTitle = chSummaries.join(', ');
-
-    refs = '<section class="journal-verses-card card">'+
-      '<div class="journal-verses-header row">'+
-        '<div class="row" style="gap:6px; align-items:center;">'+
-          '<span class="kicker" style="margin:0;">📖 묵상에 담은 말씀</span>'+
-          '<span class="pill" style="font-size:0.75rem; padding:1px 8px;">'+validRefs.length+'구절</span>'+
-        '</div>'+
-        '<span class="muted" style="font-size:0.8125rem;">'+esc(combinedRefTitle)+'</span>'+
-      '</div>'+
-      '<div class="journal-verses-list">'+
-        validRefs.map(ref => {
-          const body = savedVerseText(ref) || verseText(ref);
-          return '<div class="journal-verse-row">'+
-            '<div class="row journal-verse-head">'+
-              '<button type="button" class="note-link" data-visit="'+ref+'">'+esc(reference(ref))+' · '+esc(editionLabel(readRef(ref).edition))+'</button>'+
-              '<button type="button" class="text-action destructive" data-remove="'+ref+'" data-date="'+day+'" aria-label="묵상에서 '+esc(reference(ref))+' 빼기">빼기</button>'+
-            '</div>'+
-            '<p class="journal-verse-text">'+esc(body)+'</p>'+
-          '</div>';
-        }).join('')+
-      '</div>'+
-    '</section>';
-  }
+  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:true,day})+'</div></section>';
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
@@ -822,7 +787,7 @@ function showSelectedStudy(mode){
   }).join('');
   dialog(label+' 모아보기','<div class="study-selection-popup"><div class="study-popup-meta"><span>'+refs.length+'개 구절</span><span>'+esc(source?.label||label)+'</span></div>'+sections+(!source?'<button type="button" class="btn" data-nav="settings" data-import-link>자료 추가</button>':'')+'</div>','selected-study');
 }
-function showTorahVerse(key){
+function showTorahVerse(key,mode='original'){
   if(!validRef(key))return;
   const {book,chapter,verse,edition}=readRef(key),source=originalPassageSource(book,chapter);
   const body=studySource('original')?.verses[book]?.[chapter]?.[verse]||'';
@@ -831,7 +796,12 @@ function showTorahVerse(key){
   const colors=[...new Set((state.quickMarkers||['#e6bc43','#7cb668','#dc7d9c']).filter(validColor))];
   const palette='<section class="torah-popup-marker"><span>'+icon('marker')+' 형광펜</span><div>'+colors.map((color,index)=>'<button type="button" class="torah-highlight-color" data-torah-mark-ref="'+key+'" data-torah-mark-color="'+color+'" style="--marker-color:'+color+'" aria-label="형광펜 색상 '+(index+1)+' 적용" aria-pressed="'+(appearance?.style==='fill'&&appearance.color===color)+'">'+icon('check')+'</button>').join('')+'<button type="button" class="text-action torah-highlight-erase" data-torah-mark-ref="'+key+'" data-torah-mark-erase="true" '+(!appearance?'disabled':'')+'>지우기</button></div></section>';
   const reading=hasOriginal?originalVerseReading(body,verse,source,chapter):'<div class="torah-popup-empty"><p>이 구절의 원전분해 자료가 아직 없어요.</p><button type="button" class="text-action" data-nav="settings" data-import-link>원전분해 자료 추가 '+icon('right')+'</button></div>';
-  dialog(esc(reference(key)),'<div class="torah-verse-popup"><p class="torah-popup-edition">'+esc(editionLabel(edition))+'</p><blockquote class="torah-popup-passage">'+markedText(verseText(key),mark)+'</blockquote>'+palette+'<section class="torah-popup-original"><h3>'+icon('note')+' 이 구절의 원전분해</h3>'+reading+'</section></div>','torah-verse-preview');
+  const commentary=studySource('commentary'),copy=commentary?.verses[book]?.[chapter]?.[verse]||'';
+  const tabs='<div class="torah-popup-tabs" role="group" aria-label="구절 해설 선택">'+[['original','원전분해','studyAnalysis'],['commentary','주석','studyComment']].map(([id,label,symbol])=>'<button type="button" data-torah-study-ref="'+key+'" data-torah-study-mode="'+id+'" aria-pressed="'+(mode===id)+'">'+icon(symbol)+label+'</button>').join('')+'</div>';
+  const sources=mode==='commentary'&&Object.keys(commentaries).length?'<div class="torah-commentary-sources" role="group" aria-label="주석 자료 선택">'+Object.values(commentaries).map(item=>'<button type="button" data-torah-study-ref="'+key+'" data-torah-study-mode="commentary" data-torah-commentary="'+item.id+'" aria-pressed="'+(commentary?.id===item.id)+'">'+esc(item.label)+'</button>').join('')+'</div>':'';
+  const detail=mode==='commentary'?(copy?'<div class="commentary-copy">'+commentaryParagraphs(copy).join('')+'</div>':'<p class="study-popup-empty">이 구절의 주석 자료가 없어요.</p>'):reading;
+  dialog(esc(reference(key)),'<div class="torah-verse-popup"><p class="torah-popup-edition">'+esc(editionLabel(edition))+'</p><blockquote class="torah-popup-passage">'+markedText(verseText(key),mark)+'</blockquote>'+palette+tabs+sources+'<section class="torah-popup-original">'+detail+'</section></div>','torah-verse-preview');
+
 }
 function torahScreen(){
   const day=selectedTorahDay||dateKey(),portion=torahDays[day],note=state.torahNotes[day]||{};
@@ -857,7 +827,7 @@ function todayYearVerse(day) {
   const preview=item?(item.refs.map(ref=>{const shown=yearDisplayReference(ref);return '<span class="today-year-line" lang="'+(localLanguages[shown.edition] ?? 'ko')+'">'+esc(shown.body)+'</span>';}).join('')||'<span class="today-year-line" lang="ko">'+esc(item.title||item.note||'')+'</span>'):'';
   return '<button type="button" class="card today-year-verse" data-open-year="'+year+'"><span class="today-year-emblem">'+icon('yearVerse')+'</span><span class="today-year-copy"><small>'+year+' 올해의 말씀'+(entries.length>1?' · '+entries.length+'건':'')+(item?.refs.length?' · '+esc(yearDisplayReference(item.refs[0]).label):'')+'</small><span class="today-year-body">'+(preview||'<span class="today-year-line" lang="ko">한 해 동안 묵상할 말씀을 담아보세요.</span>')+'</span></span>'+icon('right')+'</button>';
 }
-function journalPassageMarkup(refs){
+function groupedPassageRefs(refs){
   const groups=[],byChapter=new Map();
   for(const key of refs){
     const position=readRef(key),id=[position.edition,position.book,position.chapter].join('/');
@@ -865,14 +835,19 @@ function journalPassageMarkup(refs){
     if(!group){group={...position,keys:[]};byChapter.set(id,group);groups.push(group);}
     if(!group.keys.includes(key))group.keys.push(key);
   }
-  for(const group of groups)group.keys.sort((a,b)=>readRef(a).verse-readRef(b).verse);
-  return groups.map(group=>{
-    const short=searchAliases[books.findIndex(([id])=>id===group.book)]||titles[group.book];
-    const ranges=[];
-    for(const key of group.keys){const n=readRef(key).verse,last=ranges.at(-1);if(last&&last[1]+1===n)last[1]=n;else ranges.push([n,n]);}
-    const label=short+' '+group.chapter+':'+ranges.map(([a,b])=>a===b?a:a+'-'+b).join(', ');
-    group.key=group.keys[0];
-    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span></div>').join('')+'</div></section>';
+  for(const group of groups){group.keys.sort((a,b)=>readRef(a).verse-readRef(b).verse);group.key=group.keys[0];}
+  return groups;
+}
+function passageGroupLabel(group,short=true){
+  const name=short?(searchAliases[books.findIndex(([id])=>id===group.book)]||titles[group.book]):titles[group.book];
+  const ranges=[];
+  for(const key of group.keys){const n=readRef(key).verse,last=ranges.at(-1);if(last&&last[1]+1===n)last[1]=n;else ranges.push([n,n]);}
+  return name+' '+group.chapter+':'+ranges.map(([a,b])=>a===b?a:a+'–'+b).join(', ');
+}
+function journalPassageMarkup(refs,options={}){
+  return groupedPassageRefs(refs).map(group=>{
+    const label=passageGroupLabel(group);
+    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+'"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span>'+(options.removable?'<button type="button" class="text-action destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
   }).join('');
 }
 function torahDevotionCard(day,note){
@@ -990,7 +965,7 @@ function todaySummary(day,journal) {
     ['prayer','기도 노트','data-action="add-prayer"'],
     ['thoughtBulb','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행의 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -1041,7 +1016,7 @@ function todayScreen() {
   const hasPassage = Boolean(key && verseText(key));
   const heroLink = hasPassage?'오늘의 말씀 본문으로 이동':'성경 번역본 추가';
   const heroAction = hasPassage?'data-visit="'+key+'"':'data-nav="settings" data-import-link';
-  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-text">Today&#39;s</span></h1></header>'+
+  return '<header class="today-heading"><time class="date-tag" datetime="'+today+'">'+icon('calendar')+longDate(today)+'</time><h1><span class="manna-title-text"><span>Today</span><span class="today-title-suffix">’s</span></span></h1></header>'+
     '<section class="hero today-verse-card tappable-card" aria-labelledby="today-verse-heading">'+cardHit(heroLink,heroAction)+
     '<h2 id="today-verse-heading"><span class="today-verse-icon">'+icon('sun')+'</span>오늘의 말씀</h2>'+
     (key?'<div class="today-quote"><div><blockquote>'+esc(quote)+
@@ -2128,6 +2103,13 @@ function recordRows() {
       allRefs: validRefs
     }, undefined, day+(noteId?'/'+noteId:''));
   }
+  for(const [day,note] of Object.entries(state.torahNotes)){
+    if(!torahNoteExists(day))continue;
+    const portion=torahDays[day],edition=state.reader.edition;
+    const refs=edition?torahAddresses(portion).map(address=>edition+'/'+address).filter(ref=>validRef(ref)&&verseText(ref)):[];
+    const first=refs[0]||[edition||'krv','GEN',1,1].join('/');
+    add(first,refs.map(ref=>readRef(ref).verse),day,{journal:true,torah:true,journalTitle:portion?.name||'토라포션',journalReflection:note.body,allRefs:refs},undefined,'torah/'+day);
+  }
   return [...rows.values()].reverse().sort((left,right)=>(right.day ?? '').localeCompare(left.day ?? ''));
 }
 function highlightDeleteButton(key) {
@@ -2151,36 +2133,15 @@ function renderRecordCard(item) {
   const {key,verses,day,mark,noteKey,journalDay} = item;
 
   const kindClass = mark.journal ? 'journal' : mark.note ? 'note' : 'highlight';
-  const markKind = mark.journal ? '묵상 노트' : mark.note ? '메모' : '형광펜';
+  const markKind = mark.torah ? '토라포션' : mark.journal ? '묵상 노트' : mark.note ? '메모' : '형광펜';
 
   let content = '';
   let badgeTitle = '';
 
   if (mark.journal) {
     const hasRefs = Boolean(mark.allRefs?.length);
-    if (hasRefs) {
-      const firstRef = mark.allRefs[0];
-      const {book, chapter} = readRef(firstRef);
-      const bTitle = titles[book] || book;
-      if (mark.allRefs.length > 2) {
-        badgeTitle = `${esc(bTitle)} ${chapter}장 (${mark.allRefs.length}구절) · ${esc(editionLabel(readRef(key).edition))}`;
-      } else {
-        badgeTitle = esc(mark.combinedRefTitle || selectionReference(key,verses)) + ' · ' + esc(editionLabel(readRef(key).edition));
-      }
-    } else {
-      badgeTitle = mark.journalTitle ? esc(mark.journalTitle) : '나의 묵상';
-    }
-
-    let versesHtml = '';
-    if (hasRefs) {
-      versesHtml = '<blockquote class="calendar-quote-body">' +
-        mark.allRefs.map(ref => {
-          const {verse} = readRef(ref);
-          const body = verseText(ref) || savedVerseText(ref);
-          return '<span class="record-verse"><span class="record-verse-number">'+verse+'절</span>'+esc(body)+'</span>';
-        }).join('') +
-      '</blockquote>';
-    }
+    badgeTitle=hasRefs?esc(groupedPassageRefs(mark.allRefs).map(group=>passageGroupLabel(group,false)).join(' · ')):esc(mark.journalTitle||'나의 묵상');
+    const versesHtml=hasRefs?'<div class="record-journal-passages">'+journalPassageMarkup(mark.allRefs)+'</div>':'';
 
     let reflectionHtml = '';
     if (mark.journalReflection?.trim()) {
@@ -2227,7 +2188,7 @@ function renderRecordCard(item) {
     '<div class="row calendar-mark-footer">'+
     (mark.allRefs?.length ? '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>' : '<span></span>')+
     '<div class="item-actions card-actions">'+
-    (journalDay ? '<button type="button" class="text-action" data-nav="journal/'+journalDay+'">묵상 열기</button>' : '')+
+    (journalDay ? '<button type="button" class="text-action" data-nav="'+(mark.torah?journalDay:'journal/'+journalDay)+'">묵상 열기</button>' : '')+
     (noteKey ? '<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>' : '')+
     (!mark.journal && verseMark(mark) ? highlightDeleteButton(key) : '')+
     '</div></div></article>';
@@ -2276,13 +2237,7 @@ function recordList(rows = recordRows()) {
 
   }
 
-  return '<div class="row record-list-tools">'+
-    '<div class="row" style="gap:8px; align-items:center;">'+
-      '<p class="record-result muted" tabindex="-1">말씀 기록 '+matching.length+'건</p>'+
-      (hasFilter ? '<button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 ✕</button>' : '')+
-      '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="오래된 순" aria-pressed="'+oldestRecordsFirst+'">'+
-      (oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button>'+
-    '</div></div>'+
+  return (hasFilter?'<div class="record-list-tools"><button type="button" class="text-action filter-reset-text" data-action="clear-record-filters">필터 초기화 '+icon('close')+'</button></div>':'')+
     (matching.length ? groupsHtml+recordPagination(pages,matching.length) : '<p class="empty">조건에 맞는 말씀 기록이 없어요.</p>');
 }
 function recordPagination(pages,total){
@@ -2352,7 +2307,7 @@ function renderPersonalSearch() {
     '<div class="search-result-row"><button type="button" class="record-open search-result" data-personal-hit '+attribute+'="'+esc(value)+'">'+
     '<small class="muted">'+esc(personalSearchTypes[type]+' · '+(day ?? personalYearLabel(year)))+'</small>'+
     (title===personalSearchTypes[type]?'':'<strong>'+esc(title)+'</strong>')+
-    '<span>'+esc(body.slice(0,261))+'</span></button></div>').join('');
+    '<span>'+esc(body.slice(0,262))+'</span></button></div>').join('');
   const filterControls = currentScopedType !== 'all'
     ? searchTool('personal-search-year',personalYearLabel(year),'calendar')
     : searchTool('personal-search-type',personalSearchTypes[type],'filter')+searchTool('personal-search-year',personalYearLabel(year),'calendar');
@@ -2418,7 +2373,9 @@ function recordsScreen() {
       '<div class="record-type-tabs" role="group" aria-label="기록 종류">'+
         Object.entries(recordFilters).map(([id,label])=>'<button type="button" class="pill" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+' <span>'+counts[id]+'</span></button>').join('')+
       '</div>'+
+      '<div class="record-period-sort-row">'+
       '<button type="button" class="record-period-trigger" data-action="pick-record-period">'+icon('calendar')+'<span><small>기록 기간</small><strong>'+esc(recordSelection.month?recordSelection.month.slice(0,4)+'년 '+Number(recordSelection.month.slice(5))+'월':recordSelection.year?recordSelection.year==='undated'?'날짜 미기록':recordSelection.year+'년 전체':'전체 기간')+'</strong></span>'+icon('down')+'</button>'+
+      '<button type="button" class="text-action record-sort" data-action="sort-records" aria-label="기록 정렬" aria-pressed="'+oldestRecordsFirst+'">'+(oldestRecordsFirst?'오래된 순':'최신 순')+icon('down')+'</button></div>'+
     '</div>'+
     '<div id="record-list" class="spaced">'+recordList(rows)+'</div>';
 }
@@ -3575,6 +3532,7 @@ document.addEventListener('click',event => {
   }
   const target = button.dataset;
   if(target.studyPreview)return showSelectedStudy(target.studyPreview);
+  if(target.torahStudyRef){if(target.torahCommentary&&commentaries[target.torahCommentary]){state.commentaryEdition=target.torahCommentary;save();}return showTorahVerse(target.torahStudyRef,target.torahStudyMode);}
   if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
   if(target.ghDeviceRemove){confirmGhDeviceRemoval(target.ghDeviceRemove);return;}
   if(target.ghDeviceConfirm){changeGhDeviceVisibility(target.ghDeviceConfirm,true);return;}
@@ -3750,7 +3708,7 @@ document.addEventListener('click',event => {
     if (!Number.isInteger(page) || page<0) return;
     recordPage = page;
     render();
-    const summary = main.querySelector('#record-list .record-result');
+    const summary = main.querySelector('#record-list .record-group-summary');
     summary?.focus({preventScroll:true});
     summary?.scrollIntoView({block:'start'});
     return;
@@ -5038,7 +4996,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v261',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v262',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
