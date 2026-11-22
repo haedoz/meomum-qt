@@ -278,8 +278,8 @@ const dailyNoteLimit = 20000;
 let verseArrivalTimer, arrivedVerse, verseAlignmentEpoch=0;
 let toastTimer, jumpTo, activeRoute, prayerFilter = 'open', editId, trackerBook, editingVerseNote;
 let trackerYear;
-const trackerScopes = {all:'전체 성경',old:'구약',new:'신약'};
-let trackerScope = 'all';
+const trackerScopes = {old:'구약',new:'신약'};
+let trackerScope = 'old';
 
 function dateKey(date = new Date()) {
   return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
@@ -4676,14 +4676,12 @@ function prayersScreen() {
     '<div class="prayer-overview" role="group" aria-label="기도 상태">'+Object.entries(labels).map(([key,label])=>
       '<button type="button" data-prayer-filter="'+key+'" aria-pressed="'+(prayerFilter===key)+'">'+
       '<span class="prayer-status-icon">'+icon(key==='open'?'prayer':'check')+'</span><span>'+label+'</span><strong>'+groups[key].length+'건</strong></button>').join('')+'</div>'+
-    '<div class="row prayer-list-header"><h2>'+labels[prayerFilter]+'</h2><button class="btn primary" data-action="add-prayer">＋ 기도제목 추가</button></div>'+
+    '<div class="row prayer-list-header"><h2>기도 목록</h2><button class="btn primary" data-action="add-prayer">＋ 기도제목 추가</button></div>'+
     '<div class="prayer-list">'+(current.map(prayerCard).join('') || '<p class="empty">이곳에 남긴 기록이 아직 없어요.</p>')+'</div>';
 }
 function prayerCard(item) {
   if (item.kind==='thought') return thoughtCard(item);
-  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+'<div class="row prayer-record-meta"><span class="reading-badge">'+
-    (item.done?'응답받음':'기도 중')+'</span>'+(item.day?'<time class="muted" datetime="'+item.day+'">'+
-    item.day.slice(0,4)+'년 '+shortDate(item.day)+'</time>':'')+'</div>'+
+  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+'<div class="row prayer-record-meta">'+(item.day?'<time class="muted" datetime="'+item.day+'">'+item.day.slice(0,4)+'년 '+shortDate(item.day)+'</time>':'')+'</div>'+
     '<h3 class="item-title">'+esc(item.title)+'</h3>'+
     (item.body?'<p class="record-text">'+esc(item.body)+'</p>':'')+
     (item.answer?'<div class="answer"><strong>응답 기록</strong><p class="record-text">'+esc(item.answer)+'</p></div>':'')+
@@ -4800,10 +4798,7 @@ function editorActions(kind,item) {
 function thoughtText(item) {
   return [item.title,item.body,item.answer].filter(Boolean).join('\n\n');
 }
-function thoughtCopy(item) {
-  return '<div class="thought-copy">'+thoughtText(item).trim().split(/\r?\n[ \t]*(?:\r?\n)+/)
-    .map(paragraph=>'<p>'+esc(paragraph)+'</p>').join('')+'</div>';
-}
+function thoughtCopy(item){return '<div class="thought-copy"><p>'+esc(thoughtText(item))+'</p></div>';}
 function thoughtCard(item,inList = false) {
   const date = inList && item.day?
     '<time class="thought-card-date" datetime="'+item.day+'">'+shortDate(item.day)+'</time>':'';
@@ -4865,8 +4860,8 @@ function prayerEditorScreen(id) {
     editorDateField(item?item.day ?? '':dateKey())+
     editorField('기도 내용','body',item?.body,'textarea','rows="5" placeholder="편하게 적어보세요."')+
     '</div><details class="post-response" '+(item?'open':'')+'><summary><span>'+icon('check')+'응답 기록</span>'+icon('down')+'</summary>'+
-      '<label class="check-field"><input name="done" type="checkbox" '+(item?.done?'checked':'')+'> 응답받았어요</label>'+
-      editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+'</details>'+
+      '<div class="response-fields"><label class="response-state"><span>응답받았어요</span><input name="done" type="checkbox" role="switch" '+(item?.done?'checked':'')+'></label>'+
+      editorField('응답 내용','answer',item?.answer,'textarea','rows="3" placeholder="응답받은 이야기를 남겨보세요."')+'</div></details>'+
     draftNotice()+'<footer><button class="btn" type="button" data-action="back">나가기</button><button class="btn primary" type="submit">저장</button></footer></form></div>';
 }
 async function savePrayer(form) {
@@ -5180,7 +5175,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v292',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v293',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
