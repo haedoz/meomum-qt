@@ -1042,7 +1042,7 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   const mark = state.marks[key];
   const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'"'+
     (!secondary && !state.comparison.length?' data-reading-verse="'+num+'"':'')+' lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
-    '<span class="number" '+(secondary?'aria-hidden="true" style="visibility:hidden"':'')+'>'+num+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span>':'')+markedText(content,marker)+'</span></button>';
+    '<span class="number" '+(secondary?'aria-hidden="true" style="visibility:hidden"':'')+'>'+num+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span><span class="comparison-text">'+markedText(content,marker)+'</span>':markedText(content,marker))+'</span></button>';
   return mark?.note?'<div class="verse-with-note">'+verse+
     '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
 }
@@ -1060,7 +1060,7 @@ function readerScreen() {
     const first = verseButton(edition,book,chapter,num,verses[num],marker);
     if (!comparison.length) return first;
     const alternatives = comparison.map((id,index)=>verseButton(id,book,chapter,num,otherVerses[index][num],undefined,true));
-    return '<div class="verse-pair" data-reading-verse="'+num+'">'+first+alternatives.join('')+'</div>';
+    return '<div class="verse-pair" data-reading-verse="'+num+'">'+first+'<div class="comparison-stack" role="group" aria-label="'+num+'절 대조 번역본">'+alternatives.join('')+'</div></div>';
   }).join('');
   const available = availableChapters(edition);
   const index = available.indexOf(book+'/'+chapter);
@@ -5011,7 +5011,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v269',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v270',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
