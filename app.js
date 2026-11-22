@@ -948,8 +948,19 @@ function journalPassageMarkup(refs,options={}){
     return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+'"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span>'+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
   }).join('');
 }
+function devotionReferenceChips(refs){
+  const groups=groupedPassageRefs(refs);
+  return groups.length?'<nav class="devotion-reference-chips" aria-label="묵상에 담은 구절">'+groups.map(group=>'<button type="button" class="devotion-reference-chip" data-visit="'+group.key+'" aria-label="'+esc(passageGroupLabel(group,false))+' 본문 읽기">'+icon('book')+'<span>'+esc(passageGroupLabel(group))+'</span>'+icon('right')+'</button>').join('')+'</nav>':'';
+}
+function torahReferenceChips(day){
+  const portion=torahDays[day];if(!portion)return '';
+  return '<nav class="devotion-reference-chips" aria-label="토라포션 구절 범위">'+portion.ranges.map(([book,c1,v1,c2,v2])=>{
+    const label=(searchAliases[books.findIndex(([id])=>id===book)]||titles[book])+' '+c1+':'+v1+'–'+(c1===c2?'':c2+':')+v2;
+    return '<button type="button" class="devotion-reference-chip" data-nav="torah/'+day+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button>';
+  }).join('')+'</nav>';
+}
 function torahDevotionCard(day,note){
-  return '<article class="card stack journal-feed-card torah-feed-card">'+devotionCardHeading(torahDays[day]?.name||'토라포션',true)+'<div class="torah-feed-passages">'+journalPassageMarkup(torahAddresses(torahDays[day]).map(ref=>state.reader.edition+'/'+ref).filter(ref=>validRef(ref)&&verseText(ref)))+'</div><div class="devotion-reflection-copy">'+esc(note.body||'')+'</div><footer class="journal-feed-actions"><button type="button" class="text-action destructive" data-delete-torah="'+day+'">삭제</button><button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button><button type="button" class="btn" data-nav="torah/'+day+'">본문 읽기 '+icon('right')+'</button></footer></article>';
+  return '<article class="card stack journal-feed-card torah-feed-card">'+devotionCardHeading(torahDays[day]?.name||'토라포션',true)+torahReferenceChips(day)+'<div class="devotion-reflection-copy">'+esc(note.body||'')+'</div><footer class="journal-feed-actions"><button type="button" class="text-action destructive" data-delete-torah="'+day+'">삭제</button><button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button><button type="button" class="btn" data-nav="torah/'+day+'">본문 읽기 '+icon('right')+'</button></footer></article>';
 }
 function journalsScreen() {
   const entries = [
@@ -962,7 +973,7 @@ function journalsScreen() {
     if(kind==='torah')return torahDevotionCard(day,entry);
     const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
     const validRefs = (entry.verses || []).filter(validRef);
-    const versesHtml=journalPassageMarkup(validRefs);
+    const versesHtml=devotionReferenceChips(validRefs);
 
     return '<article class="card stack journal-feed-card" style="gap:10px">'+
       devotionCardHeading(entry.title||'나의 묵상')+
@@ -972,7 +983,7 @@ function journalsScreen() {
       '<footer class="journal-feed-actions">'+
       '<button type="button" class="text-action destructive" data-delete-journal="'+day+'" data-journal-note="'+noteId+'" aria-label="'+esc(date)+' 묵상 삭제">삭제</button>'+
       '<button type="button" class="btn" data-edit-journal="'+day+'" data-journal-note="'+noteId+'" aria-label="'+esc(date)+' 묵상 수정">'+icon('edit')+' 수정</button>'+
-      '<button type="button" class="btn" data-nav="'+journalRoute(day,noteId)+'">묵상 열기 '+icon('right')+'</button>'+
+      (validRefs.length?'<button type="button" class="btn" data-visit="'+validRefs[0]+'">본문 읽기 '+icon('right')+'</button>':'')+
       '</footer>'+
       '</article>';
   });
@@ -5171,7 +5182,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v294',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v295',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
