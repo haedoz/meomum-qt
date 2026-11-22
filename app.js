@@ -851,7 +851,7 @@ function showSelectedStudy(mode,includeScripture=view!=='torah'){
     let content;
     if(original){const raw=originalPassageSource(book,chapter);content=body||raw.chapters?.[chapter]?.[verse]?originalVerseReading(body,verse,raw,chapter):'<p class="study-popup-empty">이 구절의 원전분해 자료가 없어요.</p>';}
     else content=body?'<div class="commentary-copy">'+commentaryParagraphs(body).join('')+'</div>':'<p class="study-popup-empty">이 구절의 주석 자료가 없어요.</p>';
-    return '<section class="study-popup-verse"><header><span>'+esc(reference(key))+'</span></header>'+(includeScripture?'<p class="study-popup-scripture">'+esc(verseText(key))+'</p>':'')+'<div class="study-popup-detail">'+content+'</div></section>';
+    return '<section class="study-popup-verse"><header>'+icon(original?'studyAnalysis':'studyComment')+'<span>'+esc(reference(key))+'</span></header>'+(includeScripture?'<p class="study-popup-scripture">'+esc(verseText(key))+'</p>':'')+'<div class="study-popup-detail">'+content+'</div></section>';
   }).join('');
   dialog(label+' 모아보기','<div class="study-selection-popup"><div class="study-popup-meta"><span>'+refs.length+'개 구절</span><span>'+esc(source?.label||label)+'</span></div>'+sections+(!source?'<button type="button" class="btn" data-nav="settings" data-import-link>자료 추가</button>':'')+'</div>','selected-study');
 }
@@ -888,9 +888,12 @@ function torahScreen(){
 function torahNotesScreen(){return journalsScreen();}
 function torahSelectionTools(){
   if(!chosen.size)return '';
-  return '<aside class="selection verse-actions torah-selection" aria-label="선택한 토라포션 구절 도구"><div class="verse-actions-top"><span class="compact">'+chosen.size+'절 선택</span><button type="button" class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div><div class="torah-selection-buttons">'+
-    '<button type="button" class="btn" data-action="highlight">'+icon('marker')+' 형광펜</button><button type="button" class="btn" data-study-preview="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-study-preview="original">'+icon('studyAnalysis')+' 원전분해 보기</button><button type="button" class="btn" data-action="note">'+icon('edit')+' 메모</button><button type="button" class="btn" data-action="copy-verses">'+icon('copy')+' 복사</button></div></aside>';
+  const markers=indexVerseMarkers(),selected=[...chosen].map(key=>verseMark(markers.get(verseAddress(key))?.mark));
+  const colors=state.quickMarkers||['#e6bc43','#7cb668','#dc7d9c'];
+  const dots=colors.map((color,idx)=>'<button type="button" class="marker-dot-btn '+(selected.length&&selected.every(mark=>mark&&mark.color?.toLowerCase()===color.toLowerCase())?'active':'')+'" data-action="apply-dot-marker" data-preset="'+idx+'" style="background:'+color+'" aria-label="'+(idx+1)+'번 형광펜 바로 칠하기"></button>').join('');
+  return '<aside class="selection verse-actions torah-selection" aria-label="선택한 토라포션 구절 도구"><div class="verse-actions-top"><span class="compact">'+chosen.size+'절 선택</span><button type="button" class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div><div class="torah-selection-main"><div class="quick-marker-palette" role="group" aria-label="퀵 형광펜">'+dots+'<button type="button" class="marker-dot-more" data-action="highlight" aria-haspopup="dialog" aria-label="형광펜 상세 설정">'+icon('down')+'</button></div><button type="button" class="btn" data-action="note">'+icon('edit')+' 메모</button><button type="button" class="btn" data-action="copy-verses">'+icon('copy')+' 복사</button></div><div class="torah-selection-study"><button type="button" class="btn" data-study-preview="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-study-preview="original">'+icon('studyAnalysis')+' 원전분해 보기</button></div></aside>';
 }
+
 function showTorahSelectionNote(){
   const groups=groupedPassageRefs([...chosen].filter(validRef));if(!groups.length)return;
   const values=groups.map(group=>state.marks[group.key]?.note||''),existing=values.every(value=>value===values[0])?values[0]:'';
@@ -5187,7 +5190,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v296',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v297',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
