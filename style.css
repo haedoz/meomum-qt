@@ -3760,3 +3760,7 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .calendar-mark-card.torah .record-torah-note .record-journal-text{background:transparent!important;color:var(--ink);border:0;box-shadow:none;padding:0;margin:0}
 .calendar-mark-card.torah .record-torah-note>span{color:var(--muted);margin-bottom:6px}
 :root[data-appearance=dark] .calendar-mark-card.torah .record-torah-note{background:color-mix(in srgb,#a0a0a0 7%,var(--card));border-color:#ffffff08}
+
+.calendar-mark-card.torah .record-torah-range{padding:1px 0 7px}.calendar-mark-card.torah .record-torah-portion-name{color:var(--muted);font-size:12px;font-weight:400;line-height:1.4;margin:0}
+.calendar-mark-card.torah .record-torah-note>span{display:flex;align-items:center;gap:5px;margin-bottom:5px}.record-torah-note>span svg{width:13px;height:13px;flex:none;stroke-width:1.6}
+.calendar-mark-card.note .calendar-quote-body{margin-bottom:3px;padding-block:8px}.calendar-mark-card.note .record-note-content{margin-top:3px;padding:9px 10px}.calendar-mark-card.note .record-note-label{margin-bottom:4px}.calendar-mark-card.note .record-note-body{margin-top:0}
