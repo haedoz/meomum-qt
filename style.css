@@ -3733,9 +3733,21 @@ form[name=journal-verse-removal]{gap:13px}form[name=journal-verse-removal] #acti
 .removal-confirmation{width:min(100% - 36px,380px);padding:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:22px;overscroll-behavior:contain}
 .removal-confirmation form{gap:12px}.removal-confirmation h2{font-size:18px;font-weight:600;line-height:1.4;margin:0}.removal-confirmation p{font-size:13px;line-height:1.6;color:var(--muted);margin:0}.removal-confirmation footer{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}.removal-confirmation::backdrop{background:#20263465;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 
-/* Keep both reading surfaces comfortably inside the chapter card. */
-.reader-view .bible-passage.comparing .verse-pair{--reading-end-inset:20px;min-width:0;padding-inline-end:var(--reading-end-inset);box-sizing:border-box}
-.reader-view .bible-passage.comparing .verse-pair>.verse{padding-inline-end:0}
-.reader-view .bible-passage.comparing .comparison-stack{width:auto;max-width:none;margin-inline-start:var(--comparison-gutter);margin-inline-end:0;padding-inline-end:9px;box-sizing:border-box;min-width:0;justify-self:stretch}
+
+/* Comparison mode never changes the main verse's reading width. */
+.reader-view .bible-passage.comparing .verse-pair{min-width:0;padding-inline:0;box-sizing:border-box}
+.reader-view .bible-passage.comparing .verse-pair>.verse{padding-inline:0}
 .reader-view .bible-passage.comparing .verse-pair>.verse-with-note .verse{padding-inline-end:34px}
-@media(min-width:740px){.reader-view .bible-passage.comparing .verse-pair{--reading-end-inset:28px}}
+.reader-view .bible-passage.comparing .comparison-stack{width:auto;max-width:none;margin-inline-start:var(--comparison-gutter);margin-inline-end:2px;padding-inline-end:9px;min-width:0;justify-self:stretch;box-sizing:border-box}
+.torah-edit-context{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.torah-edit-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}
+form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:100%;resize:none;overflow:hidden;min-height:130px;max-height:none}form[name=torah-note-edit] #active-dialog-title{font-size:18px}
+.record-torah-excerpt{padding:9px 10px;border-inline-start:2px solid color-mix(in srgb,var(--green) 25%,transparent);background:color-mix(in srgb,var(--green) 3%,var(--card));border-radius:0 9px 9px 0}
+.record-torah-excerpt p{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking)}
+.record-torah-excerpt>span{display:block;font-size:11px;color:var(--muted);margin-top:6px}.record-torah-reflection{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+
+.calendar-mark-card.torah{--torah-ink:#397e79;--torah-soft:color-mix(in srgb,#69aaa2 9%,var(--card))}
+.mark-kind-pill.torah{color:#397e79;background:color-mix(in srgb,#69aaa2 12%,var(--card));border:1px solid color-mix(in srgb,#69aaa2 22%,transparent)}
+.calendar-mark-card.torah .record-journal-content{background:var(--torah-soft);border-color:color-mix(in srgb,#69aaa2 20%,transparent)}
+.calendar-mark-card.torah .record-torah-excerpt{background:var(--torah-soft);border-inline-start-color:color-mix(in srgb,#69aaa2 50%,transparent)}
+:root[data-appearance=dark] .mark-kind-pill.torah{color:#a6d3cd;background:color-mix(in srgb,#69aaa2 12%,var(--card));border-color:color-mix(in srgb,#69aaa2 22%,transparent)}
+:root[data-appearance=dark] .calendar-mark-card.torah .record-journal-content{background:color-mix(in srgb,#69aaa2 7%,var(--card))}
