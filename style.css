@@ -3812,3 +3812,34 @@ html:has(textarea:focus),body:has(textarea:focus){scroll-behavior:auto!important
 .journal-editor textarea[data-journal-field=reflection],.torah-note-editor textarea,[data-thought-editor] textarea,[data-prayer-editor] textarea{min-height:140px!important}.comment-compose textarea{min-height:65px!important}.journal-editor textarea[readonly],.torah-note-editor textarea[readonly]{min-height:0!important}
 
 @keyframes search-location-pulse{0%,100%{background:transparent;opacity:1}45%{background:color-mix(in srgb,var(--green) 13%,var(--card));opacity:.72}}
+
+/* Entry headings: the title and its kind share one line, followed by a quiet divider. */
+.devotion-feed-page .journal-feed-card>.devotion-card-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;border-bottom:1px solid var(--line);padding:0 0 10px;margin:0 0 3px}
+.devotion-feed-page .devotion-card-heading h2{display:flex;align-items:center;gap:6px;min-width:0;margin:0!important;font-size:15px!important;font-weight:600;line-height:1.4}
+.devotion-card-heading h2>svg{width:16px;height:16px;min-width:16px;flex:none;color:var(--muted);stroke-width:1.6}.devotion-card-heading h2>span{min-width:0;overflow-wrap:anywhere}
+.devotion-card-heading .devotion-kind{justify-self:end;white-space:nowrap;align-self:center;font-size:10px;padding:4px 6px;line-height:1.3}
+.devotion-feed-page .journal-feed-card{padding:13px 12px;gap:10px}
+.devotion-feed-page .journal-feed-card .devotion-reflection-copy{padding:11px 12px!important;margin:3px 0!important;background:color-mix(in srgb,#808080 5%,var(--card));border:0;border-radius:11px;white-space:pre-wrap;font-weight:400;font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking)}
+/* Writing surfaces are open and wide; labels and fine rules replace nested boxes. */
+.post-editor :is(.writing-panel,.post-response){background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0;padding:10px 0!important;margin-inline:0}
+.post-editor .journal-verses-card{padding:10px 0!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0}
+.post-editor .journal-verses-header{margin-inline:0;padding-inline:0}
+:is(.post-editor,.torah-note-editor,.note-editor-dialog,.comment-compose) :is(input[type=text],textarea){background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--line) 75%,transparent)!important;border-radius:0!important;box-shadow:none!important;padding:10px 3px!important;width:100%;min-width:0}
+:is(.post-editor,.torah-note-editor,.note-editor-dialog,.comment-compose) :is(input[type=text],textarea):focus{background:transparent!important;border-bottom-color:color-mix(in srgb,var(--green) 35%,var(--line))!important;box-shadow:none!important;outline:0!important}
+.torah-note-editor{padding:15px 12px 12px!important;background:var(--card)!important;box-shadow:none!important}.torah-note-editor .torah-reflection-heading{padding-bottom:12px}
+.post-editor .field{gap:7px}.post-editor .post-actions{padding-inline:0}.post-editor .post-response{border-top:1px solid var(--line)!important}
+/* Shared comment thread in the editor, feed and calendar. */
+.devotion-comment-summary{border-top:1px solid var(--line);margin:3px 0 0;padding-top:11px}
+.comment-thread{display:grid;gap:10px;min-width:0}.comment-thread-item,.post-comments .post-comment{display:grid;grid-template-columns:23px minmax(0,1fr);gap:7px;margin:0;padding:0;border:0;background:none;border-radius:0;min-width:0}
+.comment-thread-avatar{display:grid;place-items:center;align-self:start;width:23px;height:27px;color:var(--muted);background:none}.comment-thread-avatar svg{width:16px;height:16px;stroke-width:1.5}
+.comment-thread-copy{min-width:0;padding:10px 11px;background:color-mix(in srgb,#808080 5%,var(--card));border:1px solid color-mix(in srgb,var(--line) 40%,transparent);border-radius:0 11px 11px 11px}
+.comment-thread-copy time,.devotion-comment-summary .comment-thread-copy time{display:block;margin:0 0 6px;font-size:10px;line-height:1.4;color:var(--muted)}
+.comment-thread-copy p,.devotion-comment-summary .comment-thread-copy p{margin:0!important;padding:0;font-weight:400!important;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking)}
+.comment-thread-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;flex-wrap:wrap}.comment-thread-meta .item-actions{display:flex;gap:4px;margin-inline-start:auto}
+.comment-thread-meta .text-action{min-height:28px!important;padding:3px 7px!important;font-size:11px!important;border-radius:8px!important}
+.post-comments>h2{display:flex;align-items:center;gap:6px;font-size:16px}.post-comments>h2>svg{width:17px;height:17px}
+.post-comments .comment-compose{display:grid;gap:7px;margin:10px 0 16px;padding:0 0 12px;border:0;border-bottom:1px solid var(--line);background:none;border-radius:0}.comment-compose>.btn{justify-self:end}
+.comment-pagination{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-top:10px}.comment-pagination>span{font-size:11px;color:var(--muted)}.comment-pagination .btn{width:30px;min-width:30px;min-height:30px!important;height:30px!important;padding:0!important;border-radius:9px!important}.comment-pagination svg{width:14px!important;height:14px!important}
+.calendar-journal-summary .devotion-comment-summary{margin:9px 0;padding-top:9px}.calendar-journal-summary .comment-thread-copy{padding:9px 10px}
+
+.torah-edit-actions{flex-wrap:wrap;align-items:center}.torah-edit-actions>.save{font-size:10px;color:var(--muted);margin-inline-end:auto}
