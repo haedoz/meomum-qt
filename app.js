@@ -570,7 +570,7 @@ function navigate(screen, context, studyFromSelection = false) {
     const current=location.hash||('#'+(activeRoute||view));
     const family=navigationFamily(screen);
     if(family&&family===navigationFamily(current))history.replaceState({...history.state,...context},'',hash);
-    else history.pushState({qtPrevious:true,...context},'',hash);
+    else history.pushState({qtPrevious:true,...(screen.startsWith('journal/')||screen.startsWith('prayer-edit/')?{editorOrigin:current.slice(1)}:{}),...context},'',hash);
   }
   checkGhAutoSync();
   render(studyFromSelection);
@@ -4861,6 +4861,12 @@ function thoughtCard(item,inList=false){
 function showThoughtEditor(item) {
   navigate('prayer-edit/'+(item?.id ?? 'thought'));
 }
+function openSavedList(route){
+  document.activeElement?.blur();
+  navigate(route);
+  const top=()=>{if(location.hash==='#'+route)window.scrollTo({top:0,behavior:'instant'});};
+  top();setTimeout(top,100);setTimeout(top,350);
+}
 async function saveThought(form) {
   const field = form.elements.body, body = field.value.trim();
   if (!body) return notify('생각을 적어 주세요.');
@@ -4883,13 +4889,7 @@ async function saveThought(form) {
     return;
   }
   finishDraft(form,draft);
-  if (form.isConnected) {
-    if (history.state?.qtPrevious) history.back();
-    else {
-      history.replaceState(null,'','#thoughts');
-      render();
-    }
-  }
+  if(form.isConnected)openSavedList('thoughts');
   notify('생각 노트에 저장했어요.');
 }
 function showPrayerEditor(item) {
@@ -4936,14 +4936,7 @@ async function savePrayer(form) {
   }
   finishDraft(form,draft);
   prayerFilter = item.done?'answered':'open';
-  if (form.isConnected) {
-    if(item.done)navigate('prayers');
-    else if (history.state?.returnFromEditor) history.back();
-    else {
-      history.replaceState(history.state,'','#prayers');
-      render();
-    }
-  }
+  if(form.isConnected)openSavedList('prayers');
   notify('기록을 저장했어요.');
 }
 function newYearScreen() {
@@ -5137,7 +5130,7 @@ async function removeItem() {
     if (view==='prayer' && kind==='prayer' && previous.some(item=>item.id===id && item.kind==='thought')) {
       if (history.state?.qtPrevious) history.back();
       else navigate('thoughts');
-    } else if(view==='journal'&&(kind==='journal'||kind==='journal-note'))navigate('journals');
+    } else if(view==='journal'&&(kind==='journal'||kind==='journal-note'))openSavedList(history.state?.editorOrigin||'today');
     else render();
     notify(label+'을 삭제했어요.');
   } else {
@@ -5227,7 +5220,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v306',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v307',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
