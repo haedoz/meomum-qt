@@ -5225,7 +5225,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v303',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v304',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
@@ -5318,3 +5318,16 @@ main.addEventListener('input', event => {
   if (target.id === 'gh-token-input') localStorage.setItem('logbible-gh-token', target.value.trim().replace(/[^\x21-\x7E]/g, ''));
   if (target.id === 'gh-user-input') localStorage.setItem('logbible-gh-user', target.value.trim().replace(/\.json$/i, '').trim());
 });
+
+// Shared edit/delete affordances for pages and dialogs, including dynamically opened cards.
+function standardizeRecordActions(){
+  document.querySelectorAll('button').forEach(button=>{
+    const label=button.textContent.trim();
+    const kind=/^(?:삭제|묵상 삭제|표시 삭제)$/.test(label)?'delete':/^(?:수정|수정하기)$/.test(label)?'edit':null;
+    if(kind){button.classList.add('record-action-'+kind);if(!button.querySelector('svg'))button.insertAdjacentHTML('afterbegin',icon(kind==='delete'?'trash':'edit')+' ');}
+    if(/^(?:본문에서 읽기|본문 읽기|본문읽기)/.test(label))button.classList.add('record-action-read');
+  });
+}
+let recordActionsQueued=false;
+new MutationObserver(()=>{if(recordActionsQueued)return;recordActionsQueued=true;queueMicrotask(()=>{recordActionsQueued=false;standardizeRecordActions();});}).observe(document.body,{childList:true,subtree:true});
+standardizeRecordActions();
