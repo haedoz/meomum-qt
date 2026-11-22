@@ -3707,3 +3707,28 @@ form[name=marker-editor]{gap:17px}form[name=marker-editor] #active-dialog-title{
 .journal-remove-description{margin:0;font-size:12px;line-height:1.6}
 .journal-remove-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}
 form[name=journal-verse-removal]{gap:13px}form[name=journal-verse-removal] #active-dialog-title{font-size:18px;font-weight:650}
+
+/* Lighter action scale and writing surfaces. */
+:root{--button-height:34px;--button-font:12px;--button-radius:10px;--button-pad:11px;--button-gap:5px}
+:is(body main,body dialog,body header,body .selection,body .post-actions) :is(.btn,.text-action){padding:6px var(--button-pad)!important;font-weight:500!important;box-shadow:inset 0 1px 0 var(--glass-shine,#ffffff35)!important}
+:is(.settings-tabs,.devotion-sections,.torah-popup-tabs,.torah-commentary-sources,.thought-year-filter,.torah-schedule-filters,.study-section-tabs) button{padding:6px 9px!important;min-height:34px!important;font-weight:500}
+:is(body main,body dialog) .quick-assign-grid .btn{padding-inline:5px!important}
+.journal-editor .devotion-passage-line.removable{grid-template-columns:1.35em minmax(0,1fr) 32px;gap:6px}
+.journal-editor .passage-remove{width:32px;min-width:32px;height:32px;min-height:32px;border-radius:9px;border-color:transparent;background:color-mix(in srgb,var(--green) 3%,var(--card));box-shadow:none}
+.journal-editor .passage-remove svg{width:16px;height:16px;min-width:16px;stroke-width:1.7}
+:is(main,dialog) :is(input:not([type=checkbox],[type=radio],[type=color],[type=range],[type=file],[type=hidden],[type=submit],[type=button]),textarea){border:1px solid color-mix(in srgb,var(--line) 65%,transparent)!important;border-radius:11px!important;background:color-mix(in srgb,var(--green) 2%,var(--card))!important;box-shadow:inset 0 1px 2px #00000002!important;color:var(--ink);padding:10px 13px;outline:none!important;font-family:var(--font-ko,var(--sans))}
+:is(main,dialog) :is(input:not([type=checkbox],[type=radio],[type=color],[type=range],[type=file],[type=hidden],[type=submit],[type=button]),textarea):focus{border-color:color-mix(in srgb,var(--green) 30%,var(--line))!important;background:var(--card)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 5%,transparent)!important}
+:is(main,dialog) :is(input,textarea)::placeholder{color:var(--muted);opacity:.62;font-weight:400}
+.post-editor .writing-panel{padding:13px 12px;border-color:color-mix(in srgb,var(--line) 60%,transparent);box-shadow:none}
+.post-editor .journal-verses-card{border-color:color-mix(in srgb,var(--line) 65%,transparent);border-radius:15px;padding:12px 10px}
+.post-editor .journal-verses-header{padding-bottom:9px;margin-bottom:8px}
+/* Secondary editions read as a quiet inset, rather than stacked solid boxes. */
+.bible-passage.comparing .comparison-stack{background:color-mix(in srgb,var(--green) 3.5%,var(--card));border:0;border-inline-start:1px solid color-mix(in srgb,var(--green) 25%,var(--line));border-radius:0 10px 10px 0;padding:0 11px;margin-top:6px;margin-bottom:8px;box-shadow:none}
+.bible-passage .comparison-stack .verse-support>.verse-content{grid-template-columns:74px minmax(0,1fr);gap:10px;padding:7px 0}
+.bible-passage .comparison-stack .comparison-edition{font-size:10px!important;font-weight:550!important;letter-spacing:.01em;color:var(--accent-ink,var(--green));opacity:.8}
+.bible-passage .comparison-stack .comparison-text{font-weight:400;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+.bible-passage .comparison-stack>.verse-support+.verse-support,.bible-passage .comparison-stack>.verse-with-note+.verse-support,.bible-passage .comparison-stack>.verse-support+.verse-with-note{border-top-color:color-mix(in srgb,var(--line) 50%,transparent)!important}
+:root[data-appearance=dark] .bible-passage.comparing .comparison-stack{background:color-mix(in srgb,var(--green) 4%,var(--card));border:0;border-inline-start:1px solid color-mix(in srgb,var(--green) 25%,var(--line))}
+@media(max-width:599px){.bible-passage.comparing .comparison-stack{padding:0 9px}.bible-passage .comparison-stack .verse-support>.verse-content{grid-template-columns:minmax(0,1fr);gap:3px;padding:7px 0}}
+.removal-confirmation{width:min(100% - 36px,380px);padding:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:22px;overscroll-behavior:contain}
+.removal-confirmation form{gap:12px}.removal-confirmation h2{font-size:18px;font-weight:600;line-height:1.4;margin:0}.removal-confirmation p{font-size:13px;line-height:1.6;color:var(--muted);margin:0}.removal-confirmation footer{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}.removal-confirmation::backdrop{background:#20263465;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}

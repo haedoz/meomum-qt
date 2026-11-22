@@ -700,6 +700,20 @@ function writingHeader(symbol,label,title,meta = '') {
   return '<header class="writing-header"><span class="writing-icon">'+icon(symbol)+'</span><div>'+
     '<p class="eyebrow">'+label+'</p><h1>'+title+'</h1>'+meta+'</div></header>';
 }
+function requestRemoval(title,message){
+  return new Promise(resolve=>{
+    const confirmDialog=document.createElement('dialog');confirmDialog.className='removal-confirmation';
+    confirmDialog.innerHTML='<form method="dialog" class="stack"><h2>'+esc(title)+'</h2><p>'+esc(message)+'</p><footer><button type="button" class="btn" data-removal-cancel>취소</button><button type="button" class="btn danger" data-removal-accept>삭제</button></footer></form>';
+    document.body.append(confirmDialog);let accepted=false;
+    confirmDialog.querySelector('[data-removal-cancel]').onclick=event=>{event.stopPropagation();confirmDialog.close();};
+    confirmDialog.querySelector('[data-removal-accept]').onclick=event=>{event.stopPropagation();accepted=true;confirmDialog.close();};
+    let outside=false;const isOutside=event=>{const r=confirmDialog.getBoundingClientRect();return event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom;};
+    confirmDialog.addEventListener('pointerdown',event=>{outside=event.target===confirmDialog&&isOutside(event);});
+    confirmDialog.addEventListener('click',event=>{if(outside&&event.target===confirmDialog&&isOutside(event))confirmDialog.close();outside=false;});
+    confirmDialog.addEventListener('close',()=>{confirmDialog.remove();resolve(accepted);},{once:true});
+    confirmDialog.showModal();confirmDialog.querySelector('[data-removal-cancel]').focus();
+  });
+}
 function confirmJournalVerseRemoval(ref,day){
   const noteId=activeJournalId||'';
   const entry=journalsOn(day).find(([,note,id])=>id===noteId)?.[1];
@@ -3580,7 +3594,7 @@ function chooseBook(book) {
   }
   main.querySelector('[data-action="pick-book"]')?.focus({preventScroll:true});
 }
-document.addEventListener('click',event => {
+document.addEventListener('click',async event => {
   if (!readerSearchInput.hidden && !readerSearchForm.contains(event.target) && !modal.contains(event.target)) closeReaderSearch();
   const button = event.target.closest('button');
   if (!button) return;
@@ -3718,13 +3732,14 @@ document.addEventListener('click',event => {
     const record = highlightRecord(target.removeHighlight);
     if (!record) return modal.close();
     const passage = record.key.slice(0,record.key.lastIndexOf('/'));
-    return applyVerseMarks(record.verses.map(verse=>passage+'/'+verse),undefined,'말씀 표시를 지웠어요.');
+    return applyVerseMarks(record.verses.map(verse=>passage+'/'+verse),undefined,'말씀 표시를 지웠어요.',true);
   }
   if (target.prayer) return showPrayerEditor(state.prayers.find(item => item.id===target.prayer));
   if (target.yearEdit) return showYearEditor(state.newYear.find(item => item.id===target.yearEdit));
   if (target.removeYearRef) {
+    const form=button.form;
+    if(!await requestRemoval('담은 말씀을 삭제할까요?',reference(target.removeYearRef)+' 구절을 새해 말씀 목록에서 뺍니다.'))return;
     yearRefs = yearRefs.filter(ref=>ref!==target.removeYearRef);
-    const form = button.form;
     renderYearReferences(form);
     form.elements.reference.focus({preventScroll:true});
     return;
@@ -4462,8 +4477,9 @@ function setVerseMark(key,appearance) {
   if (appearance?.style==='fill') updateMark(key,'highlight',appearance.color);
   else updateMark(key,'underline',appearance);
 }
-function applyVerseMarks(keys,appearance,message) {
+async function applyVerseMarks(keys,appearance,message,confirmed=false) {
   if (!keys.length) return;
+  if(!appearance&&!confirmed&&!await requestRemoval('말씀 표시를 삭제할까요?','선택한 구절의 형광펜 또는 밑줄만 지워집니다. 구절 메모와 묵상은 그대로 남아요.'))return;
   const markers = indexVerseMarkers();
   const selection = new Map(keys.map(key=>[verseAddress(key),key]));
   const affected = new Set();
@@ -4658,9 +4674,10 @@ function updateDraft(form) {
     showDraftStatus(editor,storeDraft(editor.key,value)?'기기에 임시 저장됨':'앱을 닫기 전까지만 임시 보관 중');
   }
 }
-function discardDraft(form) {
+async function discardDraft(form) {
   const editor = draftEditors.get(form);
   if (!editor) return;
+  if(!await requestRemoval('임시 글을 삭제할까요?','아직 저장하지 않은 입력 내용을 지우고 이전에 저장한 내용으로 돌아갑니다.'))return;
   applyDraftValues(editor,JSON.parse(editor.baseline));
   if (readDraft(editor.key)===editor.lastDraft) storeDraft(editor.key,null);
   editor.lastDraft = null;
@@ -4672,7 +4689,7 @@ function finishDraft(form,snapshot) {
   if (editor && readDraft(editor.key)===snapshot) storeDraft(editor.key,null);
 }
 function editorActions(kind,item) {
-  return '<div class="row">'+(item?'<button type="button" class="btn" data-delete="'+kind+'">삭제</button>':'')+
+  return '<div class="row">'+(item?'<button type="button" class="btn destructive" data-delete="'+kind+'">삭제</button>':'')+
     '<button class="btn primary'+(item?'':' block')+'" type="button" data-action="save-'+kind+'">저장</button></div>';
 }
 function thoughtText(item) {
@@ -5058,7 +5075,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v276',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v277',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
