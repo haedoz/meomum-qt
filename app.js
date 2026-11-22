@@ -2284,6 +2284,7 @@ function renderRecordCard(item) {
     (mark.allRefs?.length ? '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>' : '<span></span>')+
     '<div class="item-actions card-actions">'+
     (mark.torah?'<button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button><button type="button" class="btn" data-nav="torah/'+day+'">본문 읽기 '+icon('right')+'</button>':journalDay ? '<button type="button" class="text-action" data-nav="journal/'+journalDay+'">묵상 열기</button>' : '')+
+    (mark.torah?'<button type="button" class="text-action destructive" data-delete-torah="'+day+'">'+icon('trash')+' 삭제</button>':mark.journal&&journalDay?'<button type="button" class="text-action destructive" data-delete-journal="'+journalDay.split('/')[0]+'" data-journal-note="'+(journalDay.split('/')[1]||'')+'">'+icon('trash')+' 삭제</button>':'')+
     (noteKey ? '<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>' : '')+
     (!mark.journal && verseMark(mark) ? highlightDeleteButton(key) : '')+
     '</div></div></article>';
@@ -4986,7 +4987,7 @@ function confirmItemRemoval(kind,id,day) {
   const labels = {torah:'토라포션 묵상','journal-note':'묵상',journal:'묵상',prayer:state.prayers.some(item=>item.id===id && item.kind==='thought')?'생각 기록':'기도제목',comment:'댓글',year:'새해 말씀',note:'구절 메모',dailyNote:'말씀 묵상',bundle:'구절 모음'};
   const label = labels[kind];
   const details = kind==='journal'?'이 묵상의 내용, 댓글, 담아둔 구절과 QT 체크가 삭제돼요. 같은 날의 다른 묵상은 유지돼요.':
-    kind==='prayer'?'이 게시글의 내용이 함께 삭제돼요.':kind==='note'?reference(id)+'에 남긴 메모를 삭제할까요?':'이 기록을 삭제할까요?';
+    kind==='torah'?'이 날짜의 토라포션 묵상 내용과 완료 표시가 삭제돼요. 성경 본문과 다른 날짜의 묵상은 유지돼요.':kind==='journal-note'?'선택한 묵상의 내용과 담아둔 구절이 삭제돼요. 같은 날의 다른 묵상은 유지돼요.':kind==='prayer'?'이 게시글의 내용이 함께 삭제돼요.':kind==='note'?reference(id)+'에 남긴 메모를 삭제할까요?':'이 기록을 삭제할까요?';
   pendingRemoval = {kind,id,day,label,noteId:activeJournalId};
   dialog(label+' 삭제','<p>'+details+'</p><div class="row"><button class="btn" value="cancel">취소</button><button type="button" class="btn danger" data-action="delete-item">삭제 확인</button></div>');
 }
@@ -5103,7 +5104,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v284',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v286',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

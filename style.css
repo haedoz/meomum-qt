@@ -3775,3 +3775,9 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .reader-view .bible-passage.comparing .comparison-stack{margin-inline-end:0;padding-inline:9px;width:auto;min-width:0;max-width:none}
 .calendar-mark-card.torah .record-torah-portion-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink);line-height:1.45}
 .record-torah-portion-name>svg{width:14px;height:14px;flex:none;color:var(--muted);stroke-width:1.6}.record-torah-portion-name>span{min-width:0}
+
+/* Reduce the cumulative left inset of verse number, chapter padding and comparison padding. */
+.reader-view .bible-passage{padding-inline:8px;--verse-num-width:1.4ch;--verse-number-gap:3px}
+.reader-view .bible-passage.comparing .comparison-stack{margin-inline-start:0;padding-inline-start:7px;margin-inline-end:0}
+
+.calendar-mark-card:is(.torah,.journal) .calendar-mark-footer{flex-wrap:wrap;row-gap:7px}.calendar-mark-card:is(.torah,.journal) .calendar-mark-footer .card-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto;gap:6px}
