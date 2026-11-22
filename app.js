@@ -2057,18 +2057,19 @@ function markKinds(mark) {
   if (mark.journal) kinds.push('journal');
   return kinds;
 }
+function compareRecordTime(a,b){return (a.day||'').localeCompare(b.day||'') || (a.recordAt||'').localeCompare(b.recordAt||'');}
 function recordRows() {
   const groups = new Map(), rows = new Map();
-  const add = (key,verses,day,mark,noteKey,journalDay) => {
+  const add = (key,verses,day,mark,noteKey,journalDay,recordAt) => {
     const id = [key,verses.join(','),day,mark.journal?'journal/'+journalDay:mark.note?'note':'mark'].join('/');
-    const row = rows.get(id) ?? {key,verses,day,mark:{}};
+    const row = rows.get(id) ?? {key,verses,day,mark:{},recordAt};
     Object.assign(row.mark,mark);
     if (noteKey) row.noteKey = noteKey;
     if (journalDay) row.journalDay = journalDay;
     rows.set(id,row);
   };
   for (const [key,mark] of Object.entries(state.marks)) {
-    if (mark.note) add(key,noteVerseNumbers(key,mark),mark.noteDay,{note:mark.note},key);
+    if (mark.note) add(key,noteVerseNumbers(key,mark),mark.noteDay,{note:mark.note},key,undefined,mark.noteAt);
     if (!verseMark(mark)) continue;
     const id = [key.slice(0,key.lastIndexOf('/')),mark.group ?? key].join('/');
     if (!groups.has(id)) groups.set(id,[]);
@@ -2077,8 +2078,8 @@ function recordRows() {
   for (const keys of groups.values()) {
     keys.sort((a,b)=>verseNumber(a)-verseNumber(b));
     const key = keys[0];
-    const {color,highlight,underline,markDay} = state.marks[key];
-    add(key,keys.map(verseNumber),markDay,{color,highlight,underline});
+    const {color,highlight,underline,markDay,markAt} = state.marks[key];
+    add(key,keys.map(verseNumber),markDay,{color,highlight,underline},undefined,undefined,markAt);
   }
   for (const [day, entry, noteId] of allJournalEntries()) {
     if (!hasJournalContent(entry)) continue;
@@ -2106,22 +2107,54 @@ function recordRows() {
       journalDone: entry.done,
       combinedRefTitle,
       allRefs: validRefs
-    }, undefined, day+(noteId?'/'+noteId:''));
+    }, undefined, day+(noteId?'/'+noteId:''),entry.recordAt||entry.created);
   }
   for(const [day,note] of Object.entries(state.torahNotes)){
     if(!torahNoteExists(day))continue;
     const portion=torahDays[day],edition=state.reader.edition;
     const refs=edition?torahAddresses(portion).map(address=>edition+'/'+address).filter(ref=>validRef(ref)&&verseText(ref)):[];
     const first=refs[0]||[edition||'krv','GEN',1,1].join('/');
-    add(first,refs.map(ref=>readRef(ref).verse),day,{journal:true,torah:true,journalTitle:portion?.name||'토라포션',journalReflection:note.body,allRefs:refs},undefined,'torah/'+day);
+    add(first,refs.map(ref=>readRef(ref).verse),day,{journal:true,torah:true,journalTitle:portion?.name||'토라포션',journalReflection:note.body,allRefs:refs},undefined,'torah/'+day,note.recordAt||note.updated);
   }
-  return [...rows.values()].reverse().sort((left,right)=>(right.day ?? '').localeCompare(left.day ?? ''));
+  return [...rows.values()].sort((left,right)=>compareRecordTime(right,left));
 }
 function highlightDeleteButton(key) {
-  return '<button type="button" class="text-action destructive" data-delete-highlight="'+key+'">표시 삭제</button>';
+  return '<button type="button" class="text-action record-color-edit" data-edit-record-color="'+key+'">'+icon('marker')+' 색상 변경</button><button type="button" class="text-action destructive" data-delete-highlight="'+key+'">표시 삭제</button>';
 }
 function highlightRecord(key) {
   return recordRows().find(row=>row.key===key && verseMark(row.mark));
+}
+function showRecordHighlightColor(key){
+  const record=highlightRecord(key);if(!record)return;
+  const current=verseMark(state.marks[key])?.color;if(!validColor(current))return;
+  const colors=[...new Set([...(state.quickMarkers||[]),...Object.values(markerColors),current].filter(validColor))];
+  dialog('형광펜 색상 변경','<p class="record-color-reference">'+esc(selectionReference(record.key,record.verses))+' · '+record.verses.length+'구절</p><div class="record-color-swatches" role="group" aria-label="형광펜 색상">'+colors.map((color,index)=>'<button type="button" data-record-color-swatch="'+color+'" style="--swatch:'+color+'" aria-label="색상 '+(index+1)+'" aria-pressed="'+(color.toLowerCase()===current.toLowerCase())+'">'+icon('check')+'</button>').join('')+'</div><label class="record-custom-color"><span>직접 색상 선택</span><input type="color" id="record-highlight-color" value="'+current+'"></label><div class="record-color-preview" data-record-color-key="'+key+'" aria-label="색상 미리보기"></div><p class="muted record-color-hint">선택한 묶음의 색상만 바뀌며 표시 방식과 기록 날짜는 유지돼요.</p><footer class="record-color-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-save-record-color="'+key+'">색상 적용</button></footer>','record-highlight-color');
+  previewRecordHighlightColor();
+}
+function previewRecordHighlightColor(){
+  const field=modal.querySelector('#record-highlight-color'),preview=modal.querySelector('[data-record-color-key]');
+  if(!field||!preview||!validColor(field.value))return;
+  const record=highlightRecord(preview.dataset.recordColorKey);if(!record)return;
+  const appearance=verseMark(state.marks[record.key]);
+  const mark=appearance.style==='fill'?{highlight:field.value}:{underline:{...appearance,color:field.value}};
+  preview.innerHTML=recordPassage(record.key,record.verses).map(([verse,body])=>'<p><span>'+verse+'</span><span>'+markedText(body,mark)+'</span></p>').join('')||'<p>'+markedText('선택한 색상이 여기에 미리 보여요.',mark)+'</p>';
+  modal.querySelectorAll('[data-record-color-swatch]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.recordColorSwatch.toLowerCase()===field.value.toLowerCase())));
+}
+async function recolorRecordHighlight(key,color){
+  const record=highlightRecord(key);if(!record||!validColor(color))return;
+  const prefix=record.key.slice(0,record.key.lastIndexOf('/'));
+  const addresses=new Set(record.verses.map(verse=>verseAddress(prefix+'/'+verse)));
+  const previous=Object.entries(state.marks).filter(([ref,mark])=>addresses.has(verseAddress(ref))&&verseMark(mark)).map(([ref,mark])=>[ref,structuredClone(mark)]);
+  if(!previous.length)return;
+  const button=modal.querySelector('[data-save-record-color]');if(button)button.disabled=true;
+  for(const [ref] of previous){
+    const mark=state.marks[ref];
+    if(mark.underline)mark.underline={...mark.underline,color};
+    else {mark.highlight=color;delete mark.color;}
+  }
+  if(!await save()){for(const [ref,mark] of previous)state.marks[ref]=mark;if(button)button.disabled=false;return;}
+  lastMarkerEdit=previous;
+  modal.close();render();notify('형광펜 색상을 변경했어요.','되돌리기','undo-marker');
 }
 function confirmHighlightRemoval(key) {
   const record = highlightRecord(key);
@@ -2208,7 +2241,7 @@ function recordList(rows = recordRows()) {
       (!recordSelection.year || (day?.slice(0,4) ?? 'undated')===recordSelection.year) &&
       (!recordSelection.month || day?.slice(0,7)===recordSelection.month);
   });
-  if (oldestRecordsFirst) matching.sort((a,b)=>(a.day ?? '9999').localeCompare(b.day ?? '9999'));
+  if (oldestRecordsFirst) matching.sort(compareRecordTime);
   const hasFilter = Object.values(recordSelection).some(Boolean);
   const pageSize=6, pages=Math.max(1,Math.ceil(matching.length/pageSize));
   recordPage=Math.min(recordPage,pages-1);
@@ -2921,7 +2954,7 @@ async function saveVerseNote() {
   const draft = draftSnapshot(form);
   const {key,verses} = editingVerseNote;
   const previous = state.marks[key];
-  state.marks[key] = {...previous,note:value,noteEnd:verses.at(-1),noteVerses:verses,noteDay:previous?.noteDay ?? dateKey()};
+  state.marks[key] = {...previous,note:value,noteEnd:verses.at(-1),noteVerses:verses,noteAt:previous?.noteAt ?? new Date().toISOString(),noteDay:previous?.noteDay ?? dateKey()};
   const button = modal.querySelector('[data-action="save-note"]');
   button.disabled = true;
   if (!await save()) {
@@ -2953,7 +2986,7 @@ function validRef(key) {
 function validatedJournalNote(note){
   if(!isObject(note)||!validId(note.id)||typeof note.done!=='boolean'||!Array.isArray(note.verses)||!note.verses.every(validRef))throw Error('journal note');
   const result={id:note.id,done:note.done,verses:[...new Set(note.verses)]};
-  for(const field of [...Object.keys(parts),'title','reflection','created'])if(note[field]!==undefined){if(typeof note[field]!=='string')throw Error('journal note field');result[field]=note[field];}
+  for(const field of [...Object.keys(parts),'title','reflection','created','recordAt'])if(note[field]!==undefined){if(typeof note[field]!=='string')throw Error('journal note field');result[field]=note[field];}
   if(note.comments!==undefined){if(!Array.isArray(note.comments)||!note.comments.every(validComment))throw Error('journal note comments');result.comments=note.comments;}
   return result;
 }
@@ -2962,13 +2995,13 @@ function validatedBackup(payload) {
   if (payload?.format !== 'meomum-qt' || ![1,2,3].includes(payload.version) ||
       !isObject(input?.journal) || !isObject(input.marks)) throw Error('backup format');
   const result = blank();
-  if(input.torahNotes!==undefined){if(!isObject(input.torahNotes))throw Error('torah notes');for(const [day,note] of Object.entries(input.torahNotes)){if(!validDay(day)||!isObject(note)||typeof note.body!=='string'||typeof note.done!=='boolean')throw Error('torah note');result.torahNotes[day]={body:note.body,done:note.done,...(typeof note.updated==='string'?{updated:note.updated}:{})};}}
+  if(input.torahNotes!==undefined){if(!isObject(input.torahNotes))throw Error('torah notes');for(const [day,note] of Object.entries(input.torahNotes)){if(!validDay(day)||!isObject(note)||typeof note.body!=='string'||typeof note.done!=='boolean')throw Error('torah note');result.torahNotes[day]={body:note.body,done:note.done,...(typeof note.recordAt==='string'?{recordAt:note.recordAt}:{}),...(typeof note.updated==='string'?{updated:note.updated}:{})};}}
   for (const [day,entry] of Object.entries(input.journal)) {
     const dayDate = new Date(day+'T12:00:00');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || dateKey(dayDate)!==day || !isObject(entry) ||
         typeof entry.done!=='boolean' || !Array.isArray(entry.verses) || !entry.verses.every(validRef)) throw Error('journal');
     const safeEntry = {done:entry.done,verses:[...new Set(entry.verses)]};
-    for (const part of [...Object.keys(parts),'reflection','title']) {
+    for (const part of [...Object.keys(parts),'reflection','title','recordAt','created']) {
       if (!Object.hasOwn(entry,part)) continue;
       if (typeof entry[part]!=='string') throw Error('journal field');
       safeEntry[part] = entry[part];
@@ -3009,7 +3042,7 @@ function validatedBackup(payload) {
         mark.noteVerses[0]!==verseNumber(key) || !mark.noteVerses.every((verse,index,list)=>
           Number.isInteger(verse) && verse<=500 && (!index || verse>list[index-1])))) throw Error('note verses');
     result.marks[key] = {color:mark.color,note:mark.note,highlight:mark.highlight,underline:mark.underline,
-      group:validId(mark.group)?mark.group:undefined,markDay:validDay(mark.markDay)?mark.markDay:undefined,
+      markAt:typeof mark.markAt==='string'?mark.markAt:undefined,noteAt:typeof mark.noteAt==='string'?mark.noteAt:undefined,group:validId(mark.group)?mark.group:undefined,markDay:validDay(mark.markDay)?mark.markDay:undefined,
       noteDay:validDay(mark.noteDay)?mark.noteDay:undefined,noteVerses:mark.noteVerses,
       noteEnd:Number.isInteger(mark.noteEnd) && mark.noteEnd>=readRef(key).verse && mark.noteEnd<=500?mark.noteEnd:undefined};
   }
@@ -3307,6 +3340,7 @@ const actions = {
   },
   attach() {
     const entry = journalEntry(dateKey());
+    entry.recordAt ??= new Date().toISOString();
     entry.verses = [...new Set([...entry.verses,...chosen])];
     chosen.clear();
     save().then(saved => { if (saved) notify('오늘 묵상에 구절을 담았어요.'); });
@@ -3659,6 +3693,9 @@ document.addEventListener('click',event => {
   if (target.deleteNote) return confirmItemRemoval('note',target.deleteNote);
   if (target.prayerFilter) { prayerFilter = target.prayerFilter; return render(); }
   if (target.editDailyNote) return showDailyNote(target.editDailyNote);
+  if(target.editRecordColor)return showRecordHighlightColor(target.editRecordColor);
+  if(target.recordColorSwatch){const field=modal.querySelector('#record-highlight-color');if(field&&validColor(target.recordColorSwatch)){field.value=target.recordColorSwatch;previewRecordHighlightColor();}return;}
+  if(target.saveRecordColor)return recolorRecordHighlight(target.saveRecordColor,modal.querySelector('#record-highlight-color')?.value);
   if (target.deleteHighlight) return confirmHighlightRemoval(target.deleteHighlight);
   if (target.removeHighlight) {
     const record = highlightRecord(target.removeHighlight);
@@ -3794,6 +3831,7 @@ function resizeEditorWriting() {
 }
 modal.addEventListener('input',event=>{
   const field = event.target;
+  if(field.id==='record-highlight-color')previewRecordHighlightColor();
   updateDraft(field.form);
   if (field.tagName==='TEXTAREA' && (field.form?.name==='year-editor' || field.form?.classList?.contains('note-editor-dialog'))) resizeWriting(field);
   if (field.name==='reference' && field.form?.name==='year-editor') field.form.querySelector('[data-year-ref-status]').textContent = '';
@@ -3810,10 +3848,11 @@ main.addEventListener('input',event => {
   const field = event.target;
   updateDraft(field.form);
   updateEditorDate(field);
-  if(field.dataset.torahNote){const day=field.dataset.torahNote;state.torahNotes[day]={...state.torahNotes[day],body:field.value,done:state.torahNotes[day]?.done||false,updated:new Date().toISOString()};resizeWriting(field);const del=main.querySelector('[data-delete-torah]');if(del)del.hidden=!torahNoteExists(day);save();return;}
+  if(field.dataset.torahNote){const day=field.dataset.torahNote;state.torahNotes[day]={...state.torahNotes[day],body:field.value,recordAt:state.torahNotes[day]?.recordAt||new Date().toISOString(),done:state.torahNotes[day]?.done||false,updated:new Date().toISOString()};resizeWriting(field);const del=main.querySelector('[data-delete-torah]');if(del)del.hidden=!torahNoteExists(day);save();return;}
   if (field.tagName==='TEXTAREA' && (field.form?.dataset.thoughtEditor || field.form?.dataset.prayerEditor)) resizeWriting(field);
   if (field.dataset.journalField) {
     const entry = journalEntry(selectedDay);
+    if(field.value.trim())entry.recordAt ??= new Date().toISOString();
     entry[field.dataset.journalField] = field.value;
     const delBtn = main.querySelector('[data-delete-journal]');
     if (delBtn) delBtn.hidden = !hasJournalContent(entry);
@@ -4404,6 +4443,7 @@ function setVerseMark(key,appearance) {
     delete mark.underline;
     delete mark.group;
     delete mark.markDay;
+    delete mark.markAt;
   }
   if (appearance?.style==='fill') updateMark(key,'highlight',appearance.color);
   else updateMark(key,'underline',appearance);
@@ -4424,7 +4464,7 @@ function applyVerseMarks(keys,appearance,message) {
     for (const duplicate of existing?.keys ?? []) setVerseMark(duplicate,undefined);
     if (appearance) {
       setVerseMark(key,appearance);
-      Object.assign(state.marks[key],{group,markDay});
+      Object.assign(state.marks[key],{group,markDay,markAt:new Date().toISOString()});
     }
   }
   chosen.clear();
@@ -4450,19 +4490,12 @@ function showMarkDialog() {
   const appearance = first && verseMark(indexVerseMarkers().get(verseAddress(first))?.mark);
   const initial = appearance?.color ?? state.markerColor;
   const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
-  dialog('말씀 표시','<p class="muted">선택한 '+chosen.size+'절에 한 가지 표시를 적용해요.</p>'+
-    '<label class="field">표시 방식<select id="mark-style">'+options(Object.entries(markStyles),appearance?.style ?? state.markerStyle)+'</select></label>'+
-    '<label class="field color-field">원하는 색<input type="color" id="mark-color" value="'+initial+'"></label>'+
-    '<div class="quick-assign-block" style="margin-top:12px; padding:10px; background:var(--soft); border-radius:12px;">'+
-      '<span class="muted" style="font-size:0.75rem; display:block; margin-bottom:6px;">현재 색상을 퀵 동그라미에 저장:</span>'+
-      '<div class="row" style="gap:6px;">'+
-        quickColors.map((c, i) =>
-          '<button type="button" class="btn" data-action="save-to-quick" data-preset="'+i+'" style="font-size:0.8125rem; padding:5px 8px; flex:1;">'+
-          '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:'+c+'; margin-right:4px;"></span>'+(i+1)+'번에 지정</button>'
-        ).join('')+
-      '</div>'+
-    '</div>'+
-    '<div class="row" style="margin-top:16px;"><button type="button" class="btn" data-action="erase-mark">표시 지우기</button><button type="button" class="btn primary" data-action="apply-mark">적용</button></div>');
+  dialog('말씀 표시','<p class="marker-intro">선택한 '+chosen.size+'절의 표시를 꾸며보세요.</p>'+
+    '<div class="marker-settings"><label class="field">표시 방식<select id="mark-style">'+options(Object.entries(markStyles),appearance?.style ?? state.markerStyle)+'</select></label>'+
+    '<label class="field marker-color-field">표시 색상<input type="color" id="mark-color" value="'+initial+'"></label></div>'+
+    '<section class="quick-assign-block"><div class="quick-assign-heading"><span>빠른 색상에 저장</span><small>선택한 색상을 기억해요</small></div><div class="quick-assign-grid">'+
+    quickColors.map((c,i)=>'<button type="button" class="btn" data-action="save-to-quick" data-preset="'+i+'"><span class="quick-assign-dot" style="background:'+c+'"></span><span>'+(i+1)+'번 지정</span></button>').join('')+'</div></section>'+
+    '<footer class="marker-dialog-actions"><button type="button" class="btn destructive" data-action="erase-mark">표시 지우기</button><button type="button" class="btn primary" data-action="apply-mark">적용하기</button></footer>','marker-editor');
 }
 function applyMark(erase = false) {
   if (erase) return applyVerseMarks([...chosen],undefined,'말씀 표시를 지웠어요.');
@@ -5011,7 +5044,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v271',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v274',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
