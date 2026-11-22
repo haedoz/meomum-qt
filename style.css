@@ -3542,3 +3542,23 @@ form[name=selected-study] .dialog-close{min-height:33px;font-size:12px;padding:7
 .record-journal-passages .verse-text{font-weight:400}
 .calendar-mark-card .record-journal-title{color:var(--green);font-size:var(--reading-size,15px);font-weight:600;margin-bottom:5px}
 .calendar-mark-card .record-note-label{color:var(--muted);font-size:11px;font-weight:500}
+
+/* First paint uses gray even before saved preferences are read. */
+:root:not([data-palette]),:root[data-palette=gray]{--paper:#f5f5f5;--card:#fff;--soft:#eeeeef;--line:#e2e2e5;--ink:#282b31;--muted:#62656d;--light:#ededee;--green:#4f555e;--accent-ink:#4f555e;--accent-soft:#eaebed;--panel-tint:#ececee;--glass-shadow:#282b3512}
+:root[data-palette=slate]{--paper:#f5f7fa;--card:#fff;--soft:#f0f3f8;--line:#e4e9f0;--ink:#202733;--muted:#596372;--light:#edf1f7;--green:#3b5a7c;--accent-ink:#3b5a7c;--accent-soft:#e9f0f9;--panel-tint:#e8eff9;--glass-shadow:#263e5b1a}
+:root[data-appearance=dark][data-palette=gray]{--paper:#2d2e31;--card:#38393d;--soft:#333438;--line:#4e5054;--ink:#f1f2f4;--muted:#bdc0c7;--light:#43454a;--green:#d7d9de;--accent-ink:#d7d9de;--accent-soft:#47494e;--panel-tint:#393a3f;--glass-shadow:#10111345}
+:root[data-appearance=dark][data-palette=slate]{--paper:#292e37;--card:#343b46;--soft:#303743;--line:#4b5462;--ink:#f1f3f7;--muted:#bbc3cf;--light:#414c5c;--green:#bdd1ea;--accent-ink:#bdd1ea;--accent-soft:#405064;--panel-tint:#3c4b60;--glass-shadow:#10131c45}
+/* Gothic masthead, with a soft editorial colour field instead of an icon. */
+.today-view .today-heading{position:relative;isolation:isolate;padding:10px 1px 16px;min-height:66px;overflow:visible}
+.today-view .today-heading h1{position:relative;font-family:var(--font-ko,var(--sans));font-style:normal;font-size:clamp(31px,3.7vw,40px);font-weight:750;letter-spacing:-.065em;line-height:1.1;z-index:0}
+.today-view .today-heading h1:before{content:"";position:absolute;z-index:-1;left:-11px;top:-10px;width:150px;height:61px;background:radial-gradient(ellipse at 30% 50%,color-mix(in srgb,var(--green) 9%,transparent),transparent 70%);pointer-events:none}
+.manna-title-text{display:inline-flex;align-items:baseline;gap:0}
+.today-title-suffix{font-family:inherit;font-style:normal;font-weight:450;font-size:.82em;color:var(--green);letter-spacing:-.075em;transform:translateY(-.04em)}
+.today-view .today-heading .date-tag{position:relative;padding:7px 10px;border-radius:20px;background:color-mix(in srgb,var(--card) 68%,transparent);border:1px solid color-mix(in srgb,var(--line) 45%,transparent);box-shadow:inset 0 1px 0 #ffffff30;font-weight:500;font-size:11px}
+@media(max-width:480px){.today-view .today-heading{min-height:58px;padding-top:5px;padding-bottom:12px}.today-view .today-heading h1{font-size:32px}.today-view .today-heading .date-tag{padding:6px 8px;font-size:10px}}
+/* A quotation-led companion heading, without another icon tile. */
+.today-view .today-compose .today-summary-heading{position:relative;isolation:isolate;margin:0 0 12px;padding:10px 11px 10px 13px;min-height:45px;border-left:2px solid color-mix(in srgb,var(--green) 55%,transparent);border-radius:0 12px 12px 0;background:linear-gradient(100deg,color-mix(in srgb,var(--green) 6%,var(--card)),color-mix(in srgb,var(--card) 22%,transparent) 72%)}
+.today-view .today-compose .today-summary-heading h2{position:relative;min-height:24px;border:0;padding-left:21px;font-family:var(--font-ko,var(--sans));font-size:17px;font-weight:650;letter-spacing:-.035em;line-height:1.35}
+.today-view .today-compose .today-summary-heading h2:before{content:"\201C";position:absolute;left:-2px;top:-10px;font:400 43px/1 Georgia,serif;color:var(--green);opacity:.3;pointer-events:none}
+.today-view .today-compose .today-calendar-link{font-size:11px;white-space:nowrap;color:var(--muted)}
+@media(max-width:480px){.today-view .today-compose .today-summary-heading{padding:9px 8px 9px 10px}.today-view .today-compose .today-summary-heading h2{font-size:16px;padding-left:20px}.today-view .today-compose .today-calendar-link{font-size:10px}}
