@@ -2248,7 +2248,7 @@ function renderRecordCard(item) {
       const portionName=portion?.name||mark.journalTitle||'토라포션';
       const range=portion?torahRangeLabel(portion):hasRefs?groupedPassageRefs(mark.allRefs).map(group=>passageGroupLabel(group,false)).join(' · '):'';
       badgeTitle=esc(range||'토라포션');
-      content='<div class="record-torah-range"><p class="record-torah-portion-name">'+esc(portionName)+'</p></div>'+
+      content='<div class="record-torah-range"><p class="record-torah-portion-name">'+icon('book')+'<span>'+esc(portionName)+' </span>'+'</p></div>'+
         '<section class="record-torah-note"><span>'+icon('edit')+' 나의 묵상</span><div class="record-journal-text">'+esc(mark.journalReflection||'')+'</div></section>';
     }
   } else if (mark.note) {
@@ -5103,7 +5103,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v283',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v284',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

@@ -3764,3 +3764,14 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .calendar-mark-card.torah .record-torah-range{padding:1px 0 7px}.calendar-mark-card.torah .record-torah-portion-name{color:var(--muted);font-size:12px;font-weight:400;line-height:1.4;margin:0}
 .calendar-mark-card.torah .record-torah-note>span{display:flex;align-items:center;gap:5px;margin-bottom:5px}.record-torah-note>span svg{width:13px;height:13px;flex:none;stroke-width:1.6}
 .calendar-mark-card.note .calendar-quote-body{margin-bottom:3px;padding-block:8px}.calendar-mark-card.note .record-note-content{margin-top:3px;padding:9px 10px}.calendar-mark-card.note .record-note-label{margin-bottom:4px}.calendar-mark-card.note .record-note-body{margin-top:0}
+
+/* One symmetric chapter layout, with or without comparison editions. */
+.reader-view .bible-passage{padding-inline:14px;box-sizing:border-box;min-width:0}
+.reader-view .bible-passage>.passage-navigation{grid-template-columns:34px minmax(0,1fr) 34px;gap:8px;margin-inline:0;padding:6px 0 12px;align-items:center}
+.reader-view .bible-passage>.passage-navigation>.chapter-arrow:first-child{justify-self:start}
+.reader-view .bible-passage>.passage-navigation>.chapter-arrow:last-child{justify-self:end}
+.reader-view .bible-passage>.verse,.reader-view .bible-passage.comparing .verse-pair>.verse{width:100%;min-width:0;padding-inline:0;box-sizing:border-box}
+.reader-view .bible-passage.comparing .verse-pair{padding-inline:0;min-width:0}
+.reader-view .bible-passage.comparing .comparison-stack{margin-inline-end:0;padding-inline:9px;width:auto;min-width:0;max-width:none}
+.calendar-mark-card.torah .record-torah-portion-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink);line-height:1.45}
+.record-torah-portion-name>svg{width:14px;height:14px;flex:none;color:var(--muted);stroke-width:1.6}.record-torah-portion-name>span{min-width:0}
