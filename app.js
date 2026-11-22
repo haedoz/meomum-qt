@@ -765,7 +765,7 @@ function commentSlice(comments,key){
 function devotionCommentSummary(comments=[]){
   if(!comments.length)return '';
   const {items,pager}=commentSlice(comments,'summary/'+comments[0].id);
-  return '<section class="devotion-comment-summary"><h3>'+icon('comment')+' 덧붙인 생각 <span>'+comments.length+'</span></h3><div class="comment-thread">'+items.map(item=>'<article class="comment-thread-item"><span class="comment-thread-avatar">'+icon('comment')+'</span><div class="comment-thread-copy"><time>'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><p>'+esc(item.body)+'</p></div></article>').join('')+'</div>'+pager+'</section>';
+  return '<section class="devotion-comment-summary"><h3>'+icon('comment')+' 덧붙인 생각 <span>'+comments.length+'</span></h3><div class="comment-thread">'+items.map(item=>'<article class="comment-thread-item"><div class="comment-thread-copy"><time>'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><p>'+esc(item.body)+'</p></div></article>').join('')+'</div>'+pager+'</section>';
 }
 function devotionCardHeading(title,torah=false){return '<header class="devotion-card-heading"><h2>'+icon(torah?'book':'edit')+'<span>'+esc(title||'나의 묵상')+'</span></h2><span class="devotion-kind'+(torah?' devotion-kind-torah':'')+'">'+(torah?'토라포션':'묵상 노트')+'</span></header>';}
 function journalScreen() {
@@ -774,7 +774,7 @@ function journalScreen() {
   const locked=entry.done&&!editingCompletedJournals.has(journalEditKey(day));
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
-  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day})+'</div></section>';
+  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('book')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day})+'</div></section>';
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor" data-journal-day="'+day+'" data-journal-id="'+(activeJournalId||'')+'">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
@@ -792,13 +792,13 @@ function journalScreen() {
 function journalComments(day,comments){
   const key=journalEditKey(day),{items,pager}=commentSlice(comments,'journal/'+key);
   return '<section class="post-comments"><h2>'+icon('comment')+' 댓글 <span class="comment-count">'+comments.length+'</span></h2>'+
-    '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment',commentDrafts.get(key)||'','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<button class="btn primary" type="submit">등록</button></form>'+
-    '<div class="comment-thread">'+(items.length?items.map(item=>'<article class="post-comment comment-thread-item"><span class="comment-thread-avatar">'+icon('comment')+'</span><div class="comment-thread-copy"><div class="comment-thread-meta"><time datetime="'+esc(item.created)+'">'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><div class="item-actions"><button type="button" class="text-action" data-comment-day="'+day+'" data-comment-id="'+item.id+'">수정</button><button type="button" class="text-action destructive" data-delete-comment="'+item.id+'" data-date="'+day+'">삭제</button></div></div><p class="record-text">'+esc(item.body)+'</p></div></article>').join(''):'<p class="muted comment-empty">첫 생각을 덧붙여 보세요.</p>')+'</div>'+pager+'</section>';
+    '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment',commentDrafts.get(key)||'','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<button class="btn primary" type="submit">'+icon('arrow')+' 생각 남기기</button></form>'+
+    '<div class="comment-thread">'+(items.length?items.map(item=>'<article class="post-comment comment-thread-item"><div class="comment-thread-copy"><div class="comment-thread-meta"><time datetime="'+esc(item.created)+'">'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><div class="item-actions"><button type="button" class="text-action" data-comment-day="'+day+'" data-comment-id="'+item.id+'">수정</button><button type="button" class="text-action destructive" data-delete-comment="'+item.id+'" data-date="'+day+'">삭제</button></div></div><p class="record-text">'+esc(item.body)+'</p></div></article>').join(''):'<p class="muted comment-empty">첫 생각을 덧붙여 보세요.</p>')+'</div>'+pager+'</section>';
 }
 function devotionHeading(active) {
   const yearly=active==='newyear',torah=active==='torah-notes';
   const title=yearly?'새해 말씀':torah?'토라포션 묵상':'묵상 기록 모아보기';
-  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">'+(yearly?'YEARLY VERSES':'MY DEVOTIONS')+'</p><div class="journal-feed-title-row"><h1>'+title+'</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 기록'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+((yearly?route==="newyear":route==="journals")?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
+  return '<header class="page-heading journal-feed-page-heading"><p class="eyebrow">'+(yearly?'YEARLY VERSES':'MY DEVOTIONS')+'</p><div class="journal-feed-title-row"><h1>'+title+'</h1><button type="button" class="btn primary journal-feed-add" '+(yearly?'data-action="add-year"':torah?'data-nav="torah/'+dateKey()+'"':'data-add-journal="true"')+'><span aria-hidden="true">＋</span> <span class="journal-add-label">'+(yearly?'새해 말씀 추가':torah?'오늘 포션 읽기':'묵상 노트 추가')+'</span></button></div><p class="lead">'+(yearly?'한 해 동안 붙들고 싶은 말씀을 연도별로 모아보세요.':torah?'날짜별 토라포션을 읽으며 남긴 묵상을 모아보세요.':'마음에 남은 말씀과 묵상을 모아보세요.')+'</p></header><nav class="devotion-sections" aria-label="묵상 기록 종류">'+[['journals','묵상 기록'],['newyear','새해 말씀']].map(([route,label])=>'<button type="button" data-nav="'+route+'" aria-current="'+((yearly?route==="newyear":route==="journals")?'page':'false')+'">'+icon(route==='journals'?'comment':'book')+'<span>'+label+'</span><small>'+(route==='journals'?allJournalEntries().filter(([,entry])=>hasJournalContent(entry)).length+Object.keys(state.torahNotes).filter(torahNoteExists).length:state.newYear.length)+'</small></button>').join('')+'</nav>';
 }
 function yearDisplayReference(ref) {
   const saved=readRef(ref),edition=state.reader.edition || saved.edition;
@@ -819,7 +819,7 @@ function torahNoteExists(day){const note=state.torahNotes[day];return Boolean(no
 function torahCalendarCard(day,label='매일 토라포션'){
   const portion=torahDays[day];if(!portion)return '';
   const note=state.torahNotes[day];
-  return '<button type="button" class="torah-calendar-card" data-nav="torah/'+day+'"><span class="torah-card-icon">'+icon('book')+'</span><span><small>'+esc(label)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</small><strong>'+esc(portion.name)+'</strong><span>'+esc(torahRangeLabel(portion))+'</span>'+(torahNoteExists(day)?'<em>'+icon('check')+(note.done?'묵상 완료':'메모 작성 중')+'</em>':'')+'</span>'+icon('right')+'</button>';
+  return '<button type="button" class="torah-calendar-card" data-nav="torah/'+day+'"><span class="torah-card-icon">'+icon('book')+'</span><span><small>'+esc(label)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</small><strong>'+icon('book')+'<span>'+esc(portion.name)+'</span></strong><span>'+esc(torahRangeLabel(portion))+'</span>'+'</span>'+icon('right')+'</button>';
 }
 let torahPopupTimer,torahTappedVerse;
 function clearTorahTapFeedback(){
@@ -980,7 +980,7 @@ function journalsScreen() {
   const grouped=days.map(day=>'<section class="devotion-day-group"><header class="devotion-day-heading"><h2>'+esc(longDate(day))+'</h2><span>'+entries.filter(([date])=>date===day).length+'건</span></header><div class="stack">'+cards.filter((_,index)=>entries[index][0]===day).join('')+'</div></section>').join('');
 
   return '<div class="devotion-feed-page">'+devotionHeading('journals')+
-    '<div class="section-head"><h2>전체 묵상 <span class="comment-count">'+count+'건</span></h2></div>'+
+    '<div class="devotion-total"><span>'+icon('note')+' 전체 묵상</span><strong>'+count+'<small>건</small></strong></div>'+
     '<div class="journal-feed stack">'+(grouped || '<p class="empty">아직 작성된 묵상 노트가 없어요. 위의 추가 버튼으로 첫 묵상을 기록해 보세요.</p>')+'</div></div>';
 }
 function dailyVerseQuote(key) {
@@ -2116,11 +2116,11 @@ function calendarDaySummary(day,items,records) {
     for(const row of rows){const {book,chapter}=readRef(row.key);const key=book+'/'+chapter;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);}
     return [...groups].map(([key,rows])=>'<details class="calendar-mark-group"><summary><strong>'+esc(chapterLabel(key))+'</strong><span>'+rows.length+'건 '+icon('down')+'</span></summary><div>'+recordDetails(rows,isNote)+'</div></details>').join('');
   };
-  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+esc(entry.title||'묵상 노트')+'</strong><small>'+(entry.done?'QT 완료':'작성 중')+'</small><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span>'+icon('right')+'</button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
+  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+icon('edit')+'<span>'+esc(entry.title||'묵상 노트')+'</span></strong><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span>'+icon('right')+'</button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
   const empty=!note&&!journals.length&&!prayers.length&&!thoughts.length&&!chapters.length&&!notes.length&&!highlights.length&&!torahNoteExists(day);
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
     '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
-    torahCalendarCard(day)+'<p class="calendar-summary-hint">기록을 눌러 자세히 확인하세요.</p>'+
+    torahCalendarCard(day)+
     (note?calendarDetail('comment','말씀 묵상','1건','<div class="tappable-card">'+cardHit('말씀 묵상 열기','data-edit-daily-note="'+day+'"')+calendarText(note.body)+calendarItemActions('data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"')+'</div>'):'')+
     (journals.length?calendarDetail('note','묵상 노트',journals.length+'편',journalCards):'')+
     (prayers.length?calendarDetail('prayer','기도 노트',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
@@ -4699,7 +4699,8 @@ function editorField(label,name,value='',type='text',extra='') {
   const field = type==='textarea'
     ? '<textarea name="'+name+'" '+extra+'>'+esc(value)+'</textarea>'
     : '<input type="'+type+'" name="'+name+'" value="'+esc(value)+'" '+extra+'>';
-  return '<label class="field">'+label+field+'</label>';
+  const symbol={title:'edit',reflection:'edit',body:'note',answer:'check',comment:'comment'}[name];
+  return '<label class="field"><span class="field-caption">'+(symbol?icon(symbol):'')+label+'</span>'+field+'</label>';
 }
 function draftNotice() {
   return '<div class="draft-notice" hidden><span data-draft-status role="status"></span>'+
@@ -5171,7 +5172,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v290',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v291',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
