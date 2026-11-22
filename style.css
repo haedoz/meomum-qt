@@ -3732,3 +3732,9 @@ form[name=journal-verse-removal]{gap:13px}form[name=journal-verse-removal] #acti
 @media(max-width:599px){.bible-passage.comparing .comparison-stack{padding:0 9px}.bible-passage .comparison-stack .verse-support>.verse-content{grid-template-columns:minmax(0,1fr);gap:3px;padding:7px 0}}
 .removal-confirmation{width:min(100% - 36px,380px);padding:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:22px;overscroll-behavior:contain}
 .removal-confirmation form{gap:12px}.removal-confirmation h2{font-size:18px;font-weight:600;line-height:1.4;margin:0}.removal-confirmation p{font-size:13px;line-height:1.6;color:var(--muted);margin:0}.removal-confirmation footer{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}.removal-confirmation::backdrop{background:#20263465;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+
+/* Align the actual main and comparison text edges, including inset padding. */
+.reader-view .bible-passage.comparing .verse-pair{--comparison-end:10px;min-width:0}
+.reader-view .bible-passage.comparing .verse-pair>.verse{padding-inline-end:var(--comparison-end)}
+.reader-view .bible-passage.comparing .comparison-stack{width:auto;max-width:none;margin-inline-start:var(--comparison-gutter);margin-inline-end:0;padding-inline-end:var(--comparison-end);box-sizing:border-box;min-width:0;justify-self:stretch}
+.reader-view .bible-passage.comparing .verse-pair>.verse-with-note .verse{padding-inline-end:34px}
