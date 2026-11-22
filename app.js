@@ -2935,7 +2935,7 @@ function showVerseArrival(id) {
 
   alignVerseArrival(verse);
   arrivedVerse = verse;
-  verse.classList.add('verse-arrival');(verse.closest('.verse-pair')||verse).classList.add('search-arrival-row');
+  verse.classList.add('verse-arrival');verse.classList.add('search-arrival-row');
 
   const targetEl = verse.closest('.verse-pair') ?? verse;
   const ensureAlignment = () => {
@@ -2953,7 +2953,7 @@ function showVerseArrival(id) {
 
   verseArrivalTimer = setTimeout(()=>{
     if(epoch!==verseAlignmentEpoch)return;
-    (verse.closest('.verse-pair')||verse).classList.remove('search-arrival-row');verse.classList.remove('verse-arrival');
+    verse.classList.remove('search-arrival-row');verse.classList.remove('verse-arrival');
     arrivedVerse = undefined;
   },2600);
 }
@@ -3942,16 +3942,34 @@ function writingMirror(field,text,caret=false){
   else mirror.append(document.createTextNode('\u200b'));
   document.body.append(mirror);return mirror;
 }
-function keepWritingCaretVisible(field){
-  if(document.activeElement!==field||field.readOnly||field.tagName!=='TEXTAREA')return;
-  const mirror=writingMirror(field,field.value.slice(0,field.selectionEnd??field.value.length),true),marker=mirror.lastElementChild;
-  const line=parseFloat(getComputedStyle(field).lineHeight)||20;
-  const top=field.getBoundingClientRect().top+marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top;mirror.remove();
-  const viewport=window.visualViewport,bottom=(viewport?.offsetTop||0)+(viewport?.height||innerHeight)-24;
-  const upper=Math.max((viewport?.offsetTop||0)+12,document.querySelector('.top')?.getBoundingClientRect().bottom||0);
-  const delta=top+line>bottom?top+line-bottom:top<upper?top-upper:0;
-  if(Math.abs(delta)>2){const parent=field.closest('dialog');if(parent)parent.scrollTop+=delta;else window.scrollBy({top:delta,behavior:'instant'});}
+function isWritingField(field){return field?.matches?.('textarea:not([readonly]),input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=color]):not([type=range]):not([type=file])');}
+function updateWritingViewport(){
+  const field=document.activeElement,active=!!isWritingField(field),viewport=window.visualViewport;
+  document.documentElement.classList.toggle('writing-focused',active);
+  const inset=active?Math.max(0,innerHeight-(viewport?.height||innerHeight)-(viewport?.offsetTop||0)):0;
+  document.documentElement.style.setProperty('--keyboard-inset',inset+'px');
+  if(active){clearTimeout(writingCaretTimer);writingCaretTimer=setTimeout(()=>keepWritingCaretVisible(field),80);}
 }
+function keepWritingCaretVisible(field){
+  if(document.activeElement!==field||!isWritingField(field))return;
+  const line=parseFloat(getComputedStyle(field).lineHeight)||20;
+  let top=field.getBoundingClientRect().top;
+  if(field.tagName==='TEXTAREA'){
+    const mirror=writingMirror(field,field.value.slice(0,field.selectionEnd??field.value.length),true),marker=mirror.lastElementChild;
+    top+=marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top-field.scrollTop;mirror.remove();
+  }
+  const viewport=window.visualViewport,offset=viewport?.offsetTop||0;
+  // Keep the caret clear of the keyboard accessory bar as well as the keyboard.
+  const bottom=offset+(viewport?.height||innerHeight)-70;
+  const header=document.querySelector('.top')?.getBoundingClientRect();
+  const upper=Math.min(bottom-line,Math.max(offset+14,header&&header.bottom<bottom?header.bottom+10:offset+14));
+  const delta=top+line>bottom?top+line-bottom:top<upper?top-upper:0;
+  if(Math.abs(delta)<=3)return;
+  let parent=field.parentElement;
+  while(parent&&parent!==document.body){const style=getComputedStyle(parent);if(/auto|scroll/.test(style.overflowY)&&parent.scrollHeight>parent.clientHeight+2){const before=parent.scrollTop;parent.scrollTop+=delta;if(Math.abs(parent.scrollTop-before)>2)return;}parent=parent.parentElement;}
+  window.scrollBy({top:delta,behavior:'instant'});
+}
+
 function resizeWriting(field){
   if(!field?.isConnected||field.tagName!=='TEXTAREA'||!field.getBoundingClientRect().width)return;
   const mirror=writingMirror(field,field.value||field.placeholder||'');
@@ -3962,7 +3980,11 @@ function resizeWriting(field){
 }
 document.addEventListener('input',event=>{if(event.target.tagName==='TEXTAREA'&&!event.isComposing)resizeWriting(event.target);});
 document.addEventListener('compositionend',event=>{if(event.target.tagName==='TEXTAREA')resizeWriting(event.target);});
-window.visualViewport?.addEventListener('resize',()=>{const field=document.activeElement;if(field?.tagName==='TEXTAREA'){clearTimeout(writingCaretTimer);writingCaretTimer=setTimeout(()=>keepWritingCaretVisible(field),32);}});
+document.addEventListener('focusin',updateWritingViewport);
+document.addEventListener('focusout',()=>setTimeout(updateWritingViewport,0));
+window.visualViewport?.addEventListener('resize',updateWritingViewport);
+window.visualViewport?.addEventListener('scroll',updateWritingViewport);
+document.addEventListener('input',event=>{if(isWritingField(event.target)&&event.target.tagName!=='TEXTAREA')updateWritingViewport();});
 function resizeEditorWriting() {
   main.querySelectorAll('[data-torah-note], [data-journal-field="reflection"], [data-thought-editor] textarea, [data-prayer-editor] textarea')
     .forEach(resizeWriting);
@@ -5190,7 +5212,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v298',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v299',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
