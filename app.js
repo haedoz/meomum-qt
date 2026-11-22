@@ -793,8 +793,8 @@ function journalScreen() {
 function journalComments(day,comments){
   const key=journalEditKey(day),{items,pager}=commentSlice(comments,'journal/'+key);
   return '<section class="post-comments"><h2>'+icon('comment')+' 댓글 <span class="comment-count">'+comments.length+'</span></h2>'+
-    '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment',commentDrafts.get(key)||'','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<button class="btn primary" type="submit">'+icon('arrow')+' 생각 남기기</button></form>'+
-    '<div class="comment-thread">'+(items.length?items.map(item=>'<article class="post-comment comment-thread-item"><div class="comment-thread-copy"><div class="comment-thread-meta"><time datetime="'+esc(item.created)+'">'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><div class="item-actions"><button type="button" class="text-action" data-comment-day="'+day+'" data-comment-id="'+item.id+'">수정</button><button type="button" class="text-action destructive" data-delete-comment="'+item.id+'" data-date="'+day+'">삭제</button></div></div><p class="record-text">'+esc(item.body)+'</p></div></article>').join(''):'<p class="muted comment-empty">첫 생각을 덧붙여 보세요.</p>')+'</div>'+pager+'</section>';
+    '<form class="comment-compose" data-comment-form="'+day+'">'+editorField('댓글 쓰기','comment',commentDrafts.get(key)||'','textarea','rows="2" required placeholder="묵상에 덧붙이고 싶은 생각을 남겨보세요."')+'<div class="comment-submit-row"><button class="btn primary" type="submit">등록</button></div></form>'+
+    '<div class="comment-thread">'+(items.length?items.map(item=>'<article class="post-comment comment-thread-item"><div class="comment-thread-copy"><div class="comment-thread-meta"><time datetime="'+esc(item.created)+'">'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><div class="item-actions"><button type="button" class="text-action" data-comment-day="'+day+'" data-comment-id="'+item.id+'">수정</button><button type="button" class="text-action destructive" data-delete-comment="'+item.id+'" data-date="'+day+'">삭제</button></div></div><p class="record-text">'+esc(item.body)+'</p></div></article>').join(''):'')+'</div>'+pager+'</section>';
 }
 function devotionHeading(active) {
   const yearly=active==='newyear',torah=active==='torah-notes';
@@ -1090,7 +1090,7 @@ function todaySummary(day,journal) {
     ['prayer','기도 노트','data-action="add-prayer"'],
     ['thoughtBulb','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><span class="today-compose-arrow" aria-hidden="true">'+icon('right')+'</span></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -5220,7 +5220,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v307',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v308',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
