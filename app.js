@@ -3,7 +3,7 @@ import {startAppUpdates} from './app-updates.js';
 import {libraryScreen,sevenStudyScreen,studyLibraryAction} from './study-library.js';
 import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
 import {torahDays,torahVerseCounts} from './torah-data.js';
-import {mergeSync} from './offline-sync.js';
+import {mergeSync,mergeReadingPlan} from './offline-sync.js?v=2';
 import {hebrewGuideScreen,hebrewGuideAction,prepareHebrewGuide} from './hebrew-guide.js?v=10';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
 import {hebrewOptions,hebrewDayCell,hebrewDayDetail,hebrewAction,hebrewEnabled} from './hebrew-calendar.js?v=6';
@@ -1817,11 +1817,10 @@ function readingPlan(canon,counts,remaining,today) {
   }).join('');
 
   return '<section class="card reading-plan"><div class="row"><h2>나의 통독 계획</h2><span class="reading-badge">오늘 '+checkedToday+'장 체크</span></div>'+
-    '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획·기간 설정</button></div>'+
+    '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획 설정</button></div>'+
     periodMeta +
     '<div class="plan-progress-bar"><progress max="'+Math.max(1,scope.length)+'" value="'+progress+'" aria-label="통독 진행률"></progress></div>'+
-    '<label class="field reading-goal"><span class="row">하루 분량 <output id="reading-goal-value">'+goal+'장</output></span>'+
-    '<input type="range" id="reading-goal" min="1" max="30" step="1" value="'+goal+'" aria-label="하루 분량" aria-valuetext="'+goal+'장"><span class="row muted"><span>1장</span><span>30장</span></span></label>'+
+    '<p class="reading-goal-summary muted">하루 '+goal+'장 · 계획 설정에서 변경</p>'+
     (progress >= scope.length ?
       '<div class="plan-finish-banner"><p>🎉 계획하신 성경 통독을 모두 마쳤어요!</p><button type="button" class="btn primary" data-action="archive-reading-plan">통독 완료 기록 보관 & 새 계획</button></div>' :
       '<div class="row" style="margin-top:10px;"><button type="button" class="text-action" data-action="archive-reading-plan" style="font-size:0.8rem; color:var(--muted);">현재 계획 완료 처리 및 기록 보관</button></div>')+
@@ -1844,15 +1843,16 @@ function showReadingRange() {
   const startDate = state.readingRange?.startDate ?? dateKey();
   const targetDate = state.readingRange?.targetDate ?? '';
   const hasTarget = Boolean(targetDate);
-  dialog('통독 계획 및 기간 설정','<p class="muted">통독할 성경 범위와 계획 방식을 설정할 수 있어요.</p>'+
+  dialog('통독 계획 설정','<p class="muted">통독할 성경 범위와 계획 방식을 설정할 수 있어요.</p>'+
     rangeFields('시작',range.start)+rangeFields('끝',range.end)+
     '<div class="plan-mode-tabs" role="tablist">'+
       '<button type="button" class="plan-mode-tab '+(hasTarget?'':'active')+'" data-action="plan-mode-daily">매일 꾸준히 (자유)</button>'+
       '<button type="button" class="plan-mode-tab '+(hasTarget?'active':'')+'" data-action="plan-mode-target">목표 기간 정하기</button>'+
     '</div>'+
     '<div id="plan-mode-daily-panel" '+(hasTarget?'hidden':'')+'>'+
+      '<div class="plan-daily-goal"><label for="range-daily-goal">하루 읽을 분량</label><div class="plan-goal-stepper"><button type="button" data-reading-goal-step="-1" aria-label="하루 분량 한 장 줄이기" '+(state.readingGoal<=1?'disabled':'')+'>−</button><div><input type="number" id="range-daily-goal" inputmode="numeric" min="1" max="30" step="1" value="'+state.readingGoal+'" aria-label="하루 읽을 장 수"><span>장</span></div><button type="button" data-reading-goal-step="1" aria-label="하루 분량 한 장 늘리기" '+(state.readingGoal>=30?'disabled':'')+'>＋</button></div></div>'+
       '<label class="field"><span>통독 시작일</span><input type="date" id="range-start-date" value="'+esc(startDate)+'"></label>'+
-      '<p class="muted" style="margin-top:6px; font-size:0.8rem;">마감 날짜 없이 매일 읽는 하루 분량에 맞춰 예상 완독일이 계산돼요.</p>'+
+      '<p class="muted" style="margin-top:6px; font-size:0.8rem;">정해진 마감일 없이 하루 1–30장 중 편한 분량으로 꾸준히 읽어요.</p>'+
     '</div>'+
     '<div id="plan-mode-target-panel" '+(hasTarget?'':'hidden')+'>'+
       '<div class="range-date-fields">'+
@@ -1862,7 +1862,7 @@ function showReadingRange() {
       '<p class="muted" style="margin-top:6px; font-size:0.8rem;">목표일까지 남은 D-Day와 일정에 맞춰 진행률이 표시돼요.</p>'+
     '</div>'+
     '<p class="range-error" role="status"></p>'+
-    '<div class="row" style="margin-top:16px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>');
+    '<div class="row" style="margin-top:16px;"><button type="button" class="btn" data-action="reset-reading-range">성경 전체로</button><button type="button" class="btn primary" data-action="save-reading-range">계획 저장</button></div>','reading-plan-editor');
 }
 function saveReadingRange() {
   const [start,end] = ['시작','끝'].map(side=>modal.querySelector('[data-range-book="'+side+'"]').value+'/'+modal.querySelector('[data-range-chapter="'+side+'"]').value);
@@ -1874,10 +1874,15 @@ function saveReadingRange() {
     modal.querySelector('.range-error').textContent = '끝 장은 시작 장과 같거나 뒤에 있어야 해요.';
     return;
   }
-  setReadingRange(range);
+  const goal=isTargetMode?state.readingGoal:Number(modal.querySelector('#range-daily-goal').value);
+  if(!Number.isInteger(goal)||goal<1||goal>30){modal.querySelector('.range-error').textContent='하루 분량은 1–30장 사이의 정수로 입력해 주세요.';return;}
+  if(isTargetMode&&(!validDay(targetDate)||targetDate<startDate)){modal.querySelector('.range-error').textContent='목표 완료일은 시작일과 같거나 뒤의 날짜로 선택해 주세요.';return;}
+  setReadingRange(range,goal);
 }
-function setReadingRange(range) {
+function setReadingRange(range,goal=state.readingGoal) {
   state.readingRange = range;
+  state.readingGoal = goal;
+  state.readingPlanUpdated = new Date().toISOString();
   modal.close();
   save();
   render();
@@ -3041,6 +3046,7 @@ function validatedBackup(payload) {
       targetDate: input.readingRange.targetDate || ''
     };
   }
+  if(typeof input.readingPlanUpdated==='string' && Number.isFinite(Date.parse(input.readingPlanUpdated)))result.readingPlanUpdated=input.readingPlanUpdated;
   if (Array.isArray(input.readingHistory)) {
     result.readingHistory = input.readingHistory;
   }
@@ -3179,6 +3185,7 @@ const actions = {
       chaptersCount: scope.length
     });
     state.readingRange = null;
+    state.readingPlanUpdated = new Date().toISOString();
     modal.close();
     save();
     render();
@@ -3531,6 +3538,14 @@ document.addEventListener('click',event => {
     return;
   }
   const target = button.dataset;
+  if(target.readingGoalStep){
+    const field=modal.querySelector('#range-daily-goal');if(!field)return;
+    const current=Number(field.value)||1;field.value=Math.max(1,Math.min(30,current+Number(target.readingGoalStep)));
+    modal.querySelector('[data-reading-goal-step="-1"]').disabled=Number(field.value)<=1;
+    modal.querySelector('[data-reading-goal-step="1"]').disabled=Number(field.value)>=30;
+    return;
+  }
+
   if(target.studyPreview)return showSelectedStudy(target.studyPreview);
   if(target.torahStudyRef){if(target.torahCommentary&&commentaries[target.torahCommentary]){state.commentaryEdition=target.torahCommentary;save();}return showTorahVerse(target.torahStudyRef,target.torahStudyMode);}
   if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
@@ -3976,6 +3991,7 @@ main.addEventListener('change',async event => {
   }
   if (field.id==='reading-goal') {
     state.readingGoal = Number(field.value);
+    state.readingPlanUpdated = new Date().toISOString();
     const focused = document.activeElement===field;
     save();
     render();
@@ -4996,7 +5012,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v264',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v267',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
@@ -5017,7 +5033,7 @@ async function checkGhAutoSync(force=false,manual=false,announce=false) {
   const url='https://api.github.com/repos/'+ghCloudRepo+'/contents/'+encodeURIComponent(user+'.json');
   try{
     const base=await loadLocal(baseKey);
-    if(!base&&!localStorage.getItem(key)&&(Object.keys(state.journal).length||Object.keys(state.marks).length||state.prayers.length||state.newYear.length||Object.keys(state.torahNotes).length))localStorage.setItem(key,crypto.randomUUID());
+    if(!base&&!localStorage.getItem(key)&&(Object.keys(state.journal).length||Object.keys(state.marks).length||state.prayers.length||state.newYear.length||Object.keys(state.torahNotes).length||Object.keys(state.chapterLog||{}).length||state.readingRange||state.readingPlanUpdated||state.readingHistory?.length||state.readingGoal!==3))localStorage.setItem(key,crypto.randomUUID());
     for(let attempt=0;attempt<3;attempt++){
       const res=await fetch(url+'?_t='+Date.now(),{headers,cache:'no-store',signal:AbortSignal.timeout(20000)});
       if(!res.ok&&res.status!==404)throw Error('서버 응답 '+res.status);
@@ -5025,8 +5041,18 @@ async function checkGhAutoSync(force=false,manual=false,announce=false) {
       const remote=file?validatedBackup(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\s/g,'')),c=>c.charCodeAt(0))))):null;
       const revision=localStorage.getItem(key);
       const snapshot=structuredClone(state);
-      const shouldUpload=Boolean(revision)||!file;
-      let merged=shouldUpload?(remote?mergeSync(base,snapshot,remote):snapshot):remote;
+      const combined=remote?mergeSync(base,snapshot,remote):snapshot;
+      let merged=mergeReadingPlan(base,snapshot,remote||snapshot,combined);
+      const planDiffers=remote&&['readingRange','readingGoal','readingPlanUpdated'].some(field=>JSON.stringify(merged[field])!==JSON.stringify(remote[field]));
+      const shouldUpload=Boolean(revision)||!file||Boolean(planDiffers);
+      // A first connection may download records, but never discard the local plan.
+      if(!shouldUpload)merged=mergeReadingPlan(base,snapshot,remote,remote);
+      if(snapshot.readingRange){
+        const recoveryKey='gh-reading-plan-recovery/'+user;
+        const previous=await loadLocal(recoveryKey).catch(()=>null);
+        if(JSON.stringify(previous?.readingRange)!==JSON.stringify(snapshot.readingRange)||previous?.readingGoal!==snapshot.readingGoal)
+          await storeLocal(recoveryKey,{readingRange:structuredClone(snapshot.readingRange),readingGoal:snapshot.readingGoal,savedAt:new Date().toISOString()});
+      }
       if(shouldUpload){
         merged={...merged,backup:new Date().toISOString(),editionLabels:{...merged.editionLabels,...Object.fromEntries(Object.entries(editions).filter(([id])=>localEditionId(id)))}};
         const bytes=new TextEncoder().encode(JSON.stringify({format:'meomum-qt',version:3,data:merged}));
@@ -5037,7 +5063,7 @@ async function checkGhAutoSync(force=false,manual=false,announce=false) {
       }
       // Keep edits made during the request, as well as this device's reading/display.
       const preferences={reader:state.reader,comparison:state.comparison,display:state.display,palette:state.palette,theme:state.theme,fontChoice:state.fontChoice,fontKorean:state.fontKorean,fontHebrew:state.fontHebrew,fontGreek:state.fontGreek,fontEnglish:state.fontEnglish};
-      const next=mergeSync(snapshot,structuredClone(state),merged);
+      const next=mergeReadingPlan(snapshot,structuredClone(state),merged,mergeSync(snapshot,structuredClone(state),merged));
       state={...next,...preferences};
       await storeLocal('journal',state);
       await storeLocal(baseKey,merged);

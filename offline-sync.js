@@ -26,3 +26,23 @@ export function mergeSync(base, local, remote) {
   }
   return local;
 }
+
+// Reading plans are one user decision, not independently mergeable object fields.
+// Legacy clients have no revision: an empty default must not erase an active plan.
+export function mergeReadingPlan(base,local,remote,merged) {
+  const plan=value=>({readingRange:value?.readingRange??null,readingGoal:Number.isInteger(value?.readingGoal)?value.readingGoal:3});
+  const same=(a,b)=>JSON.stringify(plan(a))===JSON.stringify(plan(b));
+  const revision=value=>{const time=Date.parse(value?.readingPlanUpdated||'');return Number.isFinite(time)?time:0;};
+  const l=revision(local),r=revision(remote);
+  let selected;
+  if(l||r)selected=r>l?remote:local;
+  else if(local?.readingRange&&!remote?.readingRange)selected=local;
+  else if(remote?.readingRange&&!local?.readingRange)selected=remote;
+  else if(base&&same(local,base)&&!same(remote,base))selected=remote;
+  else if(!local?.readingRange&&plan(local).readingGoal===3&&plan(remote).readingGoal!==3)selected=remote;
+  else selected=local;
+  const result={...merged,...structuredClone(plan(selected))};
+  if(revision(selected))result.readingPlanUpdated=selected.readingPlanUpdated;
+  else delete result.readingPlanUpdated;
+  return result;
+}
