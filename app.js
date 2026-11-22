@@ -3965,7 +3965,14 @@ function keepWritingCaretVisible(field){
   }
   const viewport=window.visualViewport,offset=viewport?.offsetTop||0;
   // Keep the caret clear of the keyboard accessory bar as well as the keyboard.
-  const bottom=offset+(viewport?.height||innerHeight)-112;
+  const bounds=field.getBoundingClientRect();
+  const card=field.closest('.post-editor,.torah-note-editor,dialog')||field.form;
+  const footer=card?.querySelector('.post-actions,.torah-reflection-footer,.year-editor-actions,.verse-note-actions,.torah-edit-actions,footer');
+  const tail=footer?Math.max(0,footer.getBoundingClientRect().bottom-bounds.bottom):0;
+  const touchKeyboard=!!viewport&&innerHeight-viewport.height>100;
+  // Leave the editor's real footer below the current line, rather than merely exposing the caret.
+  const footerRoom=Math.min(240,Math.max(150,tail+24));
+  const bottom=offset+(viewport?.height||innerHeight)-(touchKeyboard?62:26)-footerRoom;
   const header=document.querySelector('.top')?.getBoundingClientRect();
   const upper=Math.min(bottom-line,Math.max(offset+14,header&&header.bottom<bottom?header.bottom+10:offset+14));
   const delta=top+line>bottom?top+line-bottom:top<upper?top-upper:0;
@@ -5218,7 +5225,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v302',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v303',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
