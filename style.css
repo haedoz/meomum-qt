@@ -3781,3 +3781,5 @@ form[name=torah-note-edit]{gap:13px}form[name=torah-note-edit] textarea{width:10
 .reader-view .bible-passage.comparing .comparison-stack{margin-inline-start:0;padding-inline-start:7px;margin-inline-end:0}
 
 .calendar-mark-card:is(.torah,.journal) .calendar-mark-footer{flex-wrap:wrap;row-gap:7px}.calendar-mark-card:is(.torah,.journal) .calendar-mark-footer .card-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto;gap:6px}
+
+#record-list .calendar-mark-footer .card-actions :is(.btn,.text-action){min-height:34px!important;padding:6px 11px!important;border-radius:10px!important;font-size:12px!important;font-weight:500!important;line-height:20px!important;gap:5px!important}#record-list .calendar-mark-footer .card-actions svg{width:16px!important;height:16px!important;flex:none}

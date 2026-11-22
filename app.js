@@ -2168,7 +2168,7 @@ function recordRows() {
   return [...rows.values()].sort((left,right)=>compareRecordTime(right,left));
 }
 function highlightDeleteButton(key) {
-  return '<button type="button" class="text-action record-color-edit" data-edit-record-color="'+key+'">'+icon('marker')+' 색상 변경</button><button type="button" class="text-action destructive" data-delete-highlight="'+key+'">표시 삭제</button>';
+  return '<button type="button" class="text-action record-color-edit" data-edit-record-color="'+key+'">'+icon('marker')+' 색상 변경</button><button type="button" class="text-action destructive" data-delete-highlight="'+key+'">'+icon('trash')+' 삭제</button>';
 }
 function highlightRecord(key) {
   return recordRows().find(row=>row.key===key && verseMark(row.mark));
@@ -2283,9 +2283,9 @@ function renderRecordCard(item) {
     '<div class="row calendar-mark-footer">'+
     (mark.allRefs?.length ? '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>' : '<span></span>')+
     '<div class="item-actions card-actions">'+
-    (mark.torah?'<button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button><button type="button" class="btn" data-nav="torah/'+day+'">본문 읽기 '+icon('right')+'</button>':journalDay ? '<button type="button" class="text-action" data-nav="journal/'+journalDay+'">묵상 열기</button>' : '')+
+    (mark.torah?'<button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button>':journalDay ? '<button type="button" class="btn" data-edit-journal="'+journalDay.split('/')[0]+'" data-journal-note="'+(journalDay.split('/')[1]||'')+'">'+icon('edit')+' 수정</button>' : '')+
     (mark.torah?'<button type="button" class="text-action destructive" data-delete-torah="'+day+'">'+icon('trash')+' 삭제</button>':mark.journal&&journalDay?'<button type="button" class="text-action destructive" data-delete-journal="'+journalDay.split('/')[0]+'" data-journal-note="'+(journalDay.split('/')[1]||'')+'">'+icon('trash')+' 삭제</button>':'')+
-    (noteKey ? '<button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">삭제</button>' : '')+
+    (noteKey ? '<button type="button" class="btn" data-edit-verse-note="'+noteKey+'">'+icon('edit')+' 수정</button><button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">'+icon('trash')+' 삭제</button>' : '')+
     (!mark.journal && verseMark(mark) ? highlightDeleteButton(key) : '')+
     '</div></div></article>';
 }
@@ -5104,7 +5104,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v286',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v287',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
