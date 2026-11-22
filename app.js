@@ -883,7 +883,7 @@ function torahScreen(){
     return head+'<button type="button" class="verse torah-verse" data-torah-verse="'+key+'" aria-pressed="'+chosen.has(key)+'" aria-label="'+esc(titles[book]+' '+chapter+'장 '+verse+'절 선택')+'" lang="'+(localLanguages[edition]||'ko')+'"><span class="number">'+verse+'</span><span class="verse-content">'+markedText(body||'현재 번역본에 이 구절이 없어요.',marker)+'</span></button>';
   }).join('');
   const textContent=edition?passage:'<p class="muted">설정에서 한국어 성경 번역본을 한 번 추가하면 이 범위를 선택한 번역본으로 읽을 수 있어요.</p><button class="btn" data-nav="settings" data-import-link>성경 자료 추가</button>';
-  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status">기기에 자동 저장</span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div><div class="torah-reflection-actions">'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'')+'<button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button></div></footer></section></div>'+torahSelectionTools()+'</section>';
+  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status">기기에 자동 저장</span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'')+'</div><div class="torah-reflection-actions"><button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button>'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div></footer></section></div>'+torahSelectionTools()+'</section>';
 }
 function torahNotesScreen(){return journalsScreen();}
 function torahSelectionTools(){
@@ -1089,7 +1089,7 @@ function todaySummary(day,journal) {
     ['prayer','기도 노트','data-action="add-prayer"'],
     ['thoughtBulb','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('edit')+'</strong></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span><strong>작성하기 '+icon('right')+'</strong></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -3933,6 +3933,11 @@ main.addEventListener('contextmenu',event => {
   if (event.target.closest('[data-action="quick-marker"]')) event.preventDefault();
 });
 let writingCaretTimer;
+let writingSettleTimers=[];
+function scheduleWritingCaret(field){
+  clearTimeout(writingCaretTimer);writingSettleTimers.forEach(clearTimeout);
+  writingSettleTimers=[60,220,480].map(delay=>setTimeout(()=>keepWritingCaretVisible(field),delay));
+}
 function writingMirror(field,text,caret=false){
   const style=getComputedStyle(field),mirror=document.createElement('div');
   mirror.style.cssText='position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;height:auto;min-height:0;max-height:none;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;';
@@ -3948,7 +3953,7 @@ function updateWritingViewport(){
   document.documentElement.classList.toggle('writing-focused',active);
   const inset=active?Math.max(0,innerHeight-(viewport?.height||innerHeight)-(viewport?.offsetTop||0)):0;
   document.documentElement.style.setProperty('--keyboard-inset',inset+'px');
-  if(active){clearTimeout(writingCaretTimer);writingCaretTimer=setTimeout(()=>keepWritingCaretVisible(field),80);}
+  if(active)scheduleWritingCaret(field);
 }
 function keepWritingCaretVisible(field){
   if(document.activeElement!==field||!isWritingField(field))return;
@@ -3960,14 +3965,14 @@ function keepWritingCaretVisible(field){
   }
   const viewport=window.visualViewport,offset=viewport?.offsetTop||0;
   // Keep the caret clear of the keyboard accessory bar as well as the keyboard.
-  const bottom=offset+(viewport?.height||innerHeight)-70;
+  const bottom=offset+(viewport?.height||innerHeight)-112;
   const header=document.querySelector('.top')?.getBoundingClientRect();
   const upper=Math.min(bottom-line,Math.max(offset+14,header&&header.bottom<bottom?header.bottom+10:offset+14));
   const delta=top+line>bottom?top+line-bottom:top<upper?top-upper:0;
   if(Math.abs(delta)<=3)return;
-  let parent=field.parentElement;
-  while(parent&&parent!==document.body){const style=getComputedStyle(parent);if(/auto|scroll/.test(style.overflowY)&&parent.scrollHeight>parent.clientHeight+2){const before=parent.scrollTop;parent.scrollTop+=delta;if(Math.abs(parent.scrollTop-before)>2)return;}parent=parent.parentElement;}
-  window.scrollBy({top:delta,behavior:'instant'});
+  let remaining=delta,parent=field.parentElement;
+  while(parent&&parent!==document.body){const style=getComputedStyle(parent);if(/auto|scroll/.test(style.overflowY)&&parent.scrollHeight>parent.clientHeight+2){const before=parent.scrollTop;parent.scrollTop+=remaining;remaining-=parent.scrollTop-before;if(Math.abs(remaining)<=3)return;}parent=parent.parentElement;}
+  window.scrollBy({top:remaining,behavior:'instant'});
 }
 
 function resizeWriting(field){
@@ -3976,14 +3981,15 @@ function resizeWriting(field){
   const height=Math.ceil(mirror.getBoundingClientRect().height);mirror.remove();
   const minimum=parseFloat(getComputedStyle(field).minHeight)||0;
   const next=Math.max(height,minimum);if(Math.abs(field.getBoundingClientRect().height-next)>1)field.style.height=next+'px';
-  if(document.activeElement===field){clearTimeout(writingCaretTimer);writingCaretTimer=setTimeout(()=>keepWritingCaretVisible(field),32);}
+  if(document.activeElement===field)scheduleWritingCaret(field);
 }
-document.addEventListener('input',event=>{if(event.target.tagName==='TEXTAREA'&&!event.isComposing)resizeWriting(event.target);});
+document.addEventListener('input',event=>{if(event.target.tagName==='TEXTAREA')resizeWriting(event.target);});
 document.addEventListener('compositionend',event=>{if(event.target.tagName==='TEXTAREA')resizeWriting(event.target);});
 document.addEventListener('focusin',updateWritingViewport);
 document.addEventListener('focusout',()=>setTimeout(updateWritingViewport,0));
 window.visualViewport?.addEventListener('resize',updateWritingViewport);
-window.visualViewport?.addEventListener('scroll',updateWritingViewport);
+// Visual viewport scroll is also caused by our own caret correction; do not restart it.
+document.addEventListener('selectionchange',()=>{const field=document.activeElement;if(isWritingField(field))scheduleWritingCaret(field);});
 document.addEventListener('input',event=>{if(isWritingField(event.target)&&event.target.tagName!=='TEXTAREA')updateWritingViewport();});
 function resizeEditorWriting() {
   main.querySelectorAll('[data-torah-note], [data-journal-field="reflection"], [data-thought-editor] textarea, [data-prayer-editor] textarea')
@@ -4833,7 +4839,7 @@ function finishDraft(form,snapshot) {
 }
 function editorActions(kind,item) {
   return '<div class="row">'+(item?'<button type="button" class="btn destructive" data-delete="'+kind+'">삭제</button>':'')+
-    '<button class="btn primary'+(item?'':' block')+'" type="button" data-action="save-'+kind+'">저장</button></div>';
+    '<button class="btn primary" type="button" data-action="save-'+kind+'">저장</button></div>';
 }
 function thoughtText(item) {
   return [item.title,item.body,item.answer].filter(Boolean).join('\n\n');
@@ -5212,7 +5218,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v299',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v301',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
