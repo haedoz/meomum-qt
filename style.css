@@ -3641,3 +3641,11 @@ form[name=reading-plan-editor]{gap:12px}form[name=reading-plan-editor] .plan-mod
 .bible-passage .comparison-stack>.missing-verse{padding:7px 0;font-size:11px}
 @media(min-width:900px){.bible-passage.comparing .comparison-stack{width:calc(100% - var(--comparison-gutter) - 26px)}}
 @media(max-width:599px){.bible-passage.comparing .comparison-stack{padding:1px 8px;width:calc(100% - var(--comparison-gutter) - 7px);border-radius:9px}.bible-passage .comparison-stack .verse-support>.verse-content{grid-template-columns:minmax(0,1fr);gap:3px;padding:7px 0}.bible-passage .comparison-stack .comparison-edition{font-size:10px!important}}
+
+/* A distinct secondary reading surface without heavy translation cards. */
+.bible-passage.comparing .comparison-stack{background:color-mix(in srgb,var(--green) 6%,var(--card));border:1px solid color-mix(in srgb,var(--green) 13%,var(--line));border-inline-start:2px solid color-mix(in srgb,var(--green) 40%,var(--card));box-shadow:none;margin-top:4px;margin-bottom:6px}
+.bible-passage.comparing .verse-pair>.verse:not(.verse-support) .verse-content{color:var(--ink);font-weight:500}
+.bible-passage .comparison-stack .comparison-edition{color:var(--green);font-weight:600!important}
+.bible-passage .comparison-stack .comparison-text{color:color-mix(in srgb,var(--ink) 83%,var(--muted));font-weight:400}
+.bible-passage .comparison-stack>.verse-support+.verse-support,.bible-passage .comparison-stack>.verse-with-note+.verse-support,.bible-passage .comparison-stack>.verse-support+.verse-with-note{border-top-color:color-mix(in srgb,var(--green) 13%,transparent)!important}
+:root[data-appearance=dark] .bible-passage.comparing .comparison-stack{background:color-mix(in srgb,var(--green) 6%,var(--card));border-color:color-mix(in srgb,var(--green) 16%,var(--line));border-inline-start-color:color-mix(in srgb,var(--green) 43%,var(--card))}
