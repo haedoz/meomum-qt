@@ -1768,8 +1768,8 @@ function readingProgress(canon,year = '',excludeDay = '') {
 function readingScreen() {
   const isBookChecks = location.hash === '#book-checks';
   const tabs = '<nav class="settings-tabs reading-tabs" role="group" aria-label="체크 분류">'+
-    '<button type="button" data-action="set-reading-tab" data-tab="reading" aria-pressed="'+(!isBookChecks)+'">묵상 일독 체크</button>'+
-    '<button type="button" data-action="set-reading-tab" data-tab="book-checks" aria-pressed="'+(isBookChecks)+'">성경책별 체크</button>'+
+    '<button type="button" data-action="set-reading-tab" data-tab="reading" aria-pressed="'+(!isBookChecks)+'">'+icon('check')+'<span>묵상 일독 체크</span></button>'+
+    '<button type="button" data-action="set-reading-tab" data-tab="book-checks" aria-pressed="'+(isBookChecks)+'">'+icon('book')+'<span>성경책별 체크</span></button>'+
     '</nav>';
 
   if (isBookChecks) {
@@ -1793,7 +1793,7 @@ function readingScreen() {
     '<section class="card reading-progress"><div class="row"><h2>누적 일독 · '+String(rounds+1)+'회차</h2><span class="reading-badge">일독 완료 '+rounds+'회</span></div>'+
     '<div class="row reading-count"><strong>'+progress+' <small>/ '+canon.length+'장</small></strong><span>'+percent+'%</span></div>'+
     '<progress max="'+Math.max(1,canon.length)+'" value="'+progress+'" aria-label="현재 일독 진행률"></progress>'+
-    '<p class="muted">같은 장은 하루에 한 번 집계해요. 묵상에 담아둔 구절도 QT를 완료하면 해당 장에 반영돼요.</p></section>'+
+    '<p class="muted">직접 체크한 장만 집계해요. 같은 장은 하루 한 번 기록돼요.</p></section>'+
     readingPlan(canon,counts,remaining,today);
 }
 function trackerYears() {
@@ -1899,7 +1899,7 @@ function readingPlan(canon,counts,remaining,today) {
       '</article>';
   }).join('');
 
-  return '<section class="card reading-plan"><div class="row"><h2>나의 통독 계획</h2><span class="reading-badge">오늘 '+checkedToday+'장 체크</span></div>'+
+  return '<section class="card reading-plan"><div class="row"><h2>'+icon('book')+' 나의 통독 계획</h2><span class="reading-badge">오늘 '+checkedToday+'장 체크</span></div>'+
     '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획 설정</button></div>'+
     periodMeta +
     '<div class="plan-progress-bar"><progress max="'+Math.max(1,scope.length)+'" value="'+progress+'" aria-label="통독 진행률"></progress></div>'+
@@ -3694,6 +3694,7 @@ document.addEventListener('click',async event => {
     else notify('관련 구절을 보려면 해당 성경책이 있는 번역본을 추가해 주세요.');
     return;
   }
+  if(target.action==='restore-draft')return restoreDraft(button.form);
   if (target.action==='discard-draft') return discardDraft(button.form);
   if (target.settingsSection && Object.hasOwn(settingsSections,target.settingsSection)) {
     settingsSection = target.settingsSection;
@@ -4704,7 +4705,7 @@ function editorField(label,name,value='',type='text',extra='') {
 }
 function draftNotice() {
   return '<div class="draft-notice" hidden><span data-draft-status role="status"></span>'+
-    '<button type="button" class="text-action" data-action="discard-draft">임시 글 지우기</button></div>';
+    '<div class="draft-actions"><button type="button" class="text-action" data-action="restore-draft" hidden>불러오기</button><button type="button" class="text-action destructive" data-action="discard-draft">'+icon('trash')+' 임시 글 지우기</button></div></div>';
 }
 function readDraft(key) {
   if (sessionDrafts.has(key)) return sessionDrafts.get(key);
@@ -4746,6 +4747,7 @@ function prepareDraft(form,key,names) {
   editor.baseline = draftSnapshot(form);
   const saved = editor.lastDraft = readDraft(editor.key);
   if (!saved) return;
+  if(['new','thought'].includes(form.dataset.prayerEditor||form.dataset.thoughtEditor)){editor.pendingRestore=true;showDraftStatus(editor,'저장해 둔 임시 글이 있어요');const restore=form.querySelector('[data-action=restore-draft]');if(restore)restore.hidden=false;return;}
   try {
     const values = JSON.parse(saved);
     if (!Array.isArray(values) || values.length!==editor.fields.length) return;
@@ -4758,15 +4760,21 @@ function prepareDraft(form,key,names) {
     showDraftStatus(editor,sessionDrafts.has(editor.key)?'앱을 닫기 전까지만 임시 보관 중':'임시 글을 불러왔어요');
   } catch { /* Ignore a damaged draft. */ }
 }
+function restoreDraft(form){
+  const editor=draftEditors.get(form);if(!editor)return;
+  try{const values=JSON.parse(readDraft(editor.key)||'null');if(!Array.isArray(values)||values.length!==editor.fields.length)return;editor.pendingRestore=false;applyDraftValues(editor,values);if(form.elements.answer&&(form.elements.answer.value||form.elements.done.checked))form.querySelector('.post-response').open=true;const button=form.querySelector('[data-action=restore-draft]');if(button)button.hidden=true;showDraftStatus(editor,'임시 글을 불러왔어요');}catch{notify('임시 글을 불러오지 못했어요.');}
+}
 function updateDraft(form) {
   const editor = draftEditors.get(form);
   if (!editor) return;
   const value = draftSnapshot(form);
   if (value===editor.baseline) {
+    if(editor.pendingRestore)return;
     if (readDraft(editor.key)===editor.lastDraft) storeDraft(editor.key,null);
     editor.lastDraft = null;
     showDraftStatus(editor,'');
   } else {
+    editor.pendingRestore=false;const restore=form.querySelector('[data-action=restore-draft]');if(restore)restore.hidden=true;
     editor.lastDraft = value;
     showDraftStatus(editor,storeDraft(editor.key,value)?'기기에 임시 저장됨':'앱을 닫기 전까지만 임시 보관 중');
   }
@@ -4777,7 +4785,7 @@ async function discardDraft(form) {
   if(!await requestRemoval('임시 글을 삭제할까요?','아직 저장하지 않은 입력 내용을 지우고 이전에 저장한 내용으로 돌아갑니다.'))return;
   applyDraftValues(editor,JSON.parse(editor.baseline));
   if (readDraft(editor.key)===editor.lastDraft) storeDraft(editor.key,null);
-  editor.lastDraft = null;
+  editor.lastDraft = null;editor.pendingRestore=false;const restore=form.querySelector('[data-action=restore-draft]');if(restore)restore.hidden=true;
   showDraftStatus(editor,'');
   editor.fields[0]?.focus({preventScroll:true});
 }
@@ -5172,7 +5180,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v291',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v292',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
