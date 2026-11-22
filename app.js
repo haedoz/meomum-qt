@@ -700,6 +700,23 @@ function writingHeader(symbol,label,title,meta = '') {
   return '<header class="writing-header"><span class="writing-icon">'+icon(symbol)+'</span><div>'+
     '<p class="eyebrow">'+label+'</p><h1>'+title+'</h1>'+meta+'</div></header>';
 }
+function confirmJournalVerseRemoval(ref,day){
+  const noteId=activeJournalId||'';
+  const entry=journalsOn(day).find(([,note,id])=>id===noteId)?.[1];
+  if(!entry?.verses.includes(ref))return;
+  dialog('이 구절을 묵상에서 뺄까요?',
+    '<p class="journal-remove-reference">'+esc(reference(ref))+'</p><p class="muted journal-remove-description">묵상에 담은 말씀 목록에서만 빠져요. 작성한 묵상 내용은 그대로 남아요.</p>'+
+    '<footer class="journal-remove-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn destructive" data-confirm-journal-remove="'+ref+'" data-date="'+day+'" data-note-id="'+noteId+'">구절 빼기</button></footer>','journal-verse-removal');
+}
+async function removeJournalVerse(ref,day,noteId){
+  const entry=journalsOn(day).find(([,note,id])=>id===noteId)?.[1];
+  if(!entry?.verses.includes(ref))return;
+  const previous=[...entry.verses];
+  const button=modal.querySelector('[data-confirm-journal-remove]');if(button)button.disabled=true;
+  entry.verses=entry.verses.filter(key=>key!==ref);
+  if(!await save()){entry.verses=previous;if(button)button.disabled=false;return;}
+  modal.close();render();notify('묵상에서 구절을 뺐어요.');
+}
 function journalScreen() {
   const day = selectedDay;
   const entry = journalEntry(day);
@@ -847,7 +864,7 @@ function passageGroupLabel(group,short=true){
 function journalPassageMarkup(refs,options={}){
   return groupedPassageRefs(refs).map(group=>{
     const label=passageGroupLabel(group);
-    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+'"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span>'+(options.removable?'<button type="button" class="text-action destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
+    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+'"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span>'+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
   }).join('');
 }
 function torahDevotionCard(day,note){
@@ -3772,12 +3789,9 @@ document.addEventListener('click',event => {
     entry.done = !entry.done;
     save().then(saved => { if (saved && entry.done) notify('달력에 QT 완료를 표시했어요.'); });
   }
-  if (target.remove) {
-    const entry = journalEntry(target.date);
-    entry.verses = entry.verses.filter(ref => ref!==target.remove);
-    save();
-  }
-  if (target.month || target.filter || target.done || target.remove) render();
+  if (target.remove) return confirmJournalVerseRemoval(target.remove,target.date);
+  if (target.confirmJournalRemove) return removeJournalVerse(target.confirmJournalRemove,target.date,target.noteId||'');
+  if (target.month || target.filter || target.done) render();
 });
 function cancelMarkerHold() {
   clearTimeout(markerHold);
@@ -5044,7 +5058,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v275',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v276',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

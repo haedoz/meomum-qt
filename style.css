@@ -3698,3 +3698,12 @@ form[name=marker-editor]{gap:17px}form[name=marker-editor] #active-dialog-title{
 :is(body main,body dialog) .quick-assign-grid .btn{padding-inline:5px!important;font-size:11px!important}
 :is(body main,body dialog) .btn:disabled,:is(body main,body dialog) .text-action:disabled{opacity:.42;box-shadow:none!important}
 @media(max-width:380px){:root{--button-pad:10px}.selection .btn{padding-inline:9px!important}}
+
+/* Explicit verse removal affordance, independent of narrow text-action sizing. */
+.journal-editor .devotion-passage-line.removable{grid-template-columns:1.35em minmax(0,1fr) 40px;gap:7px}
+.journal-editor .passage-remove{box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:40px;min-width:40px;height:40px;min-height:40px;padding:0;margin:0;border-radius:12px;border:1px solid var(--action-edge);background:var(--action-glass);color:var(--muted);opacity:1;flex:none;box-shadow:inset 0 1px 0 var(--glass-shine,#ffffff45)}
+.journal-editor .passage-remove svg{display:block;width:18px;height:18px;min-width:18px;flex:none;stroke-width:1.8}
+.journal-remove-reference{margin:0;font-size:14px;font-weight:600;color:var(--ink)}
+.journal-remove-description{margin:0;font-size:12px;line-height:1.6}
+.journal-remove-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:5px}
+form[name=journal-verse-removal]{gap:13px}form[name=journal-verse-removal] #active-dialog-title{font-size:18px;font-weight:650}
