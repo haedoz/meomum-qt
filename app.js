@@ -564,18 +564,38 @@ function navigationFamily(route){
   if(page==='torah')return 'torah-daily';
   return '';
 }
+const pageReturnPositions=new Map();
+let displayedHistoryKey,returningThroughHistory=false,returnScrollToken=0;
+function ensurePageHistoryKey(){
+ if(!history.state?.pageKey)history.replaceState({...history.state,pageKey:crypto.randomUUID()},'');
+ return history.state.pageKey;
+}
+function rememberPagePosition(){
+ if(!displayedHistoryKey)return;
+ pageReturnPositions.set(displayedHistoryKey,{x:window.scrollX,y:window.scrollY,details:[...main.querySelectorAll('details')].map(el=>el.open)});
+}
+function restorePagePosition(position){
+ const token=++returnScrollToken,route=activeRoute;
+ [...main.querySelectorAll('details')].forEach((el,index)=>{if(index<position.details.length)el.open=position.details[index];});
+ const restore=()=>{if(token===returnScrollToken&&activeRoute===route)window.scrollTo({left:position.x,top:position.y,behavior:'instant'});};
+ restore();requestAnimationFrame(()=>requestAnimationFrame(restore));setTimeout(restore,140);
+}
+window.addEventListener('scroll',()=>{if(displayedHistoryKey===history.state?.pageKey)rememberPagePosition();},{passive:true});
+for(const type of ['pointerdown','wheel','touchstart'])window.addEventListener(type,()=>{returnScrollToken++;},{passive:true});
 function navigate(screen, context, studyFromSelection = false) {
+  rememberPagePosition();returningThroughHistory=false;
   const hash = '#'+screen;
   if (location.hash!==hash){
     const current=location.hash||('#'+(activeRoute||view));
     const family=navigationFamily(screen);
     if(family&&family===navigationFamily(current))history.replaceState({...history.state,...context},'',hash);
-    else history.pushState({qtPrevious:true,...(screen.startsWith('journal/')||screen.startsWith('prayer-edit/')?{editorOrigin:current.slice(1)}:{}),...context},'',hash);
+    else history.pushState({pageKey:crypto.randomUUID(),qtPrevious:true,...(screen.startsWith('journal/')||screen.startsWith('prayer-edit/')?{editorOrigin:current.slice(1)}:{}),...context},'',hash);
   }
   checkGhAutoSync();
   render(studyFromSelection);
 }
 function goBack() {
+  rememberPagePosition();returningThroughHistory=true;
   if (history.state?.qtPrevious) return history.back();
   const fallback = {'bible-map':'atlas','seven-study':'atlas','torah-schedule':'calendar','hebrew-guide':'calendar','today-reading':'today',thoughts:'records',journals:'records',bundles:'records',journal:'calendar',atlas:'records',calendar:'records',prayers:'records',newyear:'records','torah-notes':'records',torah:'calendar',prayer:'prayers','prayer-edit':'prayers',reading:'records','book-checks':'records',search:'bible',commentary:'bible',original:'bible'};
   const target = view==='prayer-edit' && main.querySelector('[data-thought-editor]')?'thoughts':fallback[view] ?? 'today';
@@ -2813,6 +2833,9 @@ function render(studyFromSelection = false) {
   const next = torahDate?'torah':day?'journal':prayerId?'prayer':editorId?'prayer-edit':Object.hasOwn(screens,hash) && !['journal','prayer','prayer-edit'].includes(hash)?hash:'bible';
   const route = torahDate || day || prayerId || editorId?hash:next;
   const changed = activeRoute!==route;
+  if(changed)rememberPagePosition();
+  const historyKey=ensurePageHistoryKey(),returnPosition=returningThroughHistory?pageReturnPositions.get(historyKey):undefined;
+  returningThroughHistory=false;displayedHistoryKey=historyKey;
   if(changed){flushDevotionEdits();const editor=modal.querySelector('form[name=torah-note-edit]');if(editor&&modal.open){editor.dataset.skipCloseRefresh='true';modal.close();}}
   if(changed && next==='hebrew-guide')prepareHebrewGuide(view==='calendar'?selectedDay:dateKey());
   let studyJump;
@@ -2961,7 +2984,9 @@ function render(studyFromSelection = false) {
       }
     }
   }
-  if (arrival) {
+  if(returnPosition){
+    restorePagePosition(returnPosition);
+  } else if (arrival) {
     showVerseArrival(arrival);
   } else if (changed) {
     window.scrollTo(0,0);
@@ -4046,7 +4071,7 @@ function writingMirror(field,text,caret=false){
   else mirror.append(document.createTextNode('\u200b'));
   document.body.append(mirror);return mirror;
 }
-function isWritingField(field){return field?.matches?.('textarea:not([readonly]),input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=color]):not([type=range]):not([type=file])');}
+function isWritingField(field){if(field?.form?.name==='calendar-date-search')return false;return field?.matches?.('textarea:not([readonly]),input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=color]):not([type=range]):not([type=file])');}
 function updateWritingViewport(){
   const field=document.activeElement,active=!!isWritingField(field),viewport=window.visualViewport;
   document.documentElement.classList.toggle('writing-focused',active);
@@ -5296,7 +5321,7 @@ window.addEventListener('hashchange',() => {
   if (activeRoute!==location.hash.slice(1)) render();
 });
 window.addEventListener('popstate',() => {
-  if (activeRoute!==location.hash.slice(1)) render();
+  rememberPagePosition();returningThroughHistory=true;render();
 });
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 try { readingBookmark = localStorage.getItem(readingBookmarkKey) ?? ''; } catch { /* Use the current chapter. */ }
@@ -5355,7 +5380,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v332',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v333',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

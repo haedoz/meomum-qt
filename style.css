@@ -4112,3 +4112,7 @@ form[name=calendar-date-search] .date-jump-field input{padding:2px 0;border:0!im
 .popup-commentary-options>button>span{min-width:0;overflow-wrap:anywhere}
 .popup-commentary-options>button svg{width:15px;height:15px;flex-shrink:0;color:var(--green)}
 .popup-commentary-menu:not([open])>.popup-commentary-options{display:none}
+/* Date lookup is a compact control, not a long-form writing surface. */
+html.writing-focused #modal form[name=calendar-date-search]::after{content:none!important;display:none!important;min-height:0!important}
+#modal:has(form[name=calendar-date-search]){height:auto!important;min-height:0!important;scroll-padding-bottom:0!important}
+#modal form[name=calendar-date-search]{scroll-padding-bottom:0!important}
