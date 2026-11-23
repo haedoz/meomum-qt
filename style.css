@@ -4116,3 +4116,11 @@ form[name=calendar-date-search] .date-jump-field input{padding:2px 0;border:0!im
 html.writing-focused #modal form[name=calendar-date-search]::after{content:none!important;display:none!important;min-height:0!important}
 #modal:has(form[name=calendar-date-search]){height:auto!important;min-height:0!important;scroll-padding-bottom:0!important}
 #modal form[name=calendar-date-search]{scroll-padding-bottom:0!important}
+/* Explicit content height and a single top anchor avoid iOS dialog stretching. */
+#modal.compact-date-dialog[open]{position:fixed!important;inset:auto!important;left:50%!important;right:auto!important;top:var(--date-dialog-top,15vh)!important;bottom:auto!important;transform:translateX(-50%)!important;margin:0!important;width:min(420px,calc(100vw - 28px))!important;height:var(--date-dialog-height,max-content)!important;block-size:var(--date-dialog-height,max-content)!important;min-height:0!important;max-height:calc(100dvh - 24px)!important;padding:18px!important;display:block!important;overflow-y:auto!important;box-sizing:border-box!important}
+#modal.compact-date-dialog>form{display:grid!important;grid-template-rows:auto auto auto auto!important;align-content:start!important;height:max-content!important;min-height:0!important;margin:0!important;padding:0!important;flex:none!important}
+#modal.compact-date-dialog>form::before,#modal.compact-date-dialog>form::after{content:none!important;display:none!important;height:0!important;min-height:0!important}
+.today-record-tabs{gap:4px;padding:9px 10px}
+.today-record-tabs>button{gap:5px;padding:7px 9px;flex:0 1 auto;font-size:12px;min-width:0}
+.today-record-tabs>button svg{width:14px;height:14px;flex:0 0 14px}
+@media(max-width:480px){.today-record-tabs{gap:2px;padding:8px}.today-record-tabs>button{padding:7px 6px;font-size:11px;gap:4px;flex:1 1 auto;justify-content:center}}

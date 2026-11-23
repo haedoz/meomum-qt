@@ -1170,17 +1170,21 @@ function todayReadingScreen() {
     (next.length?next.map(key=>row(key,false)).join(''):'<p class="today-reading-finished">'+(done.length>=state.readingGoal?'오늘 목표를 마쳤어요.':'설정한 범위의 읽을 분량을 모두 마쳤어요.')+'</p>')+'</section>'+
     (done.length?'<section class="card today-reading-list"><h2>오늘 묵상한 말씀</h2>'+done.map(key=>row(key,true)).join('')+'</section>':'');
 }
-let todayRecordsFilter='전체',todayRecordsPage=0;
+let todayRecordsFilter='묵상',todayRecordsPage=0;
 function todayRecords(day){
  const groups=new Map();const add=(type,symbol,title,body,attributes)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes});};
  for(const row of recordRows().filter(row=>row.day===day)){const {key,mark,journalDay,noteKey}=row;if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"');else if(mark.journal){const [date,id]=journalDay.split('/');add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"');}else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"');else if(verseMark(mark))add('형광펜·밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"');}
  for(const item of state.prayers.filter(item=>item.day===day))add(item.kind==='thought'?'생각 노트':'기도 노트',item.kind==='thought'?'thoughtBulb':'prayer',item.kind==='thought'?'남긴 생각':item.title,item.body,'data-prayer="'+item.id+'"');
  if(state.dailyNotes[day]?.body)add('묵상 노트','comment','말씀 묵상',state.dailyNotes[day].body,'data-edit-daily-note="'+day+'"');
  const total=[...groups.values()].reduce((sum,group)=>sum+group.items.length,0);
- const types=['전체',...groups.keys()];if(!types.includes(todayRecordsFilter))todayRecordsFilter='전체';
- const rows=[...groups].flatMap(([type,{symbol,items}])=>items.map(item=>({...item,type,symbol}))).filter(item=>todayRecordsFilter==='전체'||item.type===todayRecordsFilter);
+ const categories=[['묵상','comment'],['토라포션','book'],['생각','thoughtBulb'],['기도','prayer'],['기타','note']];
+ const categoryOf=type=>({'묵상 노트':'묵상','토라포션':'토라포션','생각 노트':'생각','기도 노트':'기도'}[type]||'기타');
+ const allRows=[...groups].flatMap(([type,{symbol,items}])=>items.map(item=>({...item,type,symbol,category:categoryOf(type)})));
+ const types=categories.filter(([type])=>allRows.some(item=>item.category===type));
+ if(!types.some(([type])=>type===todayRecordsFilter)){todayRecordsFilter=types[0]?.[0]||'묵상';todayRecordsPage=0;}
+ const rows=allRows.filter(item=>item.category===todayRecordsFilter);
  const pages=Math.max(1,Math.ceil(rows.length/5));todayRecordsPage=Math.min(todayRecordsPage,pages-1);
- return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(type=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+type+'<small>'+(type==='전체'?total:groups.get(type).items.length)+'</small></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-symbol">'+icon(item.symbol)+'</span><span class="today-record-copy"><span class="today-record-label">'+item.type+'</span><strong>'+esc(item.title)+'</strong>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
+ return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-symbol">'+icon(item.symbol)+'</span><span class="today-record-copy"><span class="today-record-label">'+item.type+'</span><strong>'+esc(item.title)+'</strong>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
@@ -3095,7 +3099,18 @@ modal.addEventListener('click',event=>{
     event.preventDefault();event.stopPropagation();modal.close();
   }
 },true);
+function layoutDateSearchDialog(){
+ const form=modal.querySelector('form[name=calendar-date-search]');if(!modal.open||!form)return;
+ const style=getComputedStyle(modal),viewport=window.visualViewport;
+ const height=Math.ceil(form.getBoundingClientRect().height+parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+parseFloat(style.borderTopWidth)+parseFloat(style.borderBottomWidth));
+ const available=viewport?.height||innerHeight,offset=viewport?.offsetTop||0;
+ modal.style.setProperty('--date-dialog-height',Math.min(height,available-24)+'px');
+ modal.style.setProperty('--date-dialog-top',(offset+Math.max(12,(available-height)/2))+'px');
+}
+window.visualViewport?.addEventListener('resize',()=>requestAnimationFrame(layoutDateSearchDialog));
+window.visualViewport?.addEventListener('scroll',()=>requestAnimationFrame(layoutDateSearchDialog));
 function dialog(title,body,formName) {
+  modal.classList.toggle('compact-date-dialog',formName==='calendar-date-search');
   if(formName!=='dictionary')dictionaryTrail=[];
   const previousEditor=modal.querySelector('form[name=torah-note-edit]');if(previousEditor)persistTorahEdit(previousEditor);
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
@@ -3105,6 +3120,7 @@ function dialog(title,body,formName) {
     '><div class="row"><h2 id="active-dialog-title" tabindex="-1"'+titleFocus+'>'+title+
     '</h2><button class="btn dialog-close" aria-label="닫기" '+close+'>'+(removal?icon('close'):'닫기')+'</button></div>'+body+'</form>';
   if (!modal.open) modal.showModal();
+  if(formName==='calendar-date-search'){modal.style.removeProperty('--date-dialog-height');requestAnimationFrame(layoutDateSearchDialog);setTimeout(layoutDateSearchDialog,120);}
 }
 function updateMark(key,property,value) {
   const mark = state.marks[key] ??= {};
@@ -5380,7 +5396,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v333',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v335',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
