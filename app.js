@@ -3057,7 +3057,7 @@ function dialog(title,body,formName) {
   if(formName!=='dictionary')dictionaryTrail=[];
   const previousEditor=modal.querySelector('form[name=torah-note-edit]');if(previousEditor)persistTorahEdit(previousEditor);
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
-  const titleFocus = formName==='chapter-jump'?'':' autofocus';
+  const titleFocus = ['chapter-jump','calendar-date-search'].includes(formName)?'':' autofocus';
   const removal=/삭제/.test(title)||formName==='journal-verse-removal';modal.classList.toggle('polished-removal',removal);
   modal.innerHTML = '<form method="dialog" class="stack"'+(formName?' name="'+formName+'"':'')+
     '><div class="row"><h2 id="active-dialog-title" tabindex="-1"'+titleFocus+'>'+title+
@@ -3345,8 +3345,9 @@ const actions = {
     navigate('calendar');
   },
   'calendar-date-search'() {
-    dialog('날짜로 이동','<p class="muted">찾고 싶은 날짜를 입력해 주세요.</p><label class="field"><span>날짜</span><input name="day" type="text" inputmode="numeric" autocomplete="off" placeholder="2025. 11. 23." value="'+selectedDay.replaceAll('-','. ')+'" required></label><p class="muted" data-date-error role="alert" hidden></p><footer class="calendar-date-search-actions"><button class="btn" type="button" data-calendar-search-today>오늘</button><button class="btn primary" type="submit">'+icon('search')+' 이동</button></footer>','calendar-date-search');
-    requestAnimationFrame(()=>{const input=modal.querySelector('input[name=day]');input.focus();input.select();});
+    dialog('날짜로 이동','<div class="date-jump-heading">'+icon('calendar')+'<span>원하는 날의 말씀과 기록을 찾아보세요.</span></div><label class="date-jump-field"><span>연도 · 월 · 일</span><input name="day" type="text" inputmode="numeric" autocomplete="off" enterkeyhint="go" aria-label="이동할 날짜" placeholder="YYYY.MM.DD" value="'+selectedDay.replaceAll('-','.')+'" required><small>숫자 8자리만 입력하세요</small></label><p class="date-jump-error" data-date-error role="alert" hidden></p><footer class="calendar-date-search-actions"><button class="btn" type="button" data-calendar-search-today>오늘로</button><button class="btn primary" type="submit" data-calendar-jump>이 날짜로 이동 '+icon('right')+'</button></footer>','calendar-date-search');
+    modal.querySelector('.dialog-close').innerHTML=icon('close');
+    requestAnimationFrame(()=>{const input=modal.querySelector('input[name=day]');input.focus({preventScroll:true});input.select();});
   },
   'calendar-today'() {
     selectedDay = dateKey();
@@ -4082,6 +4083,13 @@ function resizeEditorWriting() {
 }
 modal.addEventListener('input',event=>{
   const field = event.target;
+  if(field.form?.name==='calendar-date-search'&&field.name==='day'){
+    const before=field.value.slice(0,field.selectionStart??field.value.length).replace(/\D/g,'').length;
+    const digits=field.value.replace(/\D/g,'').slice(0,8);
+    field.value=digits.slice(0,4)+(digits.length>4?'.'+digits.slice(4,6):'')+(digits.length>6?'.'+digits.slice(6,8):'');
+    let position=0,count=0;while(position<field.value.length&&count<before){if(/\d/.test(field.value[position]))count++;position++;}field.setSelectionRange(position,position);
+    field.form.querySelector('[data-date-error]').hidden=true;return;
+  }
   if(field.id==='record-highlight-color')previewRecordHighlightColor();
   if(field.form?.name==='torah-note-edit'&&field.name==='body')persistTorahEdit(field.form);
   updateDraft(field.form);
@@ -5327,7 +5335,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v329',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v330',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
@@ -5435,3 +5443,11 @@ new MutationObserver(()=>{if(recordActionsQueued)return;recordActionsQueued=true
 standardizeRecordActions();
 
 document.addEventListener('click',event=>{if(event.target.closest('[data-calendar-search-today]')){modal.querySelector('input[name=day]').value=dateKey();modal.querySelector('form').requestSubmit();}});
+
+modal.addEventListener('pointerdown',event=>{
+ const button=event.target.closest('[data-calendar-jump],[data-calendar-search-today]');
+ if(!button||event.button!==0)return;
+ event.preventDefault();event.stopPropagation();
+ const form=button.form;if(button.hasAttribute('data-calendar-search-today'))form.elements.day.value=dateKey();
+ form.requestSubmit(form.querySelector('[data-calendar-jump]'));
+},true);
