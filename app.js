@@ -840,10 +840,9 @@ function previewTorahVerse(button){
 }
 modal.addEventListener('close',clearTorahTapFeedback);
 let popupCommentaryContext;
-function popupCommentaryButton(source){return '<button type="button" class="btn popup-commentary-picker" data-popup-commentary-picker>'+icon('studyComment')+'<span>'+esc(source?.label||'주석 선택')+'</span>'+icon('down')+'</button>';}
-function showPopupCommentaryPicker(page=0){
- const items=Object.values(commentaries).map(item=>[item.id,item.label]),active=studySource('commentary')?.id,size=8,pages=Math.max(1,Math.ceil(items.length/size)),current=Math.max(0,Math.min(page,pages-1));
- dialog('주석 선택',pickerOptions(items.slice(current*size,(current+1)*size),active,'data-popup-commentary-choice')+(pages>1?'<nav class="row tracker-picker-pages"><button type="button" class="btn" data-popup-commentary-page="'+(current-1)+'" '+(!current?'disabled':'')+'>'+icon('left')+'</button><span>'+(current+1)+' / '+pages+'</span><button type="button" class="btn" data-popup-commentary-page="'+(current+1)+'" '+(current===pages-1?'disabled':'')+'>'+icon('right')+'</button></nav>':'')+'<button type="button" class="text-action" data-popup-commentary-back>'+icon('left')+' 주석으로 돌아가기</button>','popup-commentary-picker');
+function popupCommentaryButton(source){
+ const items=Object.values(commentaries);
+ return '<details class="popup-commentary-menu"><summary><span>'+esc(source?.label||'주석 선택')+'</span>'+icon('down')+'</summary><div class="popup-commentary-options" role="group" aria-label="주석 선택"><span class="popup-commentary-caption">주석 자료 · '+items.length+'개</span>'+items.map(item=>'<button type="button" data-popup-commentary-choice="'+item.id+'" aria-pressed="'+(source?.id===item.id)+'"><span>'+esc(item.label)+'</span>'+(source?.id===item.id?icon('check'):'')+'</button>').join('')+(!items.length?'<p class="muted">추가한 주석 자료가 없어요.</p>':'')+'</div></details>';
 }
 function restorePopupCommentary(){if(popupCommentaryContext?.key)showTorahVerse(popupCommentaryContext.key,'commentary');else showSelectedStudy('commentary',popupCommentaryContext?.includeScripture);}
 function showSelectedStudy(mode,includeScripture=view!=='torah'){
@@ -862,7 +861,7 @@ function showSelectedStudy(mode,includeScripture=view!=='torah'){
     else content=body?'<div class="commentary-copy">'+commentaryParagraphs(body).join('')+'</div>':'<p class="study-popup-empty">이 구절의 주석 자료가 없어요.</p>';
     return '<section class="study-popup-verse"><header>'+icon(original?'studyAnalysis':'studyComment')+'<span>'+esc(reference(key))+'</span></header>'+(includeScripture?'<p class="study-popup-scripture">'+esc(verseText(key))+'</p>':'')+'<div class="study-popup-detail">'+content+'</div></section>';
   }).join('');
-  dialog(label+' 모아보기','<div class="study-selection-popup"><div class="study-popup-meta"><span>'+refs.length+'개 구절</span><span>'+esc(source?.label||label)+'</span></div>'+(original?'':popupCommentaryButton(source))+sections+(!source?'<button type="button" class="btn" data-nav="settings" data-import-link>자료 추가</button>':'')+'</div>','selected-study');
+  dialog(label+' 모아보기','<div class="study-selection-popup"><div class="study-popup-meta"><span>'+refs.length+'개 구절</span>'+(original?'<span>'+esc(source?.label||label)+'</span>':popupCommentaryButton(source))+'</div>'+sections+(!source?'<button type="button" class="btn" data-nav="settings" data-import-link>자료 추가</button>':'')+'</div>','selected-study');
 }
 function showTorahVerse(key,mode='original'){
   if(!validRef(key))return;
@@ -1599,14 +1598,19 @@ function dictionaryCodes(text,current) {
     (_,bracketed,bare)=>strongCodeButton(bracketed ?? bare,current));
 }
 function originalVerseLines(body) {
-  return body.split(/\r?\n/).filter(line=>line.trim()).map(line=>{
-    const word = line.trim().match(/^\[([^\]]+)\]\s*(.*?)\s*@([^#]*)(?:#(.*))?$/);
-    if (!word) return {line};
-    const [,form,lemma,grammar,meaning] = word;
-    const gloss = meaning?.replace(/\*\s*$/,'').trim() || '';
+  // Some imports flatten the record separators. A word starts with [surface]
+  // and its lemma declaration; [root] inside that declaration is not a new word.
+  const normalized=String(body??'').replace(/<br\s*\/?\s*>/gi,'\n').replace(/\r\n?|[\u2028\u2029]/g,'\n').replace(/\*\s*(?=\[[^\]\n]+\])/g,'*\n');
+  const records=normalized.split(/\n|(?=\[[^\]\n]+\]\s*\(\s*기본)/u).map(line=>line.trim()).filter(Boolean);
+  return records.map(line=>{
+    const word=line.match(/^\[([^\]]+)\]\s*(.*?)\s*@([^#]*)(?:#([\s\S]*))?$/);
+    if(!word)return {line};
+    const [,form,lemma,grammar,meaning]=word;
+    const gloss=meaning?.replace(/\*\s*$/,'').trim()||'';
     return {form,lemma,grammar:grammar.trim(),gloss:gloss==='_'?'':gloss};
   });
 }
+
 function originalPassageSource(book,chapter) {
   const hebrew = testamentByBook[book]==='old';
   const label = hebrew?'BHSStp':'LXXStp';
@@ -3041,7 +3045,7 @@ function showVerseArrival(id) {
 }
 
 document.addEventListener('click',event=>{
-  for(const menu of document.querySelectorAll('.reading-mode-menu[open],.hebrew-scheme-menu[open]'))if(!menu.contains(event.target))menu.open=false;
+  for(const menu of document.querySelectorAll('.reading-mode-menu[open],.hebrew-scheme-menu[open],.popup-commentary-menu[open]'))if(!menu.contains(event.target))menu.open=false;
 });
 // A backdrop tap dismisses any dialog. Drags and taps within its padding do not.
 let modalBackdropGesture;
@@ -3776,9 +3780,6 @@ document.addEventListener('click',async event => {
     return;
   }
 
-  if('popupCommentaryPicker' in target)return showPopupCommentaryPicker();
-  if('popupCommentaryPage' in target)return showPopupCommentaryPicker(Number(target.popupCommentaryPage));
-  if('popupCommentaryBack' in target)return restorePopupCommentary();
   if(target.popupCommentaryChoice){if(!commentaries[target.popupCommentaryChoice])return;state.commentaryEdition=target.popupCommentaryChoice;save();return restorePopupCommentary();}
   if(target.todayRecordFilter){todayRecordsFilter=target.todayRecordFilter;todayRecordsPage=0;render();return;}
   if('todayRecordPage' in target){todayRecordsPage=Math.max(0,Number(target.todayRecordPage)||0);render();return;}
@@ -5354,7 +5355,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v331',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v332',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

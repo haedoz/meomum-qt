@@ -4099,3 +4099,16 @@ form[name=calendar-date-search] .date-jump-field input{padding:2px 0;border:0!im
 .today-record-pages{display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
 .today-record-pages button{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:var(--light)}
 .today-record-pages svg{width:14px;height:14px}
+.study-popup-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;overflow:visible}
+.popup-commentary-menu{position:relative;margin-left:auto;flex:0 1 auto;min-width:0;max-width:75%;font-family:var(--font-ko)}
+.popup-commentary-menu>summary{display:flex;align-items:center;gap:9px;list-style:none;cursor:pointer;padding:7px 11px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:13px;font-weight:500;line-height:1.4}
+.popup-commentary-menu>summary::-webkit-details-marker{display:none}
+.popup-commentary-menu>summary>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.popup-commentary-menu>summary svg{width:14px;height:14px;flex-shrink:0;color:var(--muted)}
+.popup-commentary-options{position:absolute;right:0;top:calc(100% + 6px);width:260px;max-width:calc(100vw - 70px);max-height:260px;overflow-y:auto;z-index:30;border:1px solid var(--line);border-radius:14px;padding:6px;background:var(--card);box-shadow:0 10px 30px #0002}
+.popup-commentary-caption{display:block;padding:7px 9px;font-size:10px;color:var(--muted)}
+.popup-commentary-options>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px;border-radius:9px;text-align:start;font-size:13px;line-height:1.4}
+.popup-commentary-options>button[aria-pressed=true]{background:var(--light);font-weight:550}
+.popup-commentary-options>button>span{min-width:0;overflow-wrap:anywhere}
+.popup-commentary-options>button svg{width:15px;height:15px;flex-shrink:0;color:var(--green)}
+.popup-commentary-menu:not([open])>.popup-commentary-options{display:none}
