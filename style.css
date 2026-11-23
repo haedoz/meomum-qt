@@ -4124,3 +4124,10 @@ html.writing-focused #modal form[name=calendar-date-search]::after{content:none!
 .today-record-tabs>button{gap:5px;padding:7px 9px;flex:0 1 auto;font-size:12px;min-width:0}
 .today-record-tabs>button svg{width:14px;height:14px;flex:0 0 14px}
 @media(max-width:480px){.today-record-tabs{gap:2px;padding:8px}.today-record-tabs>button{padding:7px 6px;font-size:11px;gap:4px;flex:1 1 auto;justify-content:center}}
+.today-record-entry{padding:0 0 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.today-record-entry:last-child{border-bottom:0}
+.today-record-entry>.today-record-item{border:0;padding-bottom:9px}
+.today-record-actions{display:flex;justify-content:flex-end;padding:0;margin:0}
+.today-record-actions .item-actions{margin:0;gap:6px}
+.today-record-actions .btn,.today-record-actions .text-action{--button-height:29px;--button-font:11px;--button-pad:9px;min-height:29px!important;padding:4px 9px!important;font-size:11px!important;line-height:18px!important;border-radius:9px!important}
+.today-record-actions svg{width:13px!important;height:13px!important}

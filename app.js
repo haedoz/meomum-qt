@@ -1172,10 +1172,16 @@ function todayReadingScreen() {
 }
 let todayRecordsFilter='묵상',todayRecordsPage=0;
 function todayRecords(day){
- const groups=new Map();const add=(type,symbol,title,body,attributes)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes});};
- for(const row of recordRows().filter(row=>row.day===day)){const {key,mark,journalDay,noteKey}=row;if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"');else if(mark.journal){const [date,id]=journalDay.split('/');add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"');}else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"');else if(verseMark(mark))add('형광펜·밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"');}
- for(const item of state.prayers.filter(item=>item.day===day))add(item.kind==='thought'?'생각 노트':'기도 노트',item.kind==='thought'?'thoughtBulb':'prayer',item.kind==='thought'?'남긴 생각':item.title,item.body,'data-prayer="'+item.id+'"');
- if(state.dailyNotes[day]?.body)add('묵상 노트','comment','말씀 묵상',state.dailyNotes[day].body,'data-edit-daily-note="'+day+'"');
+ const groups=new Map();const add=(type,symbol,title,body,attributes,editAttributes,deleteAttributes)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes,editAttributes,deleteAttributes});};
+ for(const row of recordRows().filter(row=>row.day===day)){
+  const {key,mark,journalDay,noteKey}=row;
+  if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"');
+  else if(mark.journal){const [date,id]=journalDay.split('/'),journalAttrs='="'+date+'" data-journal-note="'+(id||'')+'"';add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"','data-edit-journal'+journalAttrs,'data-delete-journal'+journalAttrs);}
+  else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"','data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"');
+  else if(verseMark(mark)){const token=historyActionKey(row);add('형광펜·밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"','data-edit-record-color="'+token+'"','data-delete-highlight="'+token+'"');}
+ }
+ for(const item of state.prayers.filter(item=>item.day===day))add(item.kind==='thought'?'생각 노트':'기도 노트',item.kind==='thought'?'thoughtBulb':'prayer',item.kind==='thought'?'남긴 생각':item.title,item.body,'data-prayer="'+item.id+'"','data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"');
+ if(state.dailyNotes[day]?.body)add('묵상 노트','comment','말씀 묵상',state.dailyNotes[day].body,'data-edit-daily-note="'+day+'"','data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"');
  const total=[...groups.values()].reduce((sum,group)=>sum+group.items.length,0);
  const categories=[['묵상','comment'],['토라포션','book'],['생각','thoughtBulb'],['기도','prayer'],['기타','note']];
  const categoryOf=type=>({'묵상 노트':'묵상','토라포션':'토라포션','생각 노트':'생각','기도 노트':'기도'}[type]||'기타');
@@ -1184,7 +1190,7 @@ function todayRecords(day){
  if(!types.some(([type])=>type===todayRecordsFilter)){todayRecordsFilter=types[0]?.[0]||'묵상';todayRecordsPage=0;}
  const rows=allRows.filter(item=>item.category===todayRecordsFilter);
  const pages=Math.max(1,Math.ceil(rows.length/5));todayRecordsPage=Math.min(todayRecordsPage,pages-1);
- return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-symbol">'+icon(item.symbol)+'</span><span class="today-record-copy"><span class="today-record-label">'+item.type+'</span><strong>'+esc(item.title)+'</strong>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
+ return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<article class="today-record-entry"><button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-symbol">'+icon(item.symbol)+'</span><span class="today-record-copy"><span class="today-record-label">'+item.type+'</span><strong>'+esc(item.title)+'</strong>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button><footer class="today-record-actions">'+calendarItemActions(item.editAttributes,item.deleteAttributes)+'</footer></article>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
@@ -5396,7 +5402,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v335',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v336',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
