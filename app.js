@@ -3125,6 +3125,7 @@ function dialog(title,body,formName) {
   modal.innerHTML = '<form method="dialog" class="stack"'+(formName?' name="'+formName+'"':'')+
     '><div class="row"><h2 id="active-dialog-title" tabindex="-1"'+titleFocus+'>'+title+
     '</h2><button class="btn dialog-close" aria-label="닫기" '+close+'>'+(removal?icon('close'):'닫기')+'</button></div>'+body+'</form>';
+  if(formName==='verse-note-editor')modal.querySelector('.dialog-close').innerHTML=icon('close');
   if (!modal.open) modal.showModal();
   if(formName==='calendar-date-search'){modal.style.removeProperty('--date-dialog-height');requestAnimationFrame(layoutDateSearchDialog);setTimeout(layoutDateSearchDialog,120);}
 }
@@ -5402,7 +5403,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v336',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v337',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

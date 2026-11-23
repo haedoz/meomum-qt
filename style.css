@@ -4131,3 +4131,17 @@ html.writing-focused #modal form[name=calendar-date-search]::after{content:none!
 .today-record-actions .item-actions{margin:0;gap:6px}
 .today-record-actions .btn,.today-record-actions .text-action{--button-height:29px;--button-font:11px;--button-pad:9px;min-height:29px!important;padding:4px 9px!important;font-size:11px!important;line-height:18px!important;border-radius:9px!important}
 .today-record-actions svg{width:13px!important;height:13px!important}
+/* Scoped redesign: Bible and Torah verse memo dialog only. */
+#modal:has(>form[name=verse-note-editor])[open]{position:fixed!important;inset:auto!important;left:50%!important;top:12vh!important;bottom:auto!important;transform:translateX(-50%)!important;margin:0!important;width:min(520px,calc(100vw - 28px))!important;height:max-content!important;min-height:0!important;max-height:calc(100dvh - 28px)!important;padding:0!important;border:1px solid var(--line);border-radius:21px!important;overflow-y:auto!important;scroll-padding-bottom:18px!important;background:var(--card)}
+#modal>form[name=verse-note-editor]{display:grid!important;align-content:start!important;height:max-content!important;min-height:0!important;gap:0!important;padding:0!important;scroll-padding-bottom:18px!important}
+#modal>form[name=verse-note-editor]::before,#modal>form[name=verse-note-editor]::after{content:none!important;display:none!important;min-height:0!important;height:0!important}
+#modal form[name=verse-note-editor]>.row:first-child{padding:16px 18px 12px!important;border:0!important;background:transparent!important;align-items:center}
+#modal form[name=verse-note-editor] #active-dialog-title{font-size:18px!important;font-weight:650!important;letter-spacing:-.03em}
+#modal form[name=verse-note-editor] .dialog-close{width:31px!important;min-width:31px!important;max-width:31px!important;height:31px!important;min-height:31px!important;padding:0!important;border-radius:10px!important;flex:0 0 31px!important;background:var(--light)!important;border:0!important}
+#modal form[name=verse-note-editor] .verse-note-body{padding:0 18px 14px!important;gap:14px}
+#modal form[name=verse-note-editor] .editor-field,#modal form[name=verse-note-editor] .field{margin:0;gap:8px}
+#modal form[name=verse-note-editor] textarea#verse-note{display:block;width:100%;min-height:145px!important;padding:13px 14px!important;border:1px solid color-mix(in srgb,var(--line) 70%,transparent)!important;border-radius:13px!important;background:color-mix(in srgb,var(--ink) 2%,var(--card))!important;box-shadow:none!important;outline:none!important;font-family:var(--font-ko);font-weight:400!important;line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px);scroll-margin-block:12px!important}
+#modal form[name=verse-note-editor] textarea#verse-note:focus{border-color:color-mix(in srgb,var(--green) 30%,var(--line))!important;background:color-mix(in srgb,var(--ink) 2%,var(--card))!important;box-shadow:none!important}
+#modal form[name=verse-note-editor] .verse-note-actions{position:sticky;bottom:0;padding:11px 18px 15px!important;border-top:0!important;background:var(--card)!important;margin:0;gap:8px}
+#modal form[name=verse-note-editor] .verse-note-actions .muted{font-size:11px;color:var(--muted)}
+#modal form[name=verse-note-editor] .verse-note-actions .btn{min-height:34px!important;padding:6px 13px!important;font-size:12px!important;border-radius:10px!important}
