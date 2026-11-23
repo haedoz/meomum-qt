@@ -541,17 +541,17 @@ function triggerGhAutoBackup() {
 }
 async function save() {
   const status = document.querySelector('#save-status');
-  if (status) status.textContent = '저장 중…';
+  if(status){status.textContent='';status.hidden=true;}
   try {
     if (!db) throw Error('storage unavailable');
     await storeLocal('journal',state);
     writeError = false;
-    if (status?.isConnected) status.textContent = '기기에 자동 저장';
+    if(status?.isConnected){status.textContent='';status.hidden=true;}
     triggerGhAutoBackup();
     return true;
   } catch {
     writeError = true;
-    if (status?.isConnected) status.textContent = '저장 실패 · 백업을 내보내세요';
+    if(status?.isConnected){status.hidden=false;status.textContent='저장 실패 · 백업을 내보내세요';}
     notify('기기에 저장하지 못했어요. 백업 파일을 내보낼 수 있어요.');
     return false;
   }
@@ -779,7 +779,7 @@ function journalScreen() {
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor" data-journal-day="'+day+'" data-journal-id="'+(activeJournalId||'')+'">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
-    (writeError?'저장 실패':'기기에 자동 저장')+'</span></div>')+
+    (writeError?'저장 실패':'')+'</span></div>')+
     '<div class="journal-editor-fields writing-panel">'+
     editorField('제목','title',entry.title,'text',''+(locked?'readonly ':'')+'aria-label="묵상 제목" data-journal-field="title" maxlength="150" placeholder="제목을 입력하세요 (선택)"')+
     refs+
@@ -884,7 +884,7 @@ function torahScreen(){
     return head+'<button type="button" class="verse torah-verse" data-torah-verse="'+key+'" aria-pressed="'+chosen.has(key)+'" aria-label="'+esc(titles[book]+' '+chapter+'장 '+verse+'절 선택')+'" lang="'+(localLanguages[edition]||'ko')+'"><span class="number">'+verse+'</span><span class="verse-content">'+markedText(body||'현재 번역본에 이 구절이 없어요.',marker)+'</span></button>';
   }).join('');
   const textContent=edition?passage:'<p class="muted">설정에서 한국어 성경 번역본을 한 번 추가하면 이 범위를 선택한 번역본으로 읽을 수 있어요.</p><button class="btn" data-nav="settings" data-import-link>성경 자료 추가</button>';
-  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status">기기에 자동 저장</span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'')+'</div><div class="torah-reflection-actions"><button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button>'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div></footer></section></div>'+torahSelectionTools()+'</section>';
+  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status" hidden></span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'')+'</div><div class="torah-reflection-actions"><button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button>'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div></footer></section></div>'+torahSelectionTools()+'</section>';
 }
 function torahNotesScreen(){return journalsScreen();}
 function torahSelectionTools(){
@@ -908,7 +908,7 @@ function showTorahNoteEditor(day){
   const note=state.torahNotes[day],portion=torahDays[day];
   dialog('토라포션 묵상 수정','<p class="torah-edit-context">'+esc(longDate(day))+(portion?' · '+esc(portion.name):'')+'</p>'+
     editorField('묵상 내용','body',note.body||'','textarea','rows="5" placeholder="마음에 남은 말씀과 생각을 적어보세요."')+
-    '<footer class="torah-edit-actions"><span class="save">변경 내용은 자동 저장돼요</span><button type="button" class="btn" data-action="close-dialog">닫기</button><button type="button" class="btn primary" data-save-torah-edit="'+day+'">수정 저장</button></footer>','torah-note-edit');
+    '<footer class="torah-edit-actions"><button type="button" class="btn" data-action="close-dialog">닫기</button><button type="button" class="btn primary" data-save-torah-edit="'+day+'">수정 저장</button></footer>','torah-note-edit');
   const form=modal.querySelector('form');form.classList.add('note-editor-dialog');form.dataset.torahEditDay=day;
   prepareDraft(form,'torah-edit/'+day,['body']);resizeWriting(form.elements.body);
 }
@@ -4831,6 +4831,8 @@ function applyDraftValues(editor,values) {
 }
 function showDraftStatus(editor,message) {
   if (!editor.status) return;
+  if(message==='기기에 임시 저장됨'){editor.status.textContent='';editor.status.hidden=true;return;}
+  editor.status.hidden=false;
   editor.status.parentElement.hidden = !message;
   if (editor.status.textContent!==message) editor.status.textContent = message;
 }
@@ -5261,7 +5263,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v316',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v318',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
