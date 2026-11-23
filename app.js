@@ -1943,9 +1943,9 @@ function readingPlan(canon,counts,remaining,today) {
   const historyList = (state.readingHistory || []).map((h, idx) => {
     const dates = (h.startDate ? h.startDate.replace(/-/g,'.') : '') + (h.endDate ? ' ~ ' + h.endDate.replace(/-/g,'.') : '');
     return '<article class="card row reading-history-item">'+
-      '<div><strong>'+esc(h.title || (idx + 1) + '회차 완독')+'</strong>'+
-      '<p class="muted">'+esc(h.rangeLabel)+' · '+(h.chaptersCount || 0)+(h.status==='paused'?'장 범위':'장 완독')+(dates ? '<br>' + dates : '')+'</p></div>'+
-      '<div class="reading-history-actions"><span class="reading-badge">'+(h.status==='paused'?'보관':'완료')+'</span><button type="button" class="btn" data-resume-plan="'+h.id+'">'+icon('book')+' 이어서 시작</button><button type="button" class="btn destructive" data-delete-plan="'+h.id+'">'+icon('trash')+' 삭제</button></div>'+
+      '<div class="reading-history-copy"><header><span class="reading-history-icon">'+icon('book')+'</span><strong>'+esc(h.title || (idx + 1) + '회차 완독')+'</strong><span class="reading-history-status">'+(h.status==='paused'?'보관 중':'완료')+'</span></header>'+
+      '<p class="reading-history-range">'+esc(h.rangeLabel)+'</p><p class="reading-history-meta">'+(h.chaptersCount||0)+'장 · '+esc(dates)+'</p></div>'+
+      '<div class="reading-history-actions"><button type="button" class="btn" data-resume-plan="'+h.id+'">'+icon('book')+' 이어서 시작</button><button type="button" class="btn destructive" data-delete-plan="'+h.id+'">'+icon('trash')+' 삭제</button></div>'+
       '</article>';
   }).join('');
 
@@ -1953,11 +1953,8 @@ function readingPlan(canon,counts,remaining,today) {
     '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획 설정</button></div>'+
     periodMeta +
     '<div class="plan-progress-bar"><progress max="'+Math.max(1,scope.length)+'" value="'+progress+'" aria-label="통독 진행률"></progress></div>'+
-    '<p class="reading-goal-summary muted">하루 '+goal+'장 · 계획 설정에서 변경</p><div class="reading-pause-actions"><button type="button" class="btn" data-pause-plan>잠시 보관</button></div>'+
-    (progress >= scope.length ?
-      '<div class="plan-finish-banner"><p>🎉 계획하신 성경 통독을 모두 마쳤어요!</p><button type="button" class="btn primary" data-action="archive-reading-plan">통독 완료 기록 보관 & 새 계획</button></div>' :
-      '<div class="row" style="margin-top:10px;"><button type="button" class="text-action" data-action="archive-reading-plan" style="font-size:0.8rem; color:var(--muted);">현재 계획 완료 처리 및 기록 보관</button></div>')+
-    (suggestions?'<div class="reading-suggestions"><p class="muted">범위에서 이어 읽을 장</p>'+suggestions+'</div>':
+    '<div class="plan-management"><p class="reading-goal-summary muted">하루 '+goal+'장</p><div class="plan-management-actions"><button type="button" class="btn" data-pause-plan>'+icon('book')+' 잠시 보관</button><button type="button" class="btn" data-action="archive-reading-plan">'+icon('check')+' 완료 후 보관</button></div></div>'+
+    (suggestions?'<section class="reading-suggestions"><h3>'+icon('book')+' 이어 읽을 말씀</h3><div class="reading-suggestion-grid">'+suggestions+'</div></section>':
       '<p class="muted">'+(slots?'성경 본문을 불러오면 추천 장을 볼 수 있어요.':'오늘 목표를 채웠어요.')+'</p>')+'</section>'+
     (historyList ?
       '<div class="section-head"><h2>지난 통독 기록</h2></div>'+
@@ -5272,7 +5269,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v320',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v321',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
