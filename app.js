@@ -2,7 +2,7 @@ import {spiritStudyAction} from './spirit-study.js';
 import {startAppUpdates} from './app-updates.js';
 import {libraryScreen,sevenStudyScreen,studyLibraryAction} from './study-library.js';
 import {torahScheduleScreen,torahScheduleAction} from './torah-schedule.js';
-import {torahDays,torahVerseCounts} from './torah-data.js';
+import {torahDays,torahVerseCounts,adjacentTorahDay} from './torah-calendar-days.js';
 import {mergeSync,mergeReadingPlan} from './offline-sync.js?v=2';
 import {hebrewGuideScreen,hebrewGuideAction,prepareHebrewGuide} from './hebrew-guide.js?v=10';
 import {atlasScreen,mountAtlas,atlasAction} from './bible-atlas.js?v=9';
@@ -282,7 +282,7 @@ const trackerScopes = {old:'구약',new:'신약'};
 let trackerScope = 'old';
 
 function dateKey(date = new Date()) {
-  return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+  return [String(date.getFullYear()).padStart(4,'0'),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
 }
 function longDate(key) {
   return new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'long'}).format(new Date(key+'T12:00:00'));
@@ -874,8 +874,8 @@ function showTorahVerse(key,mode='original'){
 }
 function torahScreen(){
   const day=selectedTorahDay||dateKey(),portion=torahDays[day],note=state.torahNotes[day]||{};
-  if(!portion)return heading('DAILY TORAH','매일 토라포션','이 자료는 2026년 10월 4일–2027년 10월 24일 일정을 담고 있어요.')+'<button class="btn" data-nav="calendar">캘린더로 돌아가기</button>';
-  const dates=Object.keys(torahDays),i=dates.indexOf(day),edition=state.reader.edition;
+  if(!portion)return heading('DAILY TORAH','매일 토라포션','날짜를 다시 선택해 주세요.')+'<button class="btn" data-nav="calendar">캘린더로 돌아가기</button>';
+  const previousDay=adjacentTorahDay(day,-1),nextDay=adjacentTorahDay(day,1),edition=state.reader.edition;
   const addresses=torahAddresses(portion),markers=indexVerseMarkers();let lastChapter='';
   const passage=addresses.map(address=>{
     const [book,chapter,verse]=address.split('/'),key=edition+'/'+address,body=edition?verseText(key):'';
@@ -884,7 +884,7 @@ function torahScreen(){
     return head+'<button type="button" class="verse torah-verse" data-torah-verse="'+key+'" aria-pressed="'+chosen.has(key)+'" aria-label="'+esc(titles[book]+' '+chapter+'장 '+verse+'절 선택')+'" lang="'+(localLanguages[edition]||'ko')+'"><span class="number">'+verse+'</span><span class="verse-content">'+markedText(body||'현재 번역본에 이 구절이 없어요.',marker)+'</span></button>';
   }).join('');
   const textContent=edition?passage:'<p class="muted">설정에서 한국어 성경 번역본을 한 번 추가하면 이 범위를 선택한 번역본으로 읽을 수 있어요.</p><button class="btn" data-nav="settings" data-import-link>성경 자료 추가</button>';
-  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+dates[Math.max(0,i-1)]+'" '+(!i?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+dates[Math.min(dates.length-1,i+1)]+'" '+(i===dates.length-1?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status" hidden></span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'')+'</div><div class="torah-reflection-actions"><button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button>'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div></footer></section></div>'+torahSelectionTools()+'</section>';
+  return '<section class="torah-reader"><header class="torah-page-header"><div><p class="eyebrow">DAILY TORAH</p><h1>'+esc(portion.name)+'</h1><p class="muted">'+longDate(day)+' · '+(portion.part?'이번 주 포션 '+portion.part+'/7':'심핫 토라')+'</p></div><nav aria-label="토라포션 날짜 이동"><button type="button" data-nav="torah/'+(previousDay||day)+'" '+(!previousDay?'disabled':'')+' aria-label="전날">'+icon('left')+'</button><button type="button" data-nav="torah/'+(nextDay||day)+'" '+(!nextDay?'disabled':'')+' aria-label="다음 날">'+icon('right')+'</button></nav></header><div class="torah-reading-meta"><strong>'+esc(torahRangeLabel(portion))+'</strong><button type="button" data-action="torah-edition">'+esc(edition?editionLabel(edition):'번역본 선택')+icon('down')+'</button></div><div class="torah-study-layout"><article class="reading bible-passage torah-passage">'+textContent+'</article><section class="card torah-note-editor"><header class="torah-reflection-heading"><span class="torah-reflection-icon">'+icon('edit')+'</span><div><h2>오늘의 토라 묵상</h2></div><span class="save" id="save-status" hidden></span></header><label class="field"><textarea '+(note.done&&!editingCompletedTorah.has(day)?'readonly ':'')+'aria-label="토라포션 묵상 내용" data-torah-note="'+day+'" rows="5" placeholder="읽으며 마음에 남은 말씀과 생각을 남겨보세요.">'+esc(note.body||'')+'</textarea></label><footer class="torah-reflection-footer"><div class="torah-reflection-status">'+(note.done&&!editingCompletedTorah.has(day)?'<span class="completion-label">'+icon('check')+' 묵상 완료</span>':'')+'</div><div class="torah-reflection-actions"><button type="button" class="btn destructive" data-delete-torah="'+day+'" '+(!torahNoteExists(day)?'hidden':'')+'>'+icon('trash')+' 삭제</button>'+(note.done&&!editingCompletedTorah.has(day)?'<button type="button" class="btn" data-edit-completed-torah="'+day+'">'+icon('edit')+' 수정</button>':'<button type="button" class="btn primary" data-torah-done="'+day+'">'+icon('check')+' '+(note.done?'수정 저장':'묵상 마치기')+'</button>')+'</div></footer></section></div>'+torahSelectionTools()+'</section>';
 }
 function torahNotesScreen(){return journalsScreen();}
 function torahSelectionTools(){
@@ -2080,7 +2080,7 @@ function verseActions() {
 }
 function calendarScreen() {
   const [year,num] = month.split('-').map(Number), today = dateKey();
-  const start = new Date(year,num-1,1), end = new Date(year,num,0).getDate();
+  const start = new Date(month+'-01T12:00:00'), last = new Date(start);last.setMonth(last.getMonth()+1,0);const end=last.getDate();
   const monthPrefix = month+'-';
   const prayersByDay = new Map(), marksByDay = new Map(), undated = [];
   for (const prayer of state.prayers) {
@@ -2120,7 +2120,7 @@ function calendarScreen() {
     hebrewOptions()+'<div class="calendar-layout"><section class="card calendar-month"><header class="row calendar-month-header">'+
     '<div><p class="muted">'+year+'년</p><h2>'+num+'월</h2></div><div class="calendar-month-actions">'+
     '<button class="btn" data-month="-1" aria-label="이전 달">'+icon('left')+'</button>'+
-    '<button class="btn" data-action="calendar-today">오늘</button>'+
+    '<button class="btn" data-action="calendar-today">오늘</button>'+'<button class="btn calendar-date-search" data-action="calendar-date-search" aria-label="날짜 검색">'+icon('search')+'</button>'+
     '<button class="btn" data-month="1" aria-label="다음 달">'+icon('right')+'</button></div></header>'+
     '<div class="calendar'+(hebrewEnabled()?' with-hebrew':'')+'">'+days+'</div><footer class="calendar-legend"><span><i class="calendar-dot qt-dot"></i> 묵상·읽기</span>'+
     '<span><i class="calendar-dot other-dot"></i> 기타 기록</span><span>기록 '+recordedDays+'일</span></footer></section>'+
@@ -3344,6 +3344,10 @@ const actions = {
     month = selectedDay.slice(0,7);
     navigate('calendar');
   },
+  'calendar-date-search'() {
+    dialog('날짜로 이동','<p class="muted">찾고 싶은 날짜를 입력해 주세요.</p><label class="field"><span>날짜</span><input name="day" type="text" inputmode="numeric" autocomplete="off" placeholder="2025. 11. 23." value="'+selectedDay.replaceAll('-','. ')+'" required></label><p class="muted" data-date-error role="alert" hidden></p><footer class="calendar-date-search-actions"><button class="btn" type="button" data-calendar-search-today>오늘</button><button class="btn primary" type="submit">'+icon('search')+' 이동</button></footer>','calendar-date-search');
+    requestAnimationFrame(()=>{const input=modal.querySelector('input[name=day]');input.focus();input.select();});
+  },
   'calendar-today'() {
     selectedDay = dateKey();
     month = selectedDay.slice(0,7);
@@ -3939,7 +3943,8 @@ document.addEventListener('click',async event => {
   }
   if (target.month) {
     const [year,num] = month.split('-').map(Number);
-    selectedDay = dateKey(new Date(year,num-1+Number(target.month),1));
+    const nextMonth=new Date(month+'-01T12:00:00');nextMonth.setMonth(nextMonth.getMonth()+Number(target.month));if(nextMonth.getFullYear()<1||nextMonth.getFullYear()>9999)return;
+    selectedDay = dateKey(nextMonth);
     month = selectedDay.slice(0,7);
   }
   if ('recordPage' in target) {
@@ -4226,6 +4231,13 @@ document.addEventListener('keydown',event=>{
 modal.addEventListener('submit',event => {
   const form = event.target;
   if (event.submitter?.value==='cancel') return;
+  if(form.name==='calendar-date-search'){
+    event.preventDefault();const raw=form.elements.day.value.trim();
+    const parts=raw.match(/^(\d{4})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*[.일]?$/)||raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+    const key=parts?parts[1]+'-'+parts[2].padStart(2,'0')+'-'+parts[3].padStart(2,'0'):'';
+    if(!key||!validDay(key)||+parts[1]<1){const error=form.querySelector('[data-date-error]');error.hidden=false;error.textContent='올바른 날짜를 입력해 주세요. 예: 2025. 11. 23.';return;}
+    selectedDay=key;month=key.slice(0,7);modal.close();render();return;
+  }
   if (form.name==='chapter-jump') {
     event.preventDefault();
     if(event.submitter?.dataset.pickChapter)form.elements.chapter.value=event.submitter.dataset.pickChapter;
@@ -5315,7 +5327,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v328',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v329',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
@@ -5421,3 +5433,5 @@ function standardizeRecordActions(){
 let recordActionsQueued=false;
 new MutationObserver(()=>{if(recordActionsQueued)return;recordActionsQueued=true;queueMicrotask(()=>{recordActionsQueued=false;standardizeRecordActions();});}).observe(document.body,{childList:true,subtree:true});
 standardizeRecordActions();
+
+document.addEventListener('click',event=>{if(event.target.closest('[data-calendar-search-today]')){modal.querySelector('input[name=day]').value=dateKey();modal.querySelector('form').requestSubmit();}});

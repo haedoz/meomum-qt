@@ -63,3 +63,11 @@ CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 ## 유대력 안내 자료
 
 사용자 제공 월별 카드와 계절 순환도를 참고해 HTML/CSS/SVG 카드와 12개월 순환도로 재구성했습니다. 원본 이미지 파일과 원본 보기 탭은 배포물에 포함하지 않습니다. 월별 지파·문자는 제공 자료의 전통적 연결이며 성경이 규정한 달별 배정으로 제시하지 않습니다. 현대 유대력의 윤달은 아다르 1 30일·아다르 2 29일로 보완했습니다. 민간력/성서력 순서와 순환도는 평년 기준입니다. 참고: https://hebcal.github.io/api/hdate/enums/months.html , https://eclipse.gsfc.nasa.gov/SEhelp/calendars.html , https://www.chabad.org/library/article_cdo/aid/526874/jewish/The-Jewish-Month.htm . 절기 날짜와 전통 차이는 https://www.hebcal.com/holidays/shavuot?i=on 및 기존 Hebcal 달력 계산을 사용합니다. 금식일은 안식일에 따라 이동할 수 있으므로 실제 날짜는 달력 계산을 확인해야 합니다. 월별 관련 본문은 가져온 번역본으로 연결합니다.
+
+## Daily Torah portions (dynamic calendar)
+- Weekly schedule: bundled @hebcal/core Sedra; Israel/diaspora follows the calendar preference.
+- Seven daily study portions (Sunday–Shabbat): adapted from @hebcal/leyning 10.1.0 `aliyot.json`, BSD-2-Clause; license retained in vendor/leyning-LICENSE.txt.
+- https://github.com/hebcal/hebcal-leyning
+- https://www.hebcal.com/home/4277/leyning-torah-reading-api
+- This is daily study of the weekly portion, not the synagogue Monday/Thursday/festival leyning. Festival weeks continue the next weekly portion; the cycle closes with Vezot Haberakhah and begins Genesis on Simchat Torah.
+- Verse numbering is converted to the Korean/English scheme used by the app. The original 5787 diaspora daily ranges are preserved (386 dates verified).
