@@ -1119,7 +1119,7 @@ function todayPlanCard(day){
   const {assigned,done,next,plannedDone,extra}=todayPlan(day),fromJournal=new Set();const target=assigned.length||state.readingGoal;
   const row=(key,complete)=>'<div class="today-plan-row '+(complete?'is-complete':'')+'"><button type="button" class="today-plan-open" data-open-chapter="'+key+'"><span>'+icon('book')+'</span><span><strong>'+esc(chapterLabel(key))+'</strong><small>'+(complete?'오늘 읽은 말씀':'본문으로 이동')+'</small></span>'+icon('right')+'</button><button type="button" class="today-plan-check" data-check-chapter="'+key+'" aria-pressed="'+complete+'" aria-label="'+esc(chapterLabel(key))+' '+(complete?'완료 체크 해제':'완료 체크')+'" '+(fromJournal.has(key)?'disabled':'')+'>'+icon('check')+'<span>'+(complete?'완료':'체크')+'</span></button></div>';
   const range=state.readingRange;
-  return '<section class="card today-plan-card" aria-label="통독 계획"><header class="row"><div><p class="eyebrow daily-reading-label">'+icon('book')+'<span>매일 말씀 읽기</span></p></div><span class="pill">'+plannedDone.length+' / '+target+'장</span></header><progress class="today-plan-progress" max="'+target+'" value="'+Math.min(plannedDone.length,target)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+'<div class="today-extra-toolbar"><button type="button" class="btn" data-extra-reading-open>'+icon('plus')+' 오늘 분량 추가</button></div>'+todayPlanBrowser(day,next)+(extra.length?'<p class="today-extra-reading">계획 외 읽기 '+extra.length+'장 완료</p>':'')+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'</div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
+  return '<section class="card today-plan-card" aria-label="통독 계획"><header class="row"><div><p class="eyebrow daily-reading-label">'+icon('book')+'<span>매일 말씀 읽기</span></p></div><span class="pill">'+plannedDone.length+' / '+target+'장</span></header><progress class="today-plan-progress" max="'+target+'" value="'+Math.min(plannedDone.length,target)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+''+todayPlanBrowser(day,next)+(extra.length?'<p class="today-extra-reading">계획 외 읽기 '+extra.length+'장 완료</p>':'')+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'<button type="button" class="today-add-reading-tile" data-extra-reading-open><span>+</span><strong>오늘 분량 추가</strong></button></div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
 let extraReadingDay='',extraReadingBook='GEN',extraReadingSelection=new Set();
 function showExtraReading(day=dateKey(),book){
@@ -1537,10 +1537,8 @@ function showChapterJump() {
   const chapter = selection?.location?.chapter ?? state.reader.chapter;
   const chapters = Object.keys(source?.[book] ?? {});
   if (!chapters.length) return notify('이 책에 등록된 자료가 없어요.');
-  dialog(esc(titles[book])+' · 장·절 이동','<label class="field">이동할 장·절'+
-    '<input name="chapter" type="text" enterkeyhint="go" maxlength="20" placeholder="예: 12, 12 3, 12:3" autofocus></label>'+
-    '<p class="muted">장 번호만 입력하면 1절로 이동해요. 현재 '+chapter+'장 · '+chapters[0]+'~'+chapters.at(-1)+'장</p>'+
-    '<p class="muted" data-chapter-error role="status"></p><button type="submit" class="btn primary">이동</button>','chapter-jump');
+  dialog(esc(titles[book])+' · 장 선택','<input type="hidden" name="chapter" value="'+chapter+'"><div class="chapter-choice-grid">'+chapters.sort((a,b)=>Number(a)-Number(b)).map(number=>'<button type="submit" class="chapter-choice" data-pick-chapter="'+number+'" aria-pressed="'+(Number(number)===Number(chapter))+'">'+number+'장</button>').join('')+'</div><p class="muted" data-chapter-error role="status"></p>','chapter-jump');
+
 }
 function jumpToChapter(form) {
   const input = form.elements.chapter;
@@ -2156,11 +2154,11 @@ function calendarDaySummary(day,items,records) {
     for(const row of rows){const {book,chapter}=readRef(row.key);const key=book+'/'+chapter;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);}
     return [...groups].map(([key,rows])=>'<details class="calendar-mark-group"><summary><strong>'+esc(chapterLabel(key))+'</strong><span>'+rows.length+'건 '+icon('down')+'</span></summary><div>'+recordDetails(rows,isNote)+'</div></details>').join('');
   };
-  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+icon('edit')+'<span>'+esc(entry.title||'묵상 노트')+'</span></strong><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span>'+icon('right')+'</button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
+  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+icon('edit')+'<span>'+esc(entry.title||'묵상 노트')+'</span></strong><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span></button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
   const empty=!note&&!journals.length&&!prayers.length&&!thoughts.length&&!chapters.length&&!notes.length&&!highlights.length&&!torahNoteExists(day);
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
     '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
-    torahCalendarCard(day)+(state.torahNotes[day]?.body?'<article class="calendar-torah-reflection"><h3>'+icon('edit')+' 오늘의 토라 묵상</h3><p>'+esc(state.torahNotes[day].body)+'</p>'+calendarItemActions('data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"')+'</article>':'')+
+    torahCalendarCard(day)+(state.torahNotes[day]?.body?'<details open class="calendar-torah-reflection"><summary>'+icon('edit')+'<strong>오늘의 토라 묵상</strong>'+icon('down')+'</summary><p>'+esc(state.torahNotes[day].body)+'</p>'+calendarItemActions('data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"')+'</details>':'')+
     (note?calendarDetail('comment','말씀 묵상','1건','<div class="tappable-card">'+cardHit('말씀 묵상 열기','data-edit-daily-note="'+day+'"')+calendarText(note.body)+calendarItemActions('data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"')+'</div>'):'')+
     (journals.length?calendarDetail('note','묵상 노트',journals.length+'편',journalCards):'')+
     (prayers.length?calendarDetail('prayer','기도 노트',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
@@ -4171,6 +4169,7 @@ modal.addEventListener('submit',event => {
   if (event.submitter?.value==='cancel') return;
   if (form.name==='chapter-jump') {
     event.preventDefault();
+    if(event.submitter?.dataset.pickChapter)form.elements.chapter.value=event.submitter.dataset.pickChapter;
     return jumpToChapter(form);
   }
   if (form.dataset.dailyNote) {
@@ -5235,7 +5234,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v310',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v311',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
