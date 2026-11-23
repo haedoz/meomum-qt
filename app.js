@@ -700,10 +700,10 @@ function writingHeader(symbol,label,title,meta = '') {
   return '<header class="writing-header"><span class="writing-icon">'+icon(symbol)+'</span><div>'+
     '<p class="eyebrow">'+label+'</p><h1>'+title+'</h1>'+meta+'</div></header>';
 }
-function requestRemoval(title,message){
+function requestRemoval(title,message,acceptLabel='삭제'){
   return new Promise(resolve=>{
     const confirmDialog=document.createElement('dialog');confirmDialog.className='removal-confirmation polished-removal';
-    confirmDialog.innerHTML='<form method="dialog" class="stack"><div class="row"><h2>'+esc(title)+'</h2><button type="button" class="btn dialog-close" data-removal-close aria-label="닫기">'+icon('close')+'</button></div><p>'+esc(message)+'</p><footer><button type="button" class="btn" data-removal-cancel>취소</button><button type="button" class="btn danger" data-removal-accept>삭제</button></footer></form>';
+    confirmDialog.innerHTML='<form method="dialog" class="stack"><div class="row"><h2>'+esc(title)+'</h2><button type="button" class="btn dialog-close" data-removal-close aria-label="닫기">'+icon('close')+'</button></div><p>'+esc(message)+'</p><footer><button type="button" class="btn" data-removal-cancel>취소</button><button type="button" class="btn danger" data-removal-accept>'+esc(acceptLabel)+'</button></footer></form>';
     document.body.append(confirmDialog);let accepted=false;
     confirmDialog.querySelector('[data-removal-close]').onclick=event=>{event.stopPropagation();confirmDialog.close();};
     confirmDialog.querySelector('[data-removal-cancel]').onclick=event=>{event.stopPropagation();confirmDialog.close();};
@@ -1944,8 +1944,8 @@ function readingPlan(canon,counts,remaining,today) {
     const dates = (h.startDate ? h.startDate.replace(/-/g,'.') : '') + (h.endDate ? ' ~ ' + h.endDate.replace(/-/g,'.') : '');
     return '<article class="card row reading-history-item">'+
       '<div><strong>'+esc(h.title || (idx + 1) + '회차 완독')+'</strong>'+
-      '<p class="muted">'+esc(h.rangeLabel)+' · '+(h.chaptersCount || 0)+'장 완독'+(dates ? '<br>' + dates : '')+'</p></div>'+
-      '<span class="reading-badge done">완료</span>'+
+      '<p class="muted">'+esc(h.rangeLabel)+' · '+(h.chaptersCount || 0)+(h.status==='paused'?'장 범위':'장 완독')+(dates ? '<br>' + dates : '')+'</p></div>'+
+      '<div class="reading-history-actions"><span class="reading-badge">'+(h.status==='paused'?'보관':'완료')+'</span><button type="button" class="btn" data-resume-plan="'+h.id+'">'+icon('book')+' 이어서 시작</button><button type="button" class="btn destructive" data-delete-plan="'+h.id+'">'+icon('trash')+' 삭제</button></div>'+
       '</article>';
   }).join('');
 
@@ -1953,7 +1953,7 @@ function readingPlan(canon,counts,remaining,today) {
     '<div class="plan-scope row"><div><strong>'+label+'</strong><p class="muted">진행 '+progress+' / '+scope.length+'장 ('+percent+'%)</p></div><button class="btn" data-action="edit-reading-range">계획 설정</button></div>'+
     periodMeta +
     '<div class="plan-progress-bar"><progress max="'+Math.max(1,scope.length)+'" value="'+progress+'" aria-label="통독 진행률"></progress></div>'+
-    '<p class="reading-goal-summary muted">하루 '+goal+'장 · 계획 설정에서 변경</p>'+
+    '<p class="reading-goal-summary muted">하루 '+goal+'장 · 계획 설정에서 변경</p><div class="reading-pause-actions"><button type="button" class="btn" data-pause-plan>잠시 보관</button></div>'+
     (progress >= scope.length ?
       '<div class="plan-finish-banner"><p>🎉 계획하신 성경 통독을 모두 마쳤어요!</p><button type="button" class="btn primary" data-action="archive-reading-plan">통독 완료 기록 보관 & 새 계획</button></div>' :
       '<div class="row" style="margin-top:10px;"><button type="button" class="text-action" data-action="archive-reading-plan" style="font-size:0.8rem; color:var(--muted);">현재 계획 완료 처리 및 기록 보관</button></div>')+
@@ -1963,12 +1963,21 @@ function readingPlan(canon,counts,remaining,today) {
       '<div class="section-head"><h2>지난 통독 기록</h2></div>'+
       '<div class="reading-history-group">'+historyList+'</div>' : '');
 }
-function rangeFields(side,key) {
-  const [book,chapter] = key.split('/');
-  const chapterOptions = chapterNumbers(book).map(value=>[value,value+'장']);
-  return '<div class="range-fields"><label class="field">'+side+' 책<select data-range-book="'+side+'">'+options(books,book)+'</select></label>'+
-    '<label class="field">'+side+' 장<select data-range-chapter="'+side+'">'+options(chapterOptions,chapter)+'</select></label></div>';
+function rangeFields(side,key){
+ const [book,chapter]=key.split('/');return '<section class="range-choice" data-range-side="'+side+'"><h3>'+side+' 말씀</h3><input type="hidden" data-range-book="'+side+'" value="'+book+'"><input type="hidden" data-range-chapter="'+side+'" value="'+chapter+'"><div class="range-choice-triggers"><button type="button" data-range-open="book">'+esc(titles[book])+icon('down')+'</button><button type="button" data-range-open="chapter">'+chapter+'장'+icon('down')+'</button></div><div class="range-inline-picker" hidden></div></section>';
 }
+function renderRangePicker(section,mode,scope){
+ const side=section.dataset.rangeSide,book=section.querySelector('[data-range-book]').value,chapter=section.querySelector('[data-range-chapter]').value,panel=section.querySelector('.range-inline-picker');panel.hidden=false;
+ panel.innerHTML=mode==='book'?'<div class="range-testaments">'+[['old','구약'],['new','신약']].map(([id,label])=>'<button type="button" data-range-scope="'+id+'" aria-pressed="'+(id===(scope||testamentByBook[book]))+'">'+label+'</button>').join('')+'</div><div class="range-picker-grid">'+books.filter(([id])=>testamentByBook[id]===(scope||testamentByBook[book])).map(([id,title])=>'<button type="button" data-range-pick-book="'+id+'" aria-pressed="'+(id===book)+'">'+title+'</button>').join('')+'</div>':'<div class="range-picker-grid">'+chapterNumbers(book).map(number=>'<button type="button" data-range-pick-chapter="'+number+'" aria-pressed="'+(String(number)===chapter)+'">'+number+'장</button>').join('')+'</div>';
+}
+document.addEventListener('click',async event=>{
+ const button=event.target.closest('button');if(!button)return;const section=button.closest('[data-range-side]');
+ if(section){const book=section.querySelector('[data-range-book]'),chapter=section.querySelector('[data-range-chapter]');if(button.dataset.rangeOpen)renderRangePicker(section,button.dataset.rangeOpen);if(button.dataset.rangeScope)renderRangePicker(section,'book',button.dataset.rangeScope);if(button.dataset.rangePickBook){book.value=button.dataset.rangePickBook;chapter.value='1';section.querySelector('[data-range-open=book]').innerHTML=esc(titles[book.value])+icon('down');section.querySelector('[data-range-open=chapter]').innerHTML='1장'+icon('down');renderRangePicker(section,'chapter');}if(button.dataset.rangePickChapter){chapter.value=button.dataset.rangePickChapter;section.querySelector('[data-range-open=chapter]').innerHTML=chapter.value+'장'+icon('down');section.querySelector('.range-inline-picker').hidden=true;}}
+ if(button.dataset.resumePlan){const item=state.readingHistory.find(item=>item.id===button.dataset.resumePlan);if(!item)return;let range=item.range;if(!range){const labels=(item.rangeLabel||'').split(' ~ '),canon=canonChapters(),start=canon.find(key=>chapterLabel(key)===labels[0]),end=canon.find(key=>chapterLabel(key)===(labels[1]||labels[0]));if(start&&end)range={start,end,startDate:dateKey(),targetDate:''};}if(!range)return notify('이전 기록에 범위 정보가 없어 계획 설정이 필요해요.');if(!await requestRemoval('통독 계획 이어서 시작','선택한 범위와 하루 분량을 다시 적용할까요? 기존 읽기 체크는 유지돼요. 현재 계획은 자동 보관됩니다.','이어서 시작'))return;const old=structuredClone(state);if(state.readingRange)storePausedPlan();state.readingRange=structuredClone(range);state.readingGoal=item.goal||state.readingGoal;state.readingPlanUpdated=new Date().toISOString();if(!await save()){state=old;return;}render();notify('보관한 계획을 다시 적용했어요.');}
+ if(button.dataset.deletePlan){if(!await requestRemoval('통독 기록 삭제','보관한 계획만 삭제해요. 읽은 장의 체크는 유지됩니다.'))return;const old=state.readingHistory;state.readingHistory=old.filter(item=>item.id!==button.dataset.deletePlan);if(!await save()){state.readingHistory=old;return;}render();}
+ if(button.hasAttribute('data-pause-plan')){if(!await requestRemoval('통독 계획 잠시 보관','현재 범위와 하루 분량을 보관하고 계획 선택을 초기화할까요? 읽은 장의 체크는 유지돼요.','보관'))return;const old=structuredClone(state);storePausedPlan();state.readingRange=null;state.readingPlanUpdated=new Date().toISOString();if(!await save()){state=old;return;}render();}
+});
+function storePausedPlan(){const range=state.readingRange,canon=canonChapters(),scope=planChapters(canon,range);state.readingHistory??=[];state.readingHistory.unshift({id:'plan-'+newId(),title:'보관한 통독 계획',range:range?structuredClone(range):{start:canon[0],end:canon.at(-1)},goal:state.readingGoal,rangeLabel:range?chapterLabel(range.start)+' ~ '+chapterLabel(range.end):'성경 전체',startDate:range?.startDate||'',endDate:dateKey(),chaptersCount:scope.length,status:'paused'});}
 function showReadingRange() {
   const canon = canonChapters();
   if (!canon.length) return notify('성경 본문을 먼저 불러와 주세요.');
@@ -3370,7 +3379,7 @@ const actions = {
       startDate: range?.startDate || '',
       endDate: dateKey(),
       completedAt: dateKey(),
-      chaptersCount: scope.length
+      chaptersCount: scope.length,range:range?structuredClone(range):{start:canon[0],end:canon.at(-1)},goal:state.readingGoal
     });
     state.readingRange = null;
     state.readingPlanUpdated = new Date().toISOString();
@@ -5263,7 +5272,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v319',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v320',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
