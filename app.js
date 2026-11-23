@@ -1611,6 +1611,15 @@ function originalVerseReading(body,verse,source,chapter) {
   }).join('');
   return '<div class="original-body">'+original+(breakdown?'<h4 class="original-caption">단어별 풀이</h4>'+breakdown:'')+'</div>';
 }
+let dictionaryTrail=[];
+function restoreDictionaryParent(){
+  const snapshot=dictionaryTrail.pop();if(!snapshot)return;
+  modal.innerHTML=snapshot.html;modal.className=snapshot.className;
+  const elements=[modal,...modal.querySelectorAll('*')];
+  snapshot.positions.forEach(([index,top,left])=>{if(elements[index]){elements[index].scrollTop=top;elements[index].scrollLeft=left;}});
+  modal.querySelector('[data-dictionary-back],#active-dialog-title')?.focus({preventScroll:true});
+}
+document.addEventListener('click',event=>{if(event.target.closest('[data-dictionary-back]'))restoreDictionaryParent();});
 function showOriginalMeaning(button) {
   const code = button.dataset.strongCode;
   const word = button.closest('.original-word');
@@ -1627,11 +1636,13 @@ function showOriginalMeaning(button) {
     '<div class="stack"><p class="muted">'+(dictionariesByLanguage.length?'가져온 원어사전에 이 코드의 상세 항목이 없어요.':'어원과 용례까지 보려면 한국어 원어사전 파일(.dct)을 추가해 주세요.')+'</p>'+
       '<button class="btn" type="button" data-nav="settings" data-import-link>원어사전 파일 가져오기</button></div>';
   const linkedEntry = modal.open && modal.contains(button);
+  if(linkedEntry){const elements=[modal,...modal.querySelectorAll('*')];dictionaryTrail.push({html:modal.innerHTML,className:modal.className,positions:elements.map((el,index)=>[index,el.scrollTop,el.scrollLeft]).filter(([,top,left])=>top||left)});}else dictionaryTrail=[];
   dialog(esc(code)+' · '+(code.startsWith('H')?'히브리어':'헬라어'),
     '<div class="dictionary-body" tabindex="0" role="region" aria-label="원어사전 내용">'+definition+
     (form?'<div class="original-detail-form"><bdi>'+esc(form)+'</bdi></div>':'')+
     '<dl class="original-detail">'+fields.filter(([,value])=>value).map(([label,value])=>
       '<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl></div>','dictionary');
+  if(dictionaryTrail.length){const row=modal.querySelector('form>.row');row.insertAdjacentHTML('afterbegin','<button type="button" class="dictionary-back" data-dictionary-back aria-label="이전 해설로 돌아가기">'+icon('left')+'<span>뒤로</span></button>');}
   if (linkedEntry) modal.querySelector('#active-dialog-title')?.focus({preventScroll:true});
 }
 function dictionaryParagraphs(text,current) {
@@ -3010,6 +3021,7 @@ modal.addEventListener('click',event=>{
   }
 },true);
 function dialog(title,body,formName) {
+  if(formName!=='dictionary')dictionaryTrail=[];
   const previousEditor=modal.querySelector('form[name=torah-note-edit]');if(previousEditor)persistTorahEdit(previousEditor);
   const close = formName?'type="button" data-action="close-dialog"':'value="cancel" formnovalidate';
   const titleFocus = formName==='chapter-jump'?'':' autofocus';
@@ -5249,7 +5261,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v315',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v316',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
