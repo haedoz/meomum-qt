@@ -3663,13 +3663,10 @@ function chooseEdition(edition) {
   main.querySelector('[data-action="pick-edition"]')?.focus({preventScroll:true});
 }
 function bookPickerSections(items,active,attribute) {
-  const sections = [['old','구약'],['new','신약']].map(([testament,label])=>{
-    const choices = items.filter(([code])=>testamentByBook[code]===testament);
-    return '<section class="book-picker-section" aria-label="'+label+'"><h3>'+label+'</h3>'+
-      (choices.length?pickerOptions(choices,active,attribute):'<p class="muted">선택할 책이 없어요.</p>')+'</section>';
-  }).join('');
-  return '<div class="book-picker">'+sections+'</div>';
+  const initial=testamentByBook[active]||(['old','new'].find(scope=>items.some(([code])=>testamentByBook[code]===scope)))||'old';
+  return '<div class="book-picker-shell"><div class="book-picker-tabs" role="group" aria-label="구약 신약 선택">'+[['old','구약'],['new','신약']].map(([scope,label])=>'<button type="button" data-book-picker-tab="'+scope+'" aria-pressed="'+(scope===initial)+'">'+label+'</button>').join('')+'</div><div class="book-picker">'+[['old','구약'],['new','신약']].map(([scope,label])=>{const choices=items.filter(([code])=>testamentByBook[code]===scope);return '<section class="book-picker-section" data-book-picker-panel="'+scope+'" '+(scope===initial?'':'hidden')+' aria-label="'+label+'">'+(choices.length?pickerOptions(choices,active,attribute):'<p class="muted">이 자료에는 '+label+' 성경책이 없어요.</p>')+'</section>';}).join('')+'</div></div>';
 }
+document.addEventListener('click',event=>{const button=event.target.closest('[data-book-picker-tab]');if(!button)return;const shell=button.closest('.book-picker-shell');shell.querySelectorAll('[data-book-picker-tab]').forEach(tab=>tab.setAttribute('aria-pressed',tab===button));shell.querySelectorAll('[data-book-picker-panel]').forEach(panel=>panel.hidden=panel.dataset.bookPickerPanel!==button.dataset.bookPickerTab);});
 function showBookPicker() {
   const {book,source} = bookPickerContext();
   if (!source) return;
@@ -5269,7 +5266,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v321',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v323',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
