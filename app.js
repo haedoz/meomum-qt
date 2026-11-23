@@ -237,7 +237,7 @@ const localLanguages = {};
 let importMessage = '', importingEditions = false, deletingEdition = false, chapterCheckBusy = false, pickingBibleFiles = false;
 const colors = {gold:'노랑',sage:'연두',rose:'분홍'};
 const markerColors = {gold:'#e6bc43',sage:'#7cb668',rose:'#dc7d9c',blue:'#6d9ddf'};
-let lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
+let lastMarkerHistory, lastMarkerEdit, markerHold, markerPointer, ignoreMarkerClick = 0;
 const settings = {
   fontSize:{label:'한글 본문 크기',min:12,max:48,step:1,unit:'px',initial:15},
   fontSizeEn:{label:'영어 성경 크기',min:12,max:48,step:1,unit:'px',initial:15},
@@ -262,7 +262,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},torahNotes:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'gray',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingExtras:{},highlightPalette:null,readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},torahNotes:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'gray',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingExtras:{},highlightPalette:null,highlightHistory:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let activeJournalId='';
 let todayThoughtsOpen=false;
@@ -775,7 +775,7 @@ function journalScreen() {
   const locked=entry.done&&!editingCompletedJournals.has(journalEditKey(day));
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
-  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('book')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day})+'</div></section>';
+  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('note')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day})+'</div></section>';
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor" data-journal-day="'+day+'" data-journal-id="'+(activeJournalId||'')+'">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
@@ -2163,7 +2163,7 @@ function calendarDaySummary(day,items,records) {
       content+
       '<div class="row calendar-mark-footer">'+
       '<span class="note-link">본문에서 읽기 '+icon('arrow')+'</span>'+
-      (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(key)+'</div>')+
+      (isNote?calendarItemActions('data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"'):'<div class="item-actions card-actions">'+highlightDeleteButton(historyActionKey({key,mark}))+'</div>')+
       '</div></article>';
   }).join('');
   const journals=journalsOn(day).filter(([,entry])=>hasJournalContent(entry));
@@ -2197,6 +2197,10 @@ function markKinds(mark) {
   return kinds;
 }
 function compareRecordTime(a,b){return (a.day||'').localeCompare(b.day||'') || (a.recordAt||'').localeCompare(b.recordAt||'');}
+function markerHistoryId(day,ref){return (day||'undated')+'|'+verseAddress(ref);}
+function migrateMarkerHistory(marks){const result={};for(const [ref,mark] of Object.entries(marks||{})){if(!validRef(ref)||!verseMark(mark))continue;const id=markerHistoryId(mark.markDay,ref);result[id]={ref,day:mark.markDay||'',appearance:verseMark(mark),group:mark.group||id,at:mark.markAt||''};}return result;}
+function validMarkerHistory(item){return isObject(item)&&validRef(item.ref)&&(item.day===''||validDay(item.day))&&isObject(item.appearance)&&validColor(item.appearance.color)&&(item.appearance.style==='fill'||Object.hasOwn(markStyles,item.appearance.style))&&typeof item.group==='string'&&typeof item.at==='string';}
+function historyActionKey(row){return row.mark.historyKeys?.length?'history:'+encodeURIComponent(row.mark.historyKeys[0]):row.key;}
 function recordRows() {
   const groups = new Map(), rows = new Map();
   const add = (key,verses,day,mark,noteKey,journalDay,recordAt) => {
@@ -2209,16 +2213,15 @@ function recordRows() {
   };
   for (const [key,mark] of Object.entries(state.marks)) {
     if (mark.note) add(key,noteVerseNumbers(key,mark),mark.noteDay,{note:mark.note},key,undefined,mark.noteAt);
-    if (!verseMark(mark)) continue;
-    const id = [key.slice(0,key.lastIndexOf('/')),mark.group ?? key].join('/');
-    if (!groups.has(id)) groups.set(id,[]);
-    groups.get(id).push(key);
   }
-  for (const keys of groups.values()) {
-    keys.sort((a,b)=>verseNumber(a)-verseNumber(b));
-    const key = keys[0];
-    const {color,highlight,underline,markDay,markAt} = state.marks[key];
-    add(key,keys.map(verseNumber),markDay,{color,highlight,underline},undefined,undefined,markAt);
+  for(const [id,item] of Object.entries(state.highlightHistory||migrateMarkerHistory(state.marks))){
+    if(!validMarkerHistory(item))continue;
+    const group=[item.day,item.group,item.ref.slice(0,item.ref.lastIndexOf('/')),item.appearance.style,item.appearance.color].join('|');
+    if(!groups.has(group))groups.set(group,[]);groups.get(group).push([id,item]);
+  }
+  for(const entries of groups.values()){
+    entries.sort((a,b)=>verseNumber(a[1].ref)-verseNumber(b[1].ref));const item=entries[0][1],appearance=item.appearance;
+    add(item.ref,entries.map(([,entry])=>verseNumber(entry.ref)),item.day,appearance.style==='fill'?{highlight:appearance.color,historyKeys:entries.map(([id])=>id)}:{underline:appearance,historyKeys:entries.map(([id])=>id)},undefined,undefined,item.at);
   }
   for (const [day, entry, noteId] of allJournalEntries()) {
     if (!hasJournalContent(entry)) continue;
@@ -2261,11 +2264,11 @@ function highlightDeleteButton(key) {
   return '<button type="button" class="text-action record-color-edit" data-edit-record-color="'+key+'">'+icon('marker')+' 색상 변경</button><button type="button" class="text-action destructive" data-delete-highlight="'+key+'">'+icon('trash')+' 삭제</button>';
 }
 function highlightRecord(key) {
-  return recordRows().find(row=>row.key===key && verseMark(row.mark));
+  return recordRows().find(row=>verseMark(row.mark)&&(key.startsWith('history:')?row.mark.historyKeys?.includes(decodeURIComponent(key.slice(8))):row.key===key));
 }
 function showRecordHighlightColor(key){
   const record=highlightRecord(key);if(!record)return;
-  const current=verseMark(state.marks[key])?.color;if(!validColor(current))return;
+  const current=verseMark(record.mark)?.color;if(!validColor(current))return;
   const colors=state.highlightPalette??[...new Set([...(state.quickMarkers||[]),...Object.values(markerColors)].filter(validColor))];
   dialog('형광펜 색상 변경','<p class="record-color-reference">'+esc(selectionReference(record.key,record.verses))+' · '+record.verses.length+'구절</p><div class="record-color-swatches" role="group" aria-label="형광펜 색상">'+colors.map((color,index)=>'<button type="button" data-record-color-swatch="'+color+'" style="--swatch:'+color+'" aria-label="색상 '+(index+1)+'" aria-pressed="'+(color.toLowerCase()===current.toLowerCase())+'">'+icon('check')+'</button>').join('')+'</div><button type="button" class="palette-edit-link" data-edit-highlight-palette="'+key+'">'+icon('edit')+' 색상 편집</button><label class="record-custom-color"><span>직접 색상 선택</span><input type="color" id="record-highlight-color" value="'+current+'"></label><div class="record-color-preview" data-record-color-key="'+key+'" aria-label="색상 미리보기"></div><p class="muted record-color-hint">선택한 묶음의 색상만 바뀌며 표시 방식과 기록 날짜는 유지돼요.</p><footer class="record-color-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-save-record-color="'+key+'">색상 적용</button></footer>','record-highlight-color');
   previewRecordHighlightColor();
@@ -2286,13 +2289,14 @@ function previewRecordHighlightColor(){
   const field=modal.querySelector('#record-highlight-color'),preview=modal.querySelector('[data-record-color-key]');
   if(!field||!preview||!validColor(field.value))return;
   const record=highlightRecord(preview.dataset.recordColorKey);if(!record)return;
-  const appearance=verseMark(state.marks[record.key]);
+  const appearance=verseMark(record.mark);
   const mark=appearance.style==='fill'?{highlight:field.value}:{underline:{...appearance,color:field.value}};
   preview.innerHTML=recordPassage(record.key,record.verses).map(([verse,body])=>'<p><span>'+verse+'</span><span>'+markedText(body,mark)+'</span></p>').join('')||'<p>'+markedText('선택한 색상이 여기에 미리 보여요.',mark)+'</p>';
   modal.querySelectorAll('[data-record-color-swatch]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.recordColorSwatch.toLowerCase()===field.value.toLowerCase())));
 }
 async function recolorRecordHighlight(key,color){
   const record=highlightRecord(key);if(!record||!validColor(color))return;
+  if(record.mark.historyKeys?.length)return editHistoricalHighlight(record,color);
   const prefix=record.key.slice(0,record.key.lastIndexOf('/'));
   const addresses=new Set(record.verses.map(verse=>verseAddress(prefix+'/'+verse)));
   const previous=Object.entries(state.marks).filter(([ref,mark])=>addresses.has(verseAddress(ref))&&verseMark(mark)).map(([ref,mark])=>[ref,structuredClone(mark)]);
@@ -2307,10 +2311,20 @@ async function recolorRecordHighlight(key,color){
   lastMarkerEdit=previous;
   modal.close();render();notify('형광펜 색상을 변경했어요.','되돌리기','undo-marker');
 }
+async function editHistoricalHighlight(record,color){
+ const previousMarks=structuredClone(state.marks),previousHistory=structuredClone(state.highlightHistory||{});
+ const ids=record.mark.historyKeys||[];
+ for(const id of ids){const entry=state.highlightHistory[id];if(!entry)continue;if(color)entry.appearance={...entry.appearance,color};else delete state.highlightHistory[id];
+  for(const [ref,mark] of Object.entries(state.marks)){if(verseAddress(ref)!==verseAddress(entry.ref)||(mark.markDay||'')!==entry.day)continue;if(!color)setVerseMark(ref,undefined);else if(mark.underline)mark.underline={...mark.underline,color};else if(verseMark(mark)){mark.highlight=color;delete mark.color;}}
+ }
+ if(!await save()){state.marks=previousMarks;state.highlightHistory=previousHistory;return;}
+ lastMarkerEdit=Object.entries(previousMarks);lastMarkerHistory=previousHistory;
+ modal.close();render();notify(color?'이 날짜의 형광펜 색상을 변경했어요.':'이 날짜의 형광펜 기록을 삭제했어요.');
+}
 function confirmHighlightRemoval(key) {
   const record = highlightRecord(key);
   if (!record) return;
-  dialog('말씀 표시 삭제','<p>'+esc(selectionReference(key,record.verses))+'의 형광펜 또는 밑줄을 지울까요?</p>'+
+  dialog('말씀 표시 삭제','<p>'+esc(selectionReference(record.key,record.verses))+'의 형광펜 또는 밑줄을 지울까요?</p>'+
     '<div class="row"><button class="btn" value="cancel">취소</button><button type="button" class="btn danger" data-remove-highlight="'+key+'">삭제 확인</button></div>');
 }
 function recordPassage(key,verses) {
@@ -2388,7 +2402,7 @@ function renderRecordCard(item) {
     (mark.torah?'<button type="button" class="btn" data-edit-torah-note="'+day+'">'+icon('edit')+' 수정</button>':journalDay ? '<button type="button" class="btn" data-edit-journal="'+journalDay.split('/')[0]+'" data-journal-note="'+(journalDay.split('/')[1]||'')+'">'+icon('edit')+' 수정</button>' : '')+
     (mark.torah?'<button type="button" class="text-action destructive" data-delete-torah="'+day+'">'+icon('trash')+' 삭제</button>':mark.journal&&journalDay?'<button type="button" class="text-action destructive" data-delete-journal="'+journalDay.split('/')[0]+'" data-journal-note="'+(journalDay.split('/')[1]||'')+'">'+icon('trash')+' 삭제</button>':'')+
     (noteKey ? '<button type="button" class="btn" data-edit-verse-note="'+noteKey+'">'+icon('edit')+' 수정</button><button type="button" class="text-action destructive" data-delete-note="'+noteKey+'">'+icon('trash')+' 삭제</button>' : '')+
-    (!mark.journal && verseMark(mark) ? highlightDeleteButton(key) : '')+
+    (!mark.journal && verseMark(mark) ? highlightDeleteButton(historyActionKey(item)) : '')+
     '</div></div></article>';
 }
 function recordList(rows = recordRows()) {
@@ -3222,6 +3236,7 @@ function validatedBackup(payload) {
         new Set(input.verseBundles.map(bundle=>bundle.id)).size!==input.verseBundles.length) throw Error('verse bundles');
     result.verseBundles = input.verseBundles;
   }
+  if(input.highlightHistory!==undefined){if(!isObject(input.highlightHistory)||!Object.values(input.highlightHistory).every(validMarkerHistory))throw Error('highlight history');result.highlightHistory=structuredClone(input.highlightHistory);}else result.highlightHistory=migrateMarkerHistory(result.marks);
   if(input.highlightPalette!=null){if(!Array.isArray(input.highlightPalette)||input.highlightPalette.length>12||!input.highlightPalette.every(validColor))throw Error('highlight palette');result.highlightPalette=[...new Set(input.highlightPalette)];}
   if(input.readingExtras!==undefined){if(!isObject(input.readingExtras))throw Error('reading extras');for(const [day,chapters] of Object.entries(input.readingExtras)){if(!validDay(day)||!Array.isArray(chapters)||!chapters.every(validChapter))throw Error('reading extras entry');result.readingExtras[day]=[...new Set(chapters)];}}
   if (input.chapterLog!==undefined) {
@@ -3420,7 +3435,7 @@ const actions = {
     const markers = indexVerseMarkers();
     const allHaveColor = keys.length && keys.every(key => {
       const m = verseMark(markers.get(verseAddress(key))?.mark);
-      return m && m.color?.toLowerCase() === color.toLowerCase();
+      return m && markers.get(verseAddress(key))?.mark.markDay===dateKey() && m.color?.toLowerCase() === color.toLowerCase();
     });
     if (allHaveColor) {
       applyVerseMarks(keys, undefined, '형광펜을 지웠어요.');
@@ -3446,6 +3461,7 @@ const actions = {
       if (previous) state.marks[key] = previous;
       else delete state.marks[key];
     }
+    if(lastMarkerHistory){state.highlightHistory=lastMarkerHistory;lastMarkerHistory=undefined;}
     lastMarkerEdit = undefined;
     modal.close();
     save();
@@ -3856,6 +3872,7 @@ document.addEventListener('click',async event => {
   if (target.removeHighlight) {
     const record = highlightRecord(target.removeHighlight);
     if (!record) return modal.close();
+    if(record.mark.historyKeys?.length)return editHistoricalHighlight(record);
     const passage = record.key.slice(0,record.key.lastIndexOf('/'));
     return applyVerseMarks(record.verses.map(verse=>passage+'/'+verse),undefined,'말씀 표시를 지웠어요.',true);
   }
@@ -4303,6 +4320,7 @@ function displayValue(key,value) {
 function migrate(input) {
   const result = {...blank(),...input};
   result.torahNotes=isObject(input.torahNotes)?input.torahNotes:{};
+  result.highlightHistory=isObject(input.highlightHistory)?Object.fromEntries(Object.entries(input.highlightHistory).filter(([,entry])=>validMarkerHistory(entry))):migrateMarkerHistory(input.marks);
   result.highlightPalette=Array.isArray(input.highlightPalette)?[...new Set(input.highlightPalette.filter(validColor))].slice(0,12):null;
   result.readingExtras=isObject(input.readingExtras)?Object.fromEntries(Object.entries(input.readingExtras).filter(([day,chapters])=>validDay(day)&&Array.isArray(chapters)&&chapters.every(validChapter))):{};
   result.commentaryEdition = localEditionId(input.commentaryEdition)?input.commentaryEdition:'';
@@ -4685,24 +4703,26 @@ async function applyVerseMarks(keys,appearance,message,confirmed=false) {
     for (const existing of markers.get(address)?.keys ?? []) affected.add(existing);
   }
   lastMarkerEdit = [...affected].map(key=>[key,state.marks[key]?{...state.marks[key]}:undefined]);
+  lastMarkerHistory=structuredClone(state.highlightHistory||migrateMarkerHistory(state.marks));state.highlightHistory??=structuredClone(lastMarkerHistory);
   const group = newId(), markDay = dateKey();
   for (const [address,key] of selection) {
     const existing = markers.get(address);
     for (const duplicate of existing?.keys ?? []) setVerseMark(duplicate,undefined);
     if (appearance) {
       setVerseMark(key,appearance);
-      Object.assign(state.marks[key],{group,markDay,markAt:new Date().toISOString()});
-    }
+      const at=new Date().toISOString();Object.assign(state.marks[key],{group,markDay,markAt:at});
+      state.highlightHistory[markerHistoryId(markDay,key)]={ref:key,day:markDay,appearance:{...appearance},group,at};
+    }else delete state.highlightHistory[markerHistoryId(markDay,key)];
   }
   chosen.clear();
   modal.close();
-  save().then(saved=>{ if (saved) notify(message,'되돌리기','undo-marker'); });
+  save().then(saved=>{if(saved)notify(message,'되돌리기','undo-marker');else{for(const [key,old] of lastMarkerEdit||[]){if(old)state.marks[key]=old;else delete state.marks[key];}state.highlightHistory=lastMarkerHistory;render();}});
   render();
 }
 function quickMarker() {
   const keys = [...chosen];
   const markers = indexVerseMarkers();
-  if (keys.every(key=>markers.has(verseAddress(key)))) applyVerseMarks(keys,undefined,'말씀 표시를 지웠어요.');
+  if (keys.every(key=>markers.get(verseAddress(key))?.mark.markDay===dateKey())) applyVerseMarks(keys,undefined,'말씀 표시를 지웠어요.');
   else applyVerseMarks(keys,{style:state.markerStyle,color:state.markerColor},'말씀 표시를 적용했어요.');
 }
 function setComparison(ids) {
@@ -5266,7 +5286,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v324',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v326',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
