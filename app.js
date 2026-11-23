@@ -262,7 +262,7 @@ const parts = {morning:'아침 묵상',daytime:'하루 중 떠오른 생각',eve
 const data = {};
 const chosen = new Set();
 let pickingIndividualVerses = false;
-const blank = () => ({journal:{},torahNotes:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'gray',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingExtras:{},readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
+const blank = () => ({journal:{},torahNotes:{},dailyNotes:{},dailyVerses:{},marks:{},reader:{edition:'',book:'JHN',chapter:1},backup:'',display:{},theme:'system',palette:'gray',fontChoice:'pretendard',quickMarkers:['#e6bc43','#7cb668','#dc7d9c'],menuOrder:[...menuItems.keys()],alignVerseAtTop:true,markerColor:markerColors.gold,markerStyle:'fill',comparison:[],chapterLog:{},readingExtras:{},highlightPalette:null,readingGoal:3,readingRange:null,readingHistory:[],editionLabels:{},prayers:[],newYear:[],verseBundles:[]});
 let state = blank(), db, writeError = false;
 let activeJournalId='';
 let todayThoughtsOpen=false;
@@ -2249,10 +2249,22 @@ function highlightRecord(key) {
 function showRecordHighlightColor(key){
   const record=highlightRecord(key);if(!record)return;
   const current=verseMark(state.marks[key])?.color;if(!validColor(current))return;
-  const colors=[...new Set([...(state.quickMarkers||[]),...Object.values(markerColors),current].filter(validColor))];
-  dialog('형광펜 색상 변경','<p class="record-color-reference">'+esc(selectionReference(record.key,record.verses))+' · '+record.verses.length+'구절</p><div class="record-color-swatches" role="group" aria-label="형광펜 색상">'+colors.map((color,index)=>'<button type="button" data-record-color-swatch="'+color+'" style="--swatch:'+color+'" aria-label="색상 '+(index+1)+'" aria-pressed="'+(color.toLowerCase()===current.toLowerCase())+'">'+icon('check')+'</button>').join('')+'</div><label class="record-custom-color"><span>직접 색상 선택</span><input type="color" id="record-highlight-color" value="'+current+'"></label><div class="record-color-preview" data-record-color-key="'+key+'" aria-label="색상 미리보기"></div><p class="muted record-color-hint">선택한 묶음의 색상만 바뀌며 표시 방식과 기록 날짜는 유지돼요.</p><footer class="record-color-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-save-record-color="'+key+'">색상 적용</button></footer>','record-highlight-color');
+  const colors=state.highlightPalette??[...new Set([...(state.quickMarkers||[]),...Object.values(markerColors)].filter(validColor))];
+  dialog('형광펜 색상 변경','<p class="record-color-reference">'+esc(selectionReference(record.key,record.verses))+' · '+record.verses.length+'구절</p><div class="record-color-swatches" role="group" aria-label="형광펜 색상">'+colors.map((color,index)=>'<button type="button" data-record-color-swatch="'+color+'" style="--swatch:'+color+'" aria-label="색상 '+(index+1)+'" aria-pressed="'+(color.toLowerCase()===current.toLowerCase())+'">'+icon('check')+'</button>').join('')+'</div><button type="button" class="palette-edit-link" data-edit-highlight-palette="'+key+'">'+icon('edit')+' 색상 편집</button><label class="record-custom-color"><span>직접 색상 선택</span><input type="color" id="record-highlight-color" value="'+current+'"></label><div class="record-color-preview" data-record-color-key="'+key+'" aria-label="색상 미리보기"></div><p class="muted record-color-hint">선택한 묶음의 색상만 바뀌며 표시 방식과 기록 날짜는 유지돼요.</p><footer class="record-color-actions"><button type="button" class="btn" data-action="close-dialog">취소</button><button type="button" class="btn primary" data-save-record-color="'+key+'">색상 적용</button></footer>','record-highlight-color');
   previewRecordHighlightColor();
 }
+let paletteReturnKey='',paletteDraft=[];
+function renderHighlightPalette(){
+  dialog('자주 쓰는 형광펜 색상','<p class="muted">색상칸을 눌러 바꾸고 저장하세요. 기존 구절의 색상은 바뀌지 않아요.</p><div class="palette-edit-grid">'+paletteDraft.map((color,index)=>'<div class="palette-edit-cell"><label><input type="color" data-palette-slot="'+index+'" value="'+color+'" aria-label="'+(index+1)+'번 색상 수정"><span>'+(index+1)+'</span></label><button type="button" data-palette-remove="'+index+'" aria-label="색상 삭제">'+icon('close')+'</button></div>').join('')+'</div><div class="palette-editor-footer"><button type="button" class="btn" data-palette-add '+(paletteDraft.length>=12?'disabled':'')+'>색상 추가</button><button type="button" class="btn primary" data-palette-save>팔레트 저장</button></div>','highlight-palette-editor');
+}
+document.addEventListener('change',event=>{if(event.target.dataset.paletteSlot!==undefined&&validColor(event.target.value))paletteDraft[Number(event.target.dataset.paletteSlot)]=event.target.value;});
+document.addEventListener('click',async event=>{
+  const button=event.target.closest('button');if(!button)return;
+  if(button.dataset.editHighlightPalette){paletteReturnKey=button.dataset.editHighlightPalette;paletteDraft=[...(state.highlightPalette??[...new Set([...(state.quickMarkers||[]),...Object.values(markerColors)].filter(validColor))])];renderHighlightPalette();}
+  if(button.hasAttribute('data-palette-add')){if(paletteDraft.length<12)paletteDraft.push('#c9d9e9');renderHighlightPalette();}
+  if(button.dataset.paletteRemove!==undefined){if(!await requestRemoval('팔레트 색상 삭제','이 색상을 자주 쓰는 색상에서 뺄까요? 기존 형광펜 기록은 유지돼요.'))return;paletteDraft.splice(Number(button.dataset.paletteRemove),1);renderHighlightPalette();}
+  if(button.hasAttribute('data-palette-save')){const old=state.highlightPalette;state.highlightPalette=[...new Set(paletteDraft.filter(validColor))];button.disabled=true;if(!await save()){state.highlightPalette=old;button.disabled=false;return;}showRecordHighlightColor(paletteReturnKey);notify('형광펜 팔레트를 저장했어요.');}
+});
 function previewRecordHighlightColor(){
   const field=modal.querySelector('#record-highlight-color'),preview=modal.querySelector('[data-record-color-key]');
   if(!field||!preview||!validColor(field.value))return;
@@ -3192,6 +3204,7 @@ function validatedBackup(payload) {
         new Set(input.verseBundles.map(bundle=>bundle.id)).size!==input.verseBundles.length) throw Error('verse bundles');
     result.verseBundles = input.verseBundles;
   }
+  if(input.highlightPalette!=null){if(!Array.isArray(input.highlightPalette)||input.highlightPalette.length>12||!input.highlightPalette.every(validColor))throw Error('highlight palette');result.highlightPalette=[...new Set(input.highlightPalette)];}
   if(input.readingExtras!==undefined){if(!isObject(input.readingExtras))throw Error('reading extras');for(const [day,chapters] of Object.entries(input.readingExtras)){if(!validDay(day)||!Array.isArray(chapters)||!chapters.every(validChapter))throw Error('reading extras entry');result.readingExtras[day]=[...new Set(chapters)];}}
   if (input.chapterLog!==undefined) {
     if (!isObject(input.chapterLog)) throw Error('chapter log');
@@ -4275,6 +4288,7 @@ function displayValue(key,value) {
 function migrate(input) {
   const result = {...blank(),...input};
   result.torahNotes=isObject(input.torahNotes)?input.torahNotes:{};
+  result.highlightPalette=Array.isArray(input.highlightPalette)?[...new Set(input.highlightPalette.filter(validColor))].slice(0,12):null;
   result.readingExtras=isObject(input.readingExtras)?Object.fromEntries(Object.entries(input.readingExtras).filter(([day,chapters])=>validDay(day)&&Array.isArray(chapters)&&chapters.every(validChapter))):{};
   result.commentaryEdition = localEditionId(input.commentaryEdition)?input.commentaryEdition:'';
   result.alignVerseAtTop = input.alignVerseAtTop!==false;
@@ -5235,7 +5249,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v312',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v313',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
