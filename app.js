@@ -1121,14 +1121,15 @@ function todayPlanCard(day){
   const range=state.readingRange;
   return '<section class="card today-plan-card" aria-label="통독 계획"><header class="row"><div><p class="eyebrow daily-reading-label">'+icon('book')+'<span>매일 말씀 읽기</span></p></div><span class="pill">'+plannedDone.length+' / '+target+'장</span></header><progress class="today-plan-progress" max="'+target+'" value="'+Math.min(plannedDone.length,target)+'" aria-label="오늘의 통독 진행"></progress><p class="muted">'+(range?esc(chapterLabel(range.start)+'부터 '+chapterLabel(range.end)+'까지'):'성경 전체 순서')+' · 하루 '+state.readingGoal+'장</p>'+''+todayPlanBrowser(day,next)+(extra.length?'<p class="today-extra-reading">계획 외 읽기 '+extra.length+'장 완료</p>':'')+(todayPlanMode==='due'?'<div class="today-plan-grid">'+next.map(key=>row(key,false)).join('')+done.map(key=>row(key,true)).join('')+'<button type="button" class="today-add-reading-tile" data-extra-reading-open><span>+</span><strong>오늘 분량 추가</strong></button></div>':'')+(!next.length?'<p class="today-plan-finished">'+(done.length>=state.readingGoal?'오늘의 통독 목표를 마쳤어요.':'계획한 범위를 모두 읽었어요.')+'</p>':'')+'</section>';
 }
-let extraReadingDay='',extraReadingBook='GEN',extraReadingSelection=new Set();
+let extraReadingDay='',extraReadingBook='GEN',extraReadingScope='old',extraReadingSelection=new Set();
 function showExtraReading(day=dateKey(),book){
-  if(!book){extraReadingDay=day;extraReadingBook=state.reader.book||'GEN';extraReadingSelection=new Set(state.readingExtras?.[day]||[]);}else extraReadingBook=book;
-  dialog('오늘 읽을 말씀 추가','<p class="muted">기존 통독 계획은 유지하고 오늘 읽을 장만 추가해요.</p><div class="extra-reading-books">'+books.map(([id,title])=>'<button type="button" data-extra-book="'+id+'" aria-pressed="'+(id===extraReadingBook)+'">'+title+'</button>').join('')+'</div><h3>'+esc(titles[extraReadingBook])+'</h3><div class="extra-reading-chapters">'+chapterNumbers(extraReadingBook).map(chapter=>{const key=extraReadingBook+'/'+chapter;return '<button type="button" data-extra-chapter="'+key+'" aria-pressed="'+extraReadingSelection.has(key)+'">'+chapter+'장</button>';}).join('')+'</div><footer class="row"><span class="muted">여러 장을 선택할 수 있어요</span><button type="button" class="btn primary" data-extra-save>적용</button></footer>','extra-reading');
+  if(!book){extraReadingDay=day;extraReadingBook=state.reader.book||'GEN';extraReadingSelection=new Set(state.readingExtras?.[day]||[]);extraReadingScope=testamentByBook[extraReadingBook]||'old';}else extraReadingBook=book;
+  dialog('오늘 읽을 말씀 추가','<p class="muted">기존 통독 계획은 유지하고 오늘 읽을 장만 추가해요.</p><div class="extra-reading-scopes" role="group" aria-label="구약 신약 선택">'+[['old','구약'],['new','신약']].map(([id,label])=>'<button type="button" data-extra-scope="'+id+'" aria-pressed="'+(extraReadingScope===id)+'">'+label+'</button>').join('')+'</div><div class="extra-reading-books">'+books.filter(([id])=>testamentByBook[id]===extraReadingScope).map(([id,title])=>'<button type="button" data-extra-book="'+id+'" aria-pressed="'+(id===extraReadingBook)+'">'+title+'</button>').join('')+'</div><h3>'+esc(titles[extraReadingBook])+'</h3><div class="extra-reading-chapters">'+chapterNumbers(extraReadingBook).map(chapter=>{const key=extraReadingBook+'/'+chapter;return '<button type="button" data-extra-chapter="'+key+'" aria-pressed="'+extraReadingSelection.has(key)+'">'+chapter+'장</button>';}).join('')+'</div><footer class="row"><span class="muted">여러 장을 선택할 수 있어요</span><button type="button" class="btn primary" data-extra-save>적용</button></footer>','extra-reading');
 }
 document.addEventListener('click',async event=>{
   const button=event.target.closest('button');if(!button)return;
   if(button.hasAttribute('data-extra-reading-open'))showExtraReading();
+  if(button.dataset.extraScope){extraReadingScope=button.dataset.extraScope;const book=books.find(([id])=>testamentByBook[id]===extraReadingScope)?.[0];if(book)showExtraReading(extraReadingDay,book);}
   if(button.dataset.extraBook)showExtraReading(extraReadingDay,button.dataset.extraBook);
   if(button.dataset.extraChapter){const key=button.dataset.extraChapter;extraReadingSelection.has(key)?extraReadingSelection.delete(key):extraReadingSelection.add(key);button.setAttribute('aria-pressed',extraReadingSelection.has(key));}
   if(button.hasAttribute('data-extra-save')){const previous=state.readingExtras?.[extraReadingDay];state.readingExtras??={};state.readingExtras[extraReadingDay]=[...extraReadingSelection];button.disabled=true;if(!await save()){if(previous)state.readingExtras[extraReadingDay]=previous;else delete state.readingExtras[extraReadingDay];button.disabled=false;return;}modal.close();render();notify('오늘 읽을 분량을 반영했어요.');}
@@ -5234,7 +5235,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v311',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v312',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
