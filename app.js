@@ -1090,7 +1090,7 @@ function todaySummary(day,journal) {
     ['prayer','기도 노트','data-action="add-prayer"'],
     ['thoughtBulb','생각 노트','data-action="add-thought"'],
   ];
-  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+' 캘린더 '+icon('right')+'</button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span></button>').join('')+'</div></section>';
+  return '<section class="today-summary today-compose" aria-labelledby="today-summary-heading"><div class="row today-summary-heading"><h2 id="today-summary-heading"><span>동행하는 발걸음</span></h2><button type="button" class="text-action today-calendar-link" data-action="open-today-calendar">'+icon('calendar')+'<span>캘린더</span></button></div><div class="today-summary-grid">'+entries.map(([symbol,label,action])=>'<button type="button" class="today-summary-item" '+action+' aria-label="'+label+' 작성"><span>'+icon(symbol)+label+'</span></button>').join('')+'</div></section>';
 }
 function todayThoughts(day){
   const items=state.prayers.filter(item=>item.kind==='thought'&&item.day===day);
@@ -5249,7 +5249,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v314',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v315',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
