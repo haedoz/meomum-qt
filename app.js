@@ -1142,6 +1142,14 @@ function todayReadingScreen() {
     (next.length?next.map(key=>row(key,false)).join(''):'<p class="today-reading-finished">'+(done.length>=state.readingGoal?'오늘 목표를 마쳤어요.':'설정한 범위의 읽을 분량을 모두 마쳤어요.')+'</p>')+'</section>'+
     (done.length?'<section class="card today-reading-list"><h2>오늘 묵상한 말씀</h2>'+done.map(key=>row(key,true)).join('')+'</section>':'');
 }
+function todayRecords(day){
+ const groups=new Map();const add=(type,symbol,title,body,attributes)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes});};
+ for(const row of recordRows().filter(row=>row.day===day)){const {key,mark,journalDay,noteKey}=row;if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"');else if(mark.journal){const [date,id]=journalDay.split('/');add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"');}else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"');else if(verseMark(mark))add('형광펜·밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"');}
+ for(const item of state.prayers.filter(item=>item.day===day))add(item.kind==='thought'?'생각 노트':'기도 노트',item.kind==='thought'?'thoughtBulb':'prayer',item.kind==='thought'?'남긴 생각':item.title,item.body,'data-prayer="'+item.id+'"');
+ if(state.dailyNotes[day]?.body)add('묵상 노트','comment','말씀 묵상',state.dailyNotes[day].body,'data-edit-daily-note="'+day+'"');
+ const total=[...groups.values()].reduce((sum,group)=>sum+group.items.length,0);
+ return '<section class="today-records"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-grid">'+[...groups].map(([type,{symbol,items}])=>'<section class="today-record-group"><header>'+icon(symbol)+'<h3>'+type+'</h3><small>'+items.length+'</small></header>'+items.map(item=>'<button type="button" '+item.attributes+'><strong>'+esc(item.title)+'</strong>'+(item.body?'<p>'+esc(item.body)+'</p>':'')+'</button>').join('')+'</section>').join('')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
+}
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
   const saved = state.dailyVerses[today];
@@ -1159,7 +1167,7 @@ function todayScreen() {
       '</blockquote><p class="ref"><strong>'+esc(reference(key))+'</strong><span>'+esc(label)+'</span></p></div></div>':
       '<p class="today-verse-empty">'+(reader.edition?'이 번역본에는 오늘의 말씀 후보에 해당하는 구절이 없어요.':'사용할 성경 번역본 파일을 추가해 주세요.')+'</p>')+
     '</section>'+
-    torahCalendarCard(today,'오늘의 토라포션')+todaySummary(today,state.journal[today])+todayPlanCard(today);
+    torahCalendarCard(today,'오늘의 토라포션')+todaySummary(today,state.journal[today])+todayPlanCard(today)+todayRecords(today);
 }
 function options(items,active) {
   return items.map(([value,label]) => '<option value="'+esc(value)+'" '+(String(value)===String(active)?'selected':'')+'>'+esc(label)+'</option>').join('');
@@ -2630,8 +2638,13 @@ function menuOrderItem(route) {
   const symbol = item.querySelector('[data-icon]')?.dataset.icon;
   return '<span class="menu-order-icon">'+(symbol?icon(symbol):'')+'</span><span>'+esc(item.textContent.trim())+'</span>';
 }
+let menuDrag=null;
+document.addEventListener('pointerdown',event=>{const handle=event.target.closest('[data-menu-drag]');if(!handle)return;event.preventDefault();const row=handle.closest('[data-menu-drag-row]');menuDrag={handle,row,list:row.parentElement,id:event.pointerId,previous:[...state.menuOrder]};handle.setPointerCapture(event.pointerId);row.classList.add('is-dragging');});
+document.addEventListener('pointermove',event=>{if(!menuDrag||event.pointerId!==menuDrag.id)return;event.preventDefault();const {row,list}=menuDrag;const other=[...list.children].find(item=>item!==row&&event.clientY>=item.getBoundingClientRect().top&&event.clientY<=item.getBoundingClientRect().bottom);if(other){const rect=other.getBoundingClientRect();list.insertBefore(row,event.clientY<rect.top+rect.height/2?other:other.nextSibling);}if(event.clientY<90)window.scrollBy(0,-10);if(event.clientY>innerHeight-70)window.scrollBy(0,10);},{passive:false});
+async function finishMenuDrag(event){if(!menuDrag||event.pointerId!==menuDrag.id)return;const drag=menuDrag;menuDrag=null;drag.row.classList.remove('is-dragging');if(event.type==='pointercancel'){render();return;}state.menuOrder=[...drag.list.children].map(row=>row.dataset.menuDragRow);if(!await save())state.menuOrder=drag.previous;render();}
+document.addEventListener('pointerup',finishMenuDrag);document.addEventListener('pointercancel',finishMenuDrag);
 function menuOrderSettings() {
-  const order = state.menuOrder.map(route=>'<li>'+menuOrderItem(route)+'</li>').join('');
+  const order = state.menuOrder.map(route=>'<li data-menu-drag-row="'+route+'">'+menuOrderItem(route)+'<button type="button" class="menu-drag-handle" data-menu-drag="'+route+'" aria-label="드래그해서 메뉴 순서 변경"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6h10M5 10h10M5 14h10"/></svg></button></li>').join('');
   const first = esc(menuItems.get(state.menuOrder[0]).textContent.trim());
   return '<section class="card menu-order-card" aria-labelledby="menu-order-heading">'+
     '<div class="row menu-order-heading"><div><h2 id="menu-order-heading">메뉴 순서</h2><p class="muted">메뉴바 미리보기</p></div>'+
@@ -4766,8 +4779,24 @@ function validVerseBundle(bundle) {
 }
 function validPrayer(item) {
   return isObject(item) && validId(item.id) && typeof item.title==='string' &&
-    typeof item.body==='string' && typeof item.answer==='string' && typeof item.done==='boolean' && (item.day===undefined || validDay(item.day)) && (item.kind===undefined || item.kind==='thought');
+    typeof item.body==='string' && typeof item.answer==='string' && typeof item.done==='boolean' && (item.day===undefined || validDay(item.day)) && (item.kind===undefined || item.kind==='thought')&&(item.comments===undefined||(Array.isArray(item.comments)&&item.comments.every(validComment)));
 }
+function noteDiscussionPreview(item){const comments=[...(item.comments||[])].sort((a,b)=>b.created.localeCompare(a.created));return '<section class="note-discussion-preview"><button type="button" data-note-discussion="'+item.id+'">'+icon('comment')+'<span>덧붙인 생각</span><small>'+comments.length+'</small>'+icon('right')+'</button>'+(comments.length?'<p>'+esc(comments[0].body)+'</p>':'')+'</section>';}
+let noteThreadId='',noteThreadPage=0,noteCommentEdit='';
+function showNoteDiscussion(id,page=0,edit=''){
+ const item=state.prayers.find(item=>item.id===id);if(!item)return;noteThreadId=id;noteThreadPage=page;noteCommentEdit=edit;
+ const comments=[...(item.comments||[])].sort((a,b)=>b.created.localeCompare(a.created)),pages=Math.max(1,Math.ceil(comments.length/5));noteThreadPage=Math.max(0,Math.min(page,pages-1));const editing=comments.find(c=>c.id===edit);
+ dialog(item.kind==='thought'?'생각에 덧붙이기':'기도하며 남긴 생각','<div class="note-thread-compose">'+editorField('덧붙인 생각','body',editing?.body||'','textarea','rows="3" placeholder="이후에 떠오른 생각을 적어보세요."')+'<div><button type="button" class="btn primary" data-note-comment-save>'+(editing?'수정 저장':'등록')+'</button></div></div><div class="note-thread-list">'+comments.slice(noteThreadPage*5,noteThreadPage*5+5).map(comment=>'<article><header><time>'+esc(new Date(comment.created).toLocaleString('ko-KR'))+'</time><div class="item-actions"><button type="button" class="text-action" data-note-comment-edit="'+comment.id+'">'+icon('edit')+' 수정</button><button type="button" class="text-action destructive" data-note-comment-delete="'+comment.id+'">'+icon('trash')+' 삭제</button></div></header><p>'+esc(comment.body)+'</p></article>').join('')+'</div>'+(pages>1?'<nav class="note-thread-pages"><button type="button" class="btn" data-note-thread-page="'+(noteThreadPage-1)+'" '+(!noteThreadPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(noteThreadPage+1)+' / '+pages+'</span><button type="button" class="btn" data-note-thread-page="'+(noteThreadPage+1)+'" '+(noteThreadPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></nav>':''),'note-discussion');resizeWriting(modal.querySelector('textarea'));
+}
+document.addEventListener('click',async event=>{
+ const button=event.target.closest('button');if(!button)return;
+ if(button.dataset.noteDiscussion)showNoteDiscussion(button.dataset.noteDiscussion);
+ if(button.dataset.noteThreadPage!==undefined)showNoteDiscussion(noteThreadId,Number(button.dataset.noteThreadPage));
+ if(button.dataset.noteCommentEdit)showNoteDiscussion(noteThreadId,noteThreadPage,button.dataset.noteCommentEdit);
+ if(button.hasAttribute('data-note-comment-save')||button.dataset.noteCommentDelete){const item=state.prayers.find(item=>item.id===noteThreadId);if(!item)return;const previous=structuredClone(item.comments||[]);if(button.dataset.noteCommentDelete){if(!await requestRemoval('덧붙인 생각 삭제','이 글을 삭제할까요?'))return;item.comments=(item.comments||[]).filter(c=>c.id!==button.dataset.noteCommentDelete);}else{const body=modal.querySelector('textarea').value.trim();if(!body)return notify('내용을 입력해 주세요.');if(noteCommentEdit)item.comments=item.comments.map(c=>c.id===noteCommentEdit?{...c,body}:c);else(item.comments??=[]).push({id:newId(),body,created:new Date().toISOString()});}button.disabled=true;if(!await save()){item.comments=previous;button.disabled=false;return;}render();showNoteDiscussion(item.id,0);}
+ if(button.dataset.answerPrayer){const item=state.prayers.find(item=>item.id===button.dataset.answerPrayer);if(!item)return;dialog('응답 기록','<p class="note-answer-title">'+esc(item.title)+'</p>'+editorField('응답 내용','answer',item.answer||'','textarea','rows="4" placeholder="어떻게 응답받았는지 남겨보세요."')+'<footer class="row"><button type="button" class="btn primary" data-save-prayer-answer="'+item.id+'">응답받음으로 저장</button></footer>','prayer-answer');resizeWriting(modal.querySelector('textarea'));}
+ if(button.dataset.savePrayerAnswer){const item=state.prayers.find(item=>item.id===button.dataset.savePrayerAnswer);if(!item)return;const answer=modal.querySelector('textarea').value.trim();if(!answer)return notify('응답 내용을 입력해 주세요.');const previous={answer:item.answer,done:item.done};item.answer=answer;item.done=true;button.disabled=true;if(!await save()){Object.assign(item,previous);button.disabled=false;return;}prayerFilter='answered';modal.close();render();notify('응답받음으로 옮겼어요.');}
+});
 function validYear(item) {
   return isObject(item) && validId(item.id) && Number.isInteger(item.year) && item.year>=1900 && item.year<=9999 &&
     typeof item.title==='string' && typeof item.note==='string' && Array.isArray(item.refs) && item.refs.every(validRef) && (item.day===undefined || validDay(item.day));
@@ -4801,10 +4830,10 @@ function prayersScreen() {
 }
 function prayerCard(item) {
   if (item.kind==='thought') return thoughtCard(item);
-  return '<article class="card prayer-record tappable-card">'+cardHit(item.done?'응답 기록 보기':'기도 응답 기록하기','data-prayer="'+item.id+'"')+noteEntryHeader('prayer',item.title,item.day)+
+  return '<article class="card prayer-record">'+noteEntryHeader('prayer',item.title,item.day)+
     (item.body?'<section class="note-entry-copy"><span class="note-entry-caption">'+icon('note')+' 기도 내용</span><p class="record-text">'+esc(item.body)+'</p></section>':'')+
     (item.answer?'<div class="answer"><strong>응답 기록</strong><p class="record-text">'+esc(item.answer)+'</p></div>':'')+
-    calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</article>';
+    noteDiscussionPreview(item)+'<footer class="note-record-actions">'+(!item.done?'<button type="button" class="btn note-answer-trigger" data-answer-prayer="'+item.id+'">'+icon('check')+' 응답받았어요</button>':'')+calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</footer></article>';
 }
 function prayerScreen(id) {
   const item = state.prayers.find(prayer=>prayer.id===id);
@@ -4922,7 +4951,7 @@ function thoughtText(item) {
 function thoughtCopy(item){return '<div class="thought-copy"><p>'+esc(thoughtText(item))+'</p></div>';}
 function noteEntryHeader(symbol,title,day){return '<header class="note-entry-header"><h3>'+icon(symbol)+'<span>'+esc(title)+'</span></h3>'+(day?'<time datetime="'+day+'" title="'+esc(longDate(day))+'">'+shortDate(day)+'</time>':'')+'</header>';}
 function thoughtCard(item,inList=false){
-  return '<article class="card thought-card">'+noteEntryHeader('thoughtBulb','생각 노트',item.day)+'<section class="note-entry-copy">'+thoughtCopy(item)+'</section><footer class="thought-card-footer">'+calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</footer></article>';
+  return '<article class="card thought-card">'+noteEntryHeader('thoughtBulb','생각 노트',item.day)+'<section class="note-entry-copy">'+thoughtCopy(item)+'</section>'+noteDiscussionPreview(item)+'<footer class="thought-card-footer">'+calendarItemActions('data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"')+'</footer></article>';
 }
 function showThoughtEditor(item) {
   navigate('prayer-edit/'+(item?.id ?? 'thought'));
@@ -4941,7 +4970,7 @@ async function saveThought(form) {
   const existing = previous.find(item=>item.id===id && item.kind==='thought');
   if (id!=='thought' && !existing) return;
   const draft = draftSnapshot(form);
-  const item = {id:existing?.id ?? newId(),kind:'thought',title:'',body,answer:'',done:false};
+  const item = {...existing,id:existing?.id ?? newId(),kind:'thought',title:'',body,answer:'',done:false};
   const day = form.elements.day.value;
   if (validDay(day)) item.day = day;
   state.prayers = existing?previous.map(entry=>entry===existing?item:entry):[item,...previous];
@@ -4988,7 +5017,7 @@ async function savePrayer(form) {
   if (!title) return notify('제목을 입력해 주세요.');
   const draft = draftSnapshot(form);
   const id = form.dataset.prayerEditor;
-  const item = {id:id==='new'?newId():id,title,body:values.get('body').trim(),answer:values.get('answer').trim(),done:values.has('done')};
+  const item = {...state.prayers.find(entry=>entry.id===id),id:id==='new'?newId():id,title,body:values.get('body').trim(),answer:values.get('answer').trim(),done:values.has('done')};
   const day = values.get('day');
   if (validDay(day)) item.day = day;
   const original = state.prayers;
@@ -5286,7 +5315,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v326',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v328',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
