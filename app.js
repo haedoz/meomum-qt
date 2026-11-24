@@ -789,13 +789,18 @@ function devotionCommentSummary(comments=[]){
   return '<section class="devotion-comment-summary"><h3>'+icon('comment')+' 덧붙인 생각 <span>'+comments.length+'</span></h3><div class="comment-thread">'+items.map(item=>'<article class="comment-thread-item"><div class="comment-thread-copy"><time>'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><p>'+esc(item.body)+'</p></div></article>').join('')+'</div>'+pager+'</section>';
 }
 function devotionCardHeading(title,torah=false){return '<header class="devotion-card-heading"><h2>'+icon(torah?'book':'edit')+'<span>'+esc(title||'나의 묵상')+'</span></h2><span class="devotion-kind'+(torah?' devotion-kind-torah':'')+'">'+(torah?'토라포션':'묵상 노트')+'</span></header>';}
+const journalChosen=new Set();
+function journalVerseTools(){
+ const refs=[...journalChosen].filter(ref=>journalEntry(selectedDay).verses.includes(ref));if(!refs.length)return '';
+ return '<aside class="journal-verse-tools"><header><span>'+refs.length+'절 선택</span><button type="button" data-journal-selection-clear aria-label="선택 해제">'+icon('close')+'</button></header><div class="journal-private-colors">'+state.quickMarkers.map((color,i)=>'<button type="button" data-journal-highlight="'+color+'" style="--memo-color:'+color+'" aria-label="묵상 형광펜 '+(i+1)+'"></button>').join('')+'<button type="button" data-journal-highlight="erase">지우기</button><small>이 묵상에만 표시돼요</small></div><footer><button type="button" class="btn" data-journal-study="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-journal-study="original">'+icon('studyAnalysis')+' 원전분해 보기</button></footer></aside>';
+}
 function journalScreen() {
   const day = selectedDay;
   const entry = journalEntry(day);
   const locked=entry.done&&!editingCompletedJournals.has(journalEditKey(day));
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
-  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('note')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day})+'</div></section>';
+  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('note')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day,interactive:true,highlights:entry.localHighlights||{}})+journalVerseTools()+'</div></section>';
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor" data-journal-day="'+day+'" data-journal-id="'+(activeJournalId||'')+'">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
@@ -864,16 +869,16 @@ function popupCommentaryButton(source){
  const items=Object.values(commentaries);
  return '<details class="popup-commentary-menu"><summary><span>'+esc(source?.label||'주석 선택')+'</span>'+icon('down')+'</summary><div class="popup-commentary-options" role="group" aria-label="주석 선택"><span class="popup-commentary-caption">주석 자료 · '+items.length+'개</span>'+items.map(item=>'<button type="button" data-popup-commentary-choice="'+item.id+'" aria-pressed="'+(source?.id===item.id)+'"><span>'+esc(item.label)+'</span>'+(source?.id===item.id?icon('check'):'')+'</button>').join('')+(!items.length?'<p class="muted">추가한 주석 자료가 없어요.</p>':'')+'</div></details>';
 }
-function restorePopupCommentary(){if(popupCommentaryContext?.key)showTorahVerse(popupCommentaryContext.key,'commentary');else showSelectedStudy('commentary',popupCommentaryContext?.includeScripture);}
-function showSelectedStudy(mode,includeScripture=view!=='torah'){
+function restorePopupCommentary(){if(popupCommentaryContext?.key)showTorahVerse(popupCommentaryContext.key,'commentary');else showSelectedStudy('commentary',popupCommentaryContext?.includeScripture,popupCommentaryContext?.refs||chosen);}
+function showSelectedStudy(mode,includeScripture=view!=='torah',selection=chosen){
   if(!['commentary','original'].includes(mode))return;
   const seen=new Set();
-  const refs=[...chosen].filter(validRef).filter(key=>{const address=verseAddress(key);if(seen.has(address))return false;seen.add(address);return true;}).sort((a,b)=>{
+  const refs=[...selection].filter(validRef).filter(key=>{const address=verseAddress(key);if(seen.has(address))return false;seen.add(address);return true;}).sort((a,b)=>{
     const x=readRef(a),y=readRef(b);return books.findIndex(([id])=>id===x.book)-books.findIndex(([id])=>id===y.book)||x.chapter-y.chapter||x.verse-y.verse;
   });
   if(!refs.length)return notify('먼저 구절을 선택해 주세요.');
   const original=mode==='original',source=studySource(mode),label=original?'원전분해':'주석';
-  if(!original)popupCommentaryContext={includeScripture};
+  if(!original)popupCommentaryContext={includeScripture,refs};
   const sections=refs.map(key=>{
     const {book,chapter,verse}=readRef(key),body=source?.verses[book]?.[chapter]?.[verse]||'';
     let content;
@@ -990,7 +995,7 @@ function passageGroupLabel(group,short=true){
 function journalPassageMarkup(refs,options={}){
   return groupedPassageRefs(refs).map(group=>{
     const label=passageGroupLabel(group);
-    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+'"><span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+esc(savedVerseText(key)||verseText(key))+'</span>'+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
+    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+(options.interactive?' journal-interactive-verse':'')+'">'+(options.interactive?'<button type="button" class="journal-verse-select" data-journal-select="'+key+'" aria-pressed="'+journalChosen.has(key)+'">':'')+'<span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+(options.highlights?.[key]?markedText(savedVerseText(key)||verseText(key),{highlight:options.highlights[key]}):esc(savedVerseText(key)||verseText(key)))+'</span>'+(options.interactive?'</button>':'')+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
   }).join('');
 }
 function devotionReferenceChips(refs){
@@ -2906,7 +2911,7 @@ function render(studyFromSelection = false) {
       }
     }
     readingArrival = undefined;
-    chosen.clear();
+    chosen.clear();journalChosen.clear();
   }
   if (day) {
     selectedDay = day;
@@ -3239,9 +3244,11 @@ function validRef(key) {
     (local || Object.hasOwn(retiredEditions,edition)) &&
     validChapter(book+'/'+chapter) && Number.isInteger(verse) && verse>=(local?0:1) && verse<=500;
 }
+function validatedLocalHighlights(value){if(!isObject(value)||!Object.entries(value).every(([ref,color])=>validRef(ref)&&validColor(color)))throw Error('journal highlights');return {...value};}
 function validatedJournalNote(note){
   if(!isObject(note)||!validId(note.id)||typeof note.done!=='boolean'||!Array.isArray(note.verses)||!note.verses.every(validRef))throw Error('journal note');
   const result={id:note.id,done:note.done,verses:[...new Set(note.verses)]};
+  if(note.localHighlights!==undefined)result.localHighlights=validatedLocalHighlights(note.localHighlights);
   for(const field of [...Object.keys(parts),'title','reflection','created','recordAt'])if(note[field]!==undefined){if(typeof note[field]!=='string')throw Error('journal note field');result[field]=note[field];}
   if(note.comments!==undefined){if(!Array.isArray(note.comments)||!note.comments.every(validComment))throw Error('journal note comments');result.comments=note.comments;}
   return result;
@@ -3257,6 +3264,7 @@ function validatedBackup(payload) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || dateKey(dayDate)!==day || !isObject(entry) ||
         typeof entry.done!=='boolean' || !Array.isArray(entry.verses) || !entry.verses.every(validRef)) throw Error('journal');
     const safeEntry = {done:entry.done,verses:[...new Set(entry.verses)]};
+    if(entry.localHighlights!==undefined)safeEntry.localHighlights=validatedLocalHighlights(entry.localHighlights);
     for (const part of [...Object.keys(parts),'reflection','title','recordAt','created']) {
       if (!Object.hasOwn(entry,part)) continue;
       if (typeof entry[part]!=='string') throw Error('journal field');
@@ -3836,6 +3844,10 @@ document.addEventListener('click',async event => {
   if(target.popupCommentaryChoice){if(!commentaries[target.popupCommentaryChoice])return;state.commentaryEdition=target.popupCommentaryChoice;save();return restorePopupCommentary();}
   if(target.todayRecordFilter){todayRecordsFilter=target.todayRecordFilter;todayRecordsPage=0;render();return;}
   if('todayRecordPage' in target){todayRecordsPage=Math.max(0,Number(target.todayRecordPage)||0);render();return;}
+  if(target.journalSelect){if(journalChosen.has(target.journalSelect))journalChosen.delete(target.journalSelect);else journalChosen.add(target.journalSelect);render();return;}
+  if('journalSelectionClear' in target){journalChosen.clear();render();return;}
+  if(target.journalStudy)return showSelectedStudy(target.journalStudy,false,journalChosen);
+  if(target.journalHighlight){const entry=journalEntry(selectedDay),previous={...(entry.localHighlights||{})};entry.localHighlights={...previous};for(const ref of journalChosen){if(!entry.verses.includes(ref))continue;if(target.journalHighlight==='erase')delete entry.localHighlights[ref];else if(validColor(target.journalHighlight))entry.localHighlights[ref]=target.journalHighlight;}if(!await save())entry.localHighlights=previous;render();return;}
   if(target.studyPreview)return showSelectedStudy(target.studyPreview);
   if(target.torahStudyRef){if(target.torahCommentary&&commentaries[target.torahCommentary]){state.commentaryEdition=target.torahCommentary;save();}return showTorahVerse(target.torahStudyRef,target.torahStudyMode);}
   if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
@@ -5413,7 +5425,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v338',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v339',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
