@@ -4238,3 +4238,18 @@ html.writing-focused .journal-verse-tools{display:none!important}
 .top:has(.search-open) { top: var(--search-viewport-top, 0px); }
 #reader-search-input { font-size: max(16px, 1rem) !important; }
 .reader-search-results > .reader-search-group { max-height: inherit; overflow: hidden; }
+
+/* Prayer follow-up comments: content-sized dialog and regular-weight writing. */
+#modal:has(>form[name=prayer-discussion]){height:max-content!important;min-height:0!important;max-height:calc(100dvh - 28px)!important;width:min(520px,calc(100vw - 28px));padding:18px;scroll-padding-bottom:16px!important}
+#modal>form[name=prayer-discussion]{height:max-content!important;min-height:0!important;align-content:start;gap:15px;scroll-padding-bottom:16px!important}
+#modal>form[name=prayer-discussion]::before,#modal>form[name=prayer-discussion]::after{content:none!important;display:none!important;min-height:0!important}
+#modal form[name=prayer-discussion] #active-dialog-title{font-size:17px!important;font-weight:650!important}
+#modal form[name=prayer-discussion] .note-thread-compose>.field{display:grid;gap:9px;padding:13px;border-radius:14px;background:var(--soft)}
+#modal form[name=prayer-discussion] textarea{font-family:var(--font-ko,var(--sans))!important;font-size:var(--reading-size,15px)!important;font-weight:400!important;line-height:var(--reading-leading,1.5)!important;letter-spacing:var(--reading-tracking,0px)!important;min-height:100px!important;box-shadow:none!important;outline-offset:5px;resize:none}
+#modal form[name=prayer-discussion] .note-thread-compose>.field>.field-caption{font-size:11px;font-weight:500;color:var(--muted)}
+#modal form[name=prayer-discussion] .note-thread-list:empty{display:none}
+#modal form[name=prayer-discussion] .note-thread-list article{padding:13px;border:1px solid var(--line);border-radius:13px;background:var(--card);margin-top:10px}
+#modal form[name=prayer-discussion] .note-thread-list article>header{display:contents}
+#modal form[name=prayer-discussion] .note-thread-list article{display:flex;flex-direction:column;gap:9px}
+#modal form[name=prayer-discussion] .note-thread-list .item-actions{order:2;align-self:flex-end}
+#modal form[name=prayer-discussion] .note-thread-list p{font-weight:400}
