@@ -1436,14 +1436,19 @@ function pageSearchTitle(currentView) {
 function isPageSearchable(currentView) {
   return ['records', 'journals', 'torah-notes','calendar', 'prayers', 'thoughts', 'newyear'].includes(currentView);
 }
+let readerSearchOrigin,readerSearchPositionToken=0;
+function holdReaderSearchPosition(position,token){if(position&&activeRoute===position.route&&token===readerSearchPositionToken)window.scrollTo({left:position.x,top:position.y,behavior:'instant'});}
+window.visualViewport?.addEventListener('resize',()=>{if(readerSearchOrigin&&!readerSearchInput.hidden)requestAnimationFrame(()=>holdReaderSearchPosition(readerSearchOrigin,readerSearchPositionToken));});
 function showReaderSearch() {
+  readerSearchOrigin={x:scrollX,y:scrollY,route:activeRoute};const position=readerSearchOrigin,token=++readerSearchPositionToken;
   topBar.classList.add('search-open');
   readerSearchInput.value = '';
   readerSearchInput.hidden = false;
   readerSearchClose.hidden = false;
   readerSearchButton.setAttribute('aria-expanded','true');
   readerSearchButton.setAttribute('aria-label','검색 실행');
-  readerSearchInput.focus();
+  readerSearchInput.focus({preventScroll:true});
+  requestAnimationFrame(()=>holdReaderSearchPosition(position,token));setTimeout(()=>holdReaderSearchPosition(position,token),200);
   if (isPageSearchable(view)) {
     personalSearchFilters.type = pageSearchType(view);
     personalSearchFilters.year = 'all';
@@ -1451,7 +1456,10 @@ function showReaderSearch() {
     renderPersonalSearch();
   }
 }
-function closeReaderSearch(restoreFocus = false) {
+function closeReaderSearch(restoreFocus = false,preservePosition=true) {
+  const position=readerSearchOrigin,token=++readerSearchPositionToken;readerSearchOrigin=undefined;
+  if(document.activeElement===readerSearchInput)readerSearchInput.blur();
+  if(preservePosition&&position){requestAnimationFrame(()=>holdReaderSearchPosition(position,token));setTimeout(()=>holdReaderSearchPosition(position,token),120);setTimeout(()=>holdReaderSearchPosition(position,token),320);}
   bibleSearchScope = 'all';
   personalSearchFilters.type = personalSearchFilters.year = 'all';
   personalSearchSubmitted = false;
@@ -1524,6 +1532,13 @@ function fitReaderSearchPage() {
 }
 function submitReaderSearch() {
   const query = readerSearchInput.value.trim();
+  const position=parseBibleReference(query);
+  if(position?.chapter&&position?.verse){
+    const book=position.book||state.reader.book,chapter=position.chapter,verse=position.verse;
+    if(view==='original'&&studyChapterVerses('original',book,chapter)?.[verse]){closeReaderSearch(false,false);studySelection.original.location={book,chapter,verse};render();showVerseArrival('study-v-'+verse);return;}
+    const key=[state.reader.edition,book,chapter,verse].join('/');
+    if(verseText(key)){closeReaderSearch(false,false);visit(key);return;}
+  }
   bibleSearchResults = query?(view==='original'?searchOriginal(query):searchBible(state.reader.edition,query)):undefined;
   bibleSearchPageSize = fitReaderSearchPage();
   updateReaderSearch();
@@ -1609,6 +1624,7 @@ async function copyVerseBundle(id) {
   }
 }
 function visitSearchResult(key) {
+  readerSearchOrigin=undefined;readerSearchPositionToken++;
   if (modal.open && modal.firstElementChild?.name==='saved-verse-bundle') modal.close();
   closeReaderSearch();
   if (view==='original' && key.startsWith('original/')) {
@@ -4153,7 +4169,7 @@ function writingMirror(field,text,caret=false){
   else mirror.append(document.createTextNode('\u200b'));
   document.body.append(mirror);return mirror;
 }
-function isWritingField(field){if(field?.form?.name==='calendar-date-search')return false;return field?.matches?.('textarea:not([readonly]),input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=color]):not([type=range]):not([type=file])');}
+function isWritingField(field){if(field===readerSearchInput||field?.form?.name==='calendar-date-search')return false;return field?.matches?.('textarea:not([readonly]),input:not([readonly]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=color]):not([type=range]):not([type=file])');}
 function updateWritingViewport(){
   const field=document.activeElement,active=!!isWritingField(field),viewport=window.visualViewport;
   document.documentElement.classList.toggle('writing-focused',active);
@@ -5462,7 +5478,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v342',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v343',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
