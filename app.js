@@ -1438,7 +1438,17 @@ function isPageSearchable(currentView) {
 }
 let readerSearchOrigin,readerSearchPositionToken=0;
 function holdReaderSearchPosition(position,token){if(position&&activeRoute===position.route&&token===readerSearchPositionToken)window.scrollTo({left:position.x,top:position.y,behavior:'instant'});}
-window.visualViewport?.addEventListener('resize',()=>{if(readerSearchOrigin&&!readerSearchInput.hidden)requestAnimationFrame(()=>holdReaderSearchPosition(readerSearchOrigin,readerSearchPositionToken));});
+function layoutReaderSearchViewport(){
+  const header=topBar.closest('.top'),active=!readerSearchInput.hidden;
+  const viewport=window.visualViewport;
+  header.style.setProperty('--search-viewport-top',active?(viewport?.offsetTop||0)+'px':'0px');
+  const height=viewport?.height||innerHeight;
+  const headerHeight=header.getBoundingClientRect().height;
+  readerSearchPanel.style.maxHeight=active?Math.max(0,Math.min(660,height-headerHeight-12))+'px':'';
+}
+window.visualViewport?.addEventListener('resize',()=>{if(!readerSearchInput.hidden)requestAnimationFrame(()=>{holdReaderSearchPosition(readerSearchOrigin,readerSearchPositionToken);layoutReaderSearchViewport();});});
+window.visualViewport?.addEventListener('scroll',()=>{if(!readerSearchInput.hidden)layoutReaderSearchViewport();});
+readerSearchInput.addEventListener('focus',()=>{layoutReaderSearchViewport();[60,220,480].forEach(delay=>setTimeout(()=>{if(!readerSearchInput.hidden)layoutReaderSearchViewport();},delay));});
 function showReaderSearch() {
   readerSearchOrigin={x:scrollX,y:scrollY,route:activeRoute};const position=readerSearchOrigin,token=++readerSearchPositionToken;
   topBar.classList.add('search-open');
@@ -1447,6 +1457,7 @@ function showReaderSearch() {
   readerSearchClose.hidden = false;
   readerSearchButton.setAttribute('aria-expanded','true');
   readerSearchButton.setAttribute('aria-label','검색 실행');
+  layoutReaderSearchViewport();
   readerSearchInput.focus({preventScroll:true});
   requestAnimationFrame(()=>holdReaderSearchPosition(position,token));setTimeout(()=>holdReaderSearchPosition(position,token),200);
   if (isPageSearchable(view)) {
@@ -1467,6 +1478,7 @@ function closeReaderSearch(restoreFocus = false,preservePosition=true) {
   topBar.classList.remove('search-open');
   readerSearchInput.value = '';
   readerSearchInput.hidden = true;
+  layoutReaderSearchViewport();
   readerSearchClose.hidden = true;
   clearReaderSearchResults();
   readerSearchButton.setAttribute('aria-expanded','false');
@@ -5478,7 +5490,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v343',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v344',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

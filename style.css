@@ -4233,3 +4233,8 @@ html.writing-focused .journal-verse-tools{display:none!important}
 .today-record-passage:last-child{margin-bottom:0}
 .today-record-passage>.today-record-verse-number{flex:0 0 2ch;font-size:.82em;color:var(--muted);font-variant-numeric:tabular-nums;text-align:start;font-weight:500}
 .today-record-passage>span:last-child{flex:1;min-width:0;white-space:pre-wrap}
+
+/* Keep header search inside the visible viewport when a mobile keyboard pans it. */
+.top:has(.search-open) { top: var(--search-viewport-top, 0px); }
+#reader-search-input { font-size: max(16px, 1rem) !important; }
+.reader-search-results > .reader-search-group { max-height: inherit; overflow: hidden; }
