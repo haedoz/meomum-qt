@@ -4187,3 +4187,24 @@ html.writing-focused #modal form[name=calendar-date-search]::after{content:none!
 .journal-private-colors button[data-journal-highlight=erase]{font-size:11px;color:var(--muted);padding:5px}
 .journal-private-colors small{font-size:10px;color:var(--muted);margin-left:auto}
 .journal-verse-tools>footer{display:flex;gap:7px}.journal-verse-tools>footer .btn{flex:1;font-size:12px!important;min-height:33px!important;padding:5px 9px!important}
+.today-record-heading .today-record-label{display:inline-flex;align-items:center;gap:4px}
+.today-record-label[data-record-type="생각 노트"]{color:#9b7a4b;background:color-mix(in srgb,#b89361 11%,var(--card))}
+.today-record-label[data-record-type="기도 노트"]{color:#a5768a;background:color-mix(in srgb,#c08ba1 10%,var(--card))}
+.today-record-label[data-record-type="구절 메모"]{color:#6587ad;background:color-mix(in srgb,#7a9cc3 11%,var(--card))}
+.today-record-label[data-record-type="형광펜"]{color:#a08543;background:color-mix(in srgb,#c4a453 12%,var(--card))}
+.today-record-label[data-record-type="밑줄"]{color:#798e77;background:color-mix(in srgb,#91aa89 12%,var(--card))}
+.today-marker-swatch{display:inline-block;width:9px;height:9px;flex:0 0 9px;border-radius:3px;background:var(--record-marker);box-shadow:inset 0 0 0 1px #0000000a}
+:root[data-appearance=dark] .today-record-label[data-record-type="생각 노트"]{color:#d1b991}
+:root[data-appearance=dark] .today-record-label[data-record-type="기도 노트"]{color:#d3b0c0}
+:root[data-appearance=dark] .today-record-label[data-record-type="구절 메모"]{color:#aac3df}
+:root[data-appearance=dark] .today-record-label[data-record-type="형광펜"]{color:#d5c18e}
+:root[data-appearance=dark] .today-record-label[data-record-type="밑줄"]{color:#b3c8ae}
+.journal-verse-select .verse-text{-webkit-user-select:text;user-select:text;cursor:text;-webkit-touch-callout:default}
+.journal-verse-select{touch-action:auto}
+/* Journal passage tools float like the Bible/Torah selection tray. */
+.journal-view .journal-verse-tools{position:fixed;z-index:42;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(620px,calc(100vw - 28px));margin:0;padding:11px 13px;border:1px solid color-mix(in srgb,var(--line) 80%,transparent);border-radius:20px;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 35px #00000014}
+.journal-view .journal-verse-tools>header{padding:0 1px 3px}
+.journal-view .journal-private-colors{padding:7px 0 10px;gap:9px}
+.journal-view .journal-verse-tools>footer .btn{background:color-mix(in srgb,var(--card) 80%,transparent);border-color:var(--line)}
+@media(min-width:1000px){.journal-view .journal-verse-tools{bottom:24px}}
+html.writing-focused .journal-verse-tools{display:none!important}

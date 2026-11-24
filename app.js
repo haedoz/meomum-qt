@@ -789,10 +789,32 @@ function devotionCommentSummary(comments=[]){
   return '<section class="devotion-comment-summary"><h3>'+icon('comment')+' 덧붙인 생각 <span>'+comments.length+'</span></h3><div class="comment-thread">'+items.map(item=>'<article class="comment-thread-item"><div class="comment-thread-copy"><time>'+esc(new Date(item.created).toLocaleString('ko-KR'))+'</time><p>'+esc(item.body)+'</p></div></article>').join('')+'</div>'+pager+'</section>';
 }
 function devotionCardHeading(title,torah=false){return '<header class="devotion-card-heading"><h2>'+icon(torah?'book':'edit')+'<span>'+esc(title||'나의 묵상')+'</span></h2><span class="devotion-kind'+(torah?' devotion-kind-torah':'')+'">'+(torah?'토라포션':'묵상 노트')+'</span></header>';}
-const journalChosen=new Set();
+const journalChosen=new Set(),journalTextSelection=new Map();
+function journalMarkedText(ref,text,entry){
+ const ranges=(entry.localHighlightRanges?.[ref]||[]).filter(r=>r.start>=0&&r.end<=text.length&&r.end>r.start&&validColor(r.color));
+ if(!ranges.length)return entry.localHighlights?.[ref]?markedText(text,{highlight:entry.localHighlights[ref]}):esc(text);
+ const points=[...new Set([0,text.length,...ranges.flatMap(r=>[r.start,r.end])])].sort((a,b)=>a-b);
+ return points.slice(0,-1).map((start,i)=>{const end=points[i+1],r=[...ranges].reverse().find(r=>r.start<=start&&r.end>=end),color=r?.color||entry.localHighlights?.[ref];return color?markedText(text.slice(start,end),{highlight:color}):esc(text.slice(start,end));}).join('');
+}
+function captureJournalTextSelection(){
+ if(view!=='journal')return;const selection=window.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;
+ const range=selection.getRangeAt(0),fields=[...main.querySelectorAll('.journal-verse-select .verse-text')];
+ if(!fields.some(field=>field.contains(selection.anchorNode))||!fields.some(field=>field.contains(selection.focusNode)))return;
+ journalChosen.clear();journalTextSelection.clear();
+ for(const field of fields){if(!range.intersectsNode(field))continue;const ref=field.closest('[data-journal-select]').dataset.journalSelect;
+  const offset=(node,n,fallback)=>{if(!field.contains(node))return fallback;const prefix=document.createRange();prefix.selectNodeContents(field);prefix.setEnd(node,n);return prefix.toString().length;};
+  const start=offset(range.startContainer,range.startOffset,0),end=offset(range.endContainer,range.endOffset,field.textContent.length);
+  if(end>start){journalChosen.add(ref);journalTextSelection.set(ref,{start,end});}
+ }
+ if(!journalTextSelection.size)return;
+ main.querySelectorAll('[data-journal-select]').forEach(button=>button.setAttribute('aria-pressed',String(journalChosen.has(button.dataset.journalSelect))));
+ const tools=main.querySelector('.journal-verse-tools');if(tools)tools.outerHTML=journalVerseTools();else main.querySelector('.journal-verses-list')?.insertAdjacentHTML('beforeend',journalVerseTools());
+}
+document.addEventListener('selectionchange',captureJournalTextSelection);
+
 function journalVerseTools(){
  const refs=[...journalChosen].filter(ref=>journalEntry(selectedDay).verses.includes(ref));if(!refs.length)return '';
- return '<aside class="journal-verse-tools"><header><span>'+refs.length+'절 선택</span><button type="button" data-journal-selection-clear aria-label="선택 해제">'+icon('close')+'</button></header><div class="journal-private-colors">'+state.quickMarkers.map((color,i)=>'<button type="button" data-journal-highlight="'+color+'" style="--memo-color:'+color+'" aria-label="묵상 형광펜 '+(i+1)+'"></button>').join('')+'<button type="button" data-journal-highlight="erase">지우기</button><small>이 묵상에만 표시돼요</small></div><footer><button type="button" class="btn" data-journal-study="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-journal-study="original">'+icon('studyAnalysis')+' 원전분해 보기</button></footer></aside>';
+ return '<aside class="journal-verse-tools"><header><span>'+(journalTextSelection.size?'선택한 부분':refs.length+'절 선택')+'</span><button type="button" data-journal-selection-clear aria-label="선택 해제">'+icon('close')+'</button></header><div class="journal-private-colors">'+state.quickMarkers.map((color,i)=>'<button type="button" data-journal-highlight="'+color+'" style="--memo-color:'+color+'" aria-label="묵상 형광펜 '+(i+1)+'"></button>').join('')+'<button type="button" data-journal-highlight="erase">지우기</button><small>이 묵상에만 표시돼요</small></div><footer><button type="button" class="btn" data-journal-study="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-journal-study="original">'+icon('studyAnalysis')+' 원전분해 보기</button></footer></aside>';
 }
 function journalScreen() {
   const day = selectedDay;
@@ -800,7 +822,7 @@ function journalScreen() {
   const locked=entry.done&&!editingCompletedJournals.has(journalEditKey(day));
   const validRefs = (entry.verses || []).filter(validRef);
   let refs = '';
-  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('note')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day,interactive:true,highlights:entry.localHighlights||{}})+journalVerseTools()+'</div></section>';
+  if(validRefs.length)refs='<section class="journal-verses-card card"><header class="journal-verses-header row"><h3>'+icon('note')+' 묵상에 담은 말씀</h3><span class="journal-selection-count">'+validRefs.length+'구절</span></header><div class="journal-verses-list">'+journalPassageMarkup(validRefs,{removable:!locked,day,interactive:true,highlights:entry.localHighlights||{},localEntry:entry})+journalVerseTools()+'</div></section>';
   const date = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(day+'T12:00:00'));
   return '<article class="post-editor journal-editor" data-journal-day="'+day+'" data-journal-id="'+(activeJournalId||'')+'">'+writingHeader('comment','묵상 노트','나의 묵상',
     '<div class="post-meta"><time datetime="'+day+'">'+esc(date)+'</time><span id="save-status" class="save">'+
@@ -995,7 +1017,7 @@ function passageGroupLabel(group,short=true){
 function journalPassageMarkup(refs,options={}){
   return groupedPassageRefs(refs).map(group=>{
     const label=passageGroupLabel(group);
-    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+(options.interactive?' journal-interactive-verse':'')+'">'+(options.interactive?'<button type="button" class="journal-verse-select" data-journal-select="'+key+'" aria-pressed="'+journalChosen.has(key)+'">':'')+'<span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+(options.highlights?.[key]?markedText(savedVerseText(key)||verseText(key),{highlight:options.highlights[key]}):esc(savedVerseText(key)||verseText(key)))+'</span>'+(options.interactive?'</button>':'')+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
+    return '<section class="devotion-passage"><header><button type="button" class="note-link" data-visit="'+group.key+'">'+icon('book')+'<span>'+esc(label)+'</span>'+icon('right')+'</button></header><div class="devotion-passage-lines">'+group.keys.map(key=>'<div class="devotion-passage-line'+(options.removable?' removable':'')+(options.interactive?' journal-interactive-verse':'')+'">'+(options.interactive?'<button type="button" class="journal-verse-select" data-journal-select="'+key+'" aria-pressed="'+journalChosen.has(key)+'">':'')+'<span class="devotion-verse-number">'+readRef(key).verse+'</span><span class="verse-text" lang="'+(localLanguages[group.edition]||'ko')+'">'+(options.localEntry?journalMarkedText(key,savedVerseText(key)||verseText(key),options.localEntry):esc(savedVerseText(key)||verseText(key)))+'</span>'+(options.interactive?'</button>':'')+(options.removable?'<button type="button" class="destructive passage-remove" data-remove="'+key+'" data-date="'+options.day+'" aria-label="'+esc(reference(key))+' 묵상에서 빼기">'+icon('close')+'</button>':'')+'</div>').join('')+'</div></section>';
   }).join('');
 }
 function devotionReferenceChips(refs){
@@ -1177,13 +1199,13 @@ function todayReadingScreen() {
 }
 let todayRecordsFilter='묵상',todayRecordsPage=0;
 function todayRecords(day){
- const groups=new Map();const add=(type,symbol,title,body,attributes,editAttributes,deleteAttributes)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes,editAttributes,deleteAttributes});};
+ const groups=new Map();const add=(type,symbol,title,body,attributes,editAttributes,deleteAttributes,appearance)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes,editAttributes,deleteAttributes,appearance});};
  for(const row of recordRows().filter(row=>row.day===day)){
   const {key,mark,journalDay,noteKey}=row;
   if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"');
   else if(mark.journal){const [date,id]=journalDay.split('/'),journalAttrs='="'+date+'" data-journal-note="'+(id||'')+'"';add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"','data-edit-journal'+journalAttrs,'data-delete-journal'+journalAttrs);}
   else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"','data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"');
-  else if(verseMark(mark)){const token=historyActionKey(row);add('형광펜·밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"','data-edit-record-color="'+token+'"','data-delete-highlight="'+token+'"');}
+  else if(verseMark(mark)){const token=historyActionKey(row),appearance=verseMark(mark);add(appearance.style==='fill'?'형광펜':'밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"','data-edit-record-color="'+token+'"','data-delete-highlight="'+token+'"',appearance);}
  }
  for(const item of state.prayers.filter(item=>item.day===day))add(item.kind==='thought'?'생각 노트':'기도 노트',item.kind==='thought'?'thoughtBulb':'prayer',item.kind==='thought'?'남긴 생각':item.title,item.body,'data-prayer="'+item.id+'"','data-prayer="'+item.id+'"','data-delete-prayer="'+item.id+'"');
  if(state.dailyNotes[day]?.body)add('묵상 노트','comment','말씀 묵상',state.dailyNotes[day].body,'data-edit-daily-note="'+day+'"','data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"');
@@ -1195,7 +1217,7 @@ function todayRecords(day){
  if(!types.some(([type])=>type===todayRecordsFilter)){todayRecordsFilter=types[0]?.[0]||'묵상';todayRecordsPage=0;}
  const rows=allRows.filter(item=>item.category===todayRecordsFilter);
  const pages=Math.max(1,Math.ceil(rows.length/5));todayRecordsPage=Math.min(todayRecordsPage,pages-1);
- return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<article class="today-record-entry"><button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-copy"><span class="today-record-heading"><strong>'+icon(item.symbol)+'<span>'+esc(item.title)+'</span></strong><span class="today-record-label" data-record-category="'+item.category+'">'+item.type+'</span></span>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button><footer class="today-record-actions">'+calendarItemActions(item.editAttributes,item.deleteAttributes)+'</footer></article>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
+ return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<article class="today-record-entry"><button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-copy"><span class="today-record-heading"><strong>'+icon(item.symbol)+'<span>'+esc(item.title)+'</span></strong><span class="today-record-label" data-record-category="'+item.category+'" data-record-type="'+item.type+'">'+(item.appearance?'<i class="today-marker-swatch" style="--record-marker:'+item.appearance.color+'"></i>':'')+item.type+'</span></span>'+(item.body?'<span class="today-record-excerpt">'+(item.appearance?markedText(item.body.replace(/\s+/g,' ').trim(),item.appearance.style==='fill'?{highlight:item.appearance.color}:{underline:item.appearance}):esc(item.body.replace(/\s+/g,' ').trim()))+'</span>':'')+'</span>'+icon('right')+'</button><footer class="today-record-actions">'+calendarItemActions(item.editAttributes,item.deleteAttributes)+'</footer></article>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
@@ -2911,7 +2933,7 @@ function render(studyFromSelection = false) {
       }
     }
     readingArrival = undefined;
-    chosen.clear();journalChosen.clear();
+    chosen.clear();journalChosen.clear();journalTextSelection.clear();
   }
   if (day) {
     selectedDay = day;
@@ -3244,11 +3266,13 @@ function validRef(key) {
     (local || Object.hasOwn(retiredEditions,edition)) &&
     validChapter(book+'/'+chapter) && Number.isInteger(verse) && verse>=(local?0:1) && verse<=500;
 }
+function validatedLocalHighlightRanges(value){if(!isObject(value)||!Object.entries(value).every(([ref,list])=>validRef(ref)&&Array.isArray(list)&&list.every(r=>isObject(r)&&Number.isInteger(r.start)&&Number.isInteger(r.end)&&r.start>=0&&r.end>r.start&&validColor(r.color))))throw Error('journal highlight ranges');return structuredClone(value);}
 function validatedLocalHighlights(value){if(!isObject(value)||!Object.entries(value).every(([ref,color])=>validRef(ref)&&validColor(color)))throw Error('journal highlights');return {...value};}
 function validatedJournalNote(note){
   if(!isObject(note)||!validId(note.id)||typeof note.done!=='boolean'||!Array.isArray(note.verses)||!note.verses.every(validRef))throw Error('journal note');
   const result={id:note.id,done:note.done,verses:[...new Set(note.verses)]};
   if(note.localHighlights!==undefined)result.localHighlights=validatedLocalHighlights(note.localHighlights);
+  if(note.localHighlightRanges!==undefined)result.localHighlightRanges=validatedLocalHighlightRanges(note.localHighlightRanges);
   for(const field of [...Object.keys(parts),'title','reflection','created','recordAt'])if(note[field]!==undefined){if(typeof note[field]!=='string')throw Error('journal note field');result[field]=note[field];}
   if(note.comments!==undefined){if(!Array.isArray(note.comments)||!note.comments.every(validComment))throw Error('journal note comments');result.comments=note.comments;}
   return result;
@@ -3265,6 +3289,7 @@ function validatedBackup(payload) {
         typeof entry.done!=='boolean' || !Array.isArray(entry.verses) || !entry.verses.every(validRef)) throw Error('journal');
     const safeEntry = {done:entry.done,verses:[...new Set(entry.verses)]};
     if(entry.localHighlights!==undefined)safeEntry.localHighlights=validatedLocalHighlights(entry.localHighlights);
+    if(entry.localHighlightRanges!==undefined)safeEntry.localHighlightRanges=validatedLocalHighlightRanges(entry.localHighlightRanges);
     for (const part of [...Object.keys(parts),'reflection','title','recordAt','created']) {
       if (!Object.hasOwn(entry,part)) continue;
       if (typeof entry[part]!=='string') throw Error('journal field');
@@ -3844,10 +3869,17 @@ document.addEventListener('click',async event => {
   if(target.popupCommentaryChoice){if(!commentaries[target.popupCommentaryChoice])return;state.commentaryEdition=target.popupCommentaryChoice;save();return restorePopupCommentary();}
   if(target.todayRecordFilter){todayRecordsFilter=target.todayRecordFilter;todayRecordsPage=0;render();return;}
   if('todayRecordPage' in target){todayRecordsPage=Math.max(0,Number(target.todayRecordPage)||0);render();return;}
-  if(target.journalSelect){if(journalChosen.has(target.journalSelect))journalChosen.delete(target.journalSelect);else journalChosen.add(target.journalSelect);render();return;}
-  if('journalSelectionClear' in target){journalChosen.clear();render();return;}
+  if(target.journalSelect){if(journalTextSelection.size&&window.getSelection()?.toString())return;journalTextSelection.clear();if(journalChosen.has(target.journalSelect))journalChosen.delete(target.journalSelect);else journalChosen.add(target.journalSelect);render();return;}
+  if('journalSelectionClear' in target){journalChosen.clear();journalTextSelection.clear();window.getSelection()?.removeAllRanges();render();return;}
   if(target.journalStudy)return showSelectedStudy(target.journalStudy,false,journalChosen);
-  if(target.journalHighlight){const entry=journalEntry(selectedDay),previous={...(entry.localHighlights||{})};entry.localHighlights={...previous};for(const ref of journalChosen){if(!entry.verses.includes(ref))continue;if(target.journalHighlight==='erase')delete entry.localHighlights[ref];else if(validColor(target.journalHighlight))entry.localHighlights[ref]=target.journalHighlight;}if(!await save())entry.localHighlights=previous;render();return;}
+  if(target.journalHighlight){
+   const entry=journalEntry(selectedDay),previous={...(entry.localHighlights||{})},previousRanges=structuredClone(entry.localHighlightRanges||{});entry.localHighlights={...previous};entry.localHighlightRanges=structuredClone(previousRanges);
+   for(const ref of journalChosen){if(!entry.verses.includes(ref))continue;const selection=journalTextSelection.get(ref);
+    if(selection){const list=entry.localHighlightRanges[ref]||[];if(target.journalHighlight==='erase')entry.localHighlightRanges[ref]=list.flatMap(r=>r.end<=selection.start||r.start>=selection.end?[r]:[...(r.start<selection.start?[{...r,end:selection.start}]:[]),...(r.end>selection.end?[{...r,start:selection.end}]:[])]);else if(validColor(target.journalHighlight))entry.localHighlightRanges[ref]=[...list,{...selection,color:target.journalHighlight}];}
+    else if(target.journalHighlight==='erase'){delete entry.localHighlights[ref];delete entry.localHighlightRanges[ref];}else if(validColor(target.journalHighlight))entry.localHighlights[ref]=target.journalHighlight;
+   }
+   window.getSelection()?.removeAllRanges();journalTextSelection.clear();if(!await save()){entry.localHighlights=previous;entry.localHighlightRanges=previousRanges;}render();return;
+  }
   if(target.studyPreview)return showSelectedStudy(target.studyPreview);
   if(target.torahStudyRef){if(target.torahCommentary&&commentaries[target.torahCommentary]){state.commentaryEdition=target.torahCommentary;save();}return showTorahVerse(target.torahStudyRef,target.torahStudyMode);}
   if(spiritStudyAction(target)){render();window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(view==='seven-study')window.scrollTo({top:0,behavior:'instant'});});return;}
@@ -5425,7 +5457,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v339',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v340',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
@@ -5541,3 +5573,5 @@ modal.addEventListener('pointerdown',event=>{
  const form=button.form;if(button.hasAttribute('data-calendar-search-today'))form.elements.day.value=dateKey();
  form.requestSubmit(form.querySelector('[data-calendar-jump]'));
 },true);
+
+main.addEventListener('pointerdown',event=>{if(event.target.closest('[data-journal-highlight]'))event.preventDefault();},true);
