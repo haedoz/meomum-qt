@@ -4253,3 +4253,13 @@ html.writing-focused .journal-verse-tools{display:none!important}
 #modal form[name=prayer-discussion] .note-thread-list article{display:flex;flex-direction:column;gap:9px}
 #modal form[name=prayer-discussion] .note-thread-list .item-actions{order:2;align-self:flex-end}
 #modal form[name=prayer-discussion] .note-thread-list p{font-weight:400}
+
+/* A single writing surface for prayer follow-up comments. */
+#modal form[name=prayer-discussion] .note-thread-compose{display:grid;gap:0;border:1px solid var(--line);border-radius:15px;background:var(--card);overflow:hidden;transition:border-color .15s}
+#modal form[name=prayer-discussion] .note-thread-compose:focus-within{border-color:color-mix(in srgb,var(--muted) 65%,var(--line))}
+#modal form[name=prayer-discussion] .note-thread-compose>.field{padding:14px 14px 0!important;gap:9px;background:transparent!important;border:0!important;border-radius:0!important;margin:0!important}
+#modal form[name=prayer-discussion] .note-thread-compose>.field>.field-caption{display:none}
+#modal form[name=prayer-discussion] .note-thread-compose textarea{display:block;width:100%;min-height:112px!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:none!important;font-weight:400!important}
+#modal form[name=prayer-discussion] .note-thread-compose textarea::placeholder{color:var(--muted);opacity:.65;font-weight:400}
+#modal form[name=prayer-discussion] .note-thread-compose>div{display:flex;align-items:center;justify-content:flex-end;margin:0!important;padding:10px 12px 12px;border:0;background:transparent}
+#modal form[name=prayer-discussion] .note-thread-compose [data-note-comment-save]{min-height:34px!important;padding:6px 16px!important;border-radius:10px!important;font-size:12px!important;line-height:20px!important;box-shadow:none!important;background:var(--ink)!important;color:var(--card)!important;border:0!important;font-weight:550!important}
