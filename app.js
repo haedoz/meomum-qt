@@ -916,7 +916,7 @@ function showTorahVerse(key,mode='original'){
   const {book,chapter,verse,edition}=readRef(key),source=originalPassageSource(book,chapter);
   const body=studySource('original')?.verses[book]?.[chapter]?.[verse]||'';
   const hasOriginal=Boolean(body||source.chapters?.[chapter]?.[verse]);
-  const mark=indexVerseMarkers().get(verseAddress(key))?.mark,appearance=verseMark(mark);
+  const mark=activeVerseMarkers().get(verseAddress(key))?.mark,appearance=verseMark(mark);
   const colors=[...new Set((state.quickMarkers||['#e6bc43','#7cb668','#dc7d9c']).filter(validColor))];
   const palette='<section class="torah-popup-marker"><span>'+icon('marker')+' 형광펜</span><div>'+colors.map((color,index)=>'<button type="button" class="torah-highlight-color" data-torah-mark-ref="'+key+'" data-torah-mark-color="'+color+'" style="--marker-color:'+color+'" aria-label="형광펜 색상 '+(index+1)+' 적용" aria-pressed="'+(appearance?.style==='fill'&&appearance.color===color)+'">'+icon('check')+'</button>').join('')+'<button type="button" class="text-action torah-highlight-erase" data-torah-mark-ref="'+key+'" data-torah-mark-erase="true" '+(!appearance?'disabled':'')+'>지우기</button></div></section>';
   const reading=hasOriginal?originalVerseReading(body,verse,source,chapter):'<div class="torah-popup-empty"><p>이 구절의 원전분해 자료가 아직 없어요.</p><button type="button" class="text-action" data-nav="settings" data-import-link>원전분해 자료 추가 '+icon('right')+'</button></div>';
@@ -932,7 +932,7 @@ function torahScreen(){
   const day=selectedTorahDay||dateKey(),portion=torahDays[day],note=state.torahNotes[day]||{};
   if(!portion)return heading('DAILY TORAH','매일 토라포션','날짜를 다시 선택해 주세요.')+'<button class="btn" data-nav="calendar">캘린더로 돌아가기</button>';
   const previousDay=adjacentTorahDay(day,-1),nextDay=adjacentTorahDay(day,1),edition=state.reader.edition;
-  const addresses=torahAddresses(portion),markers=indexVerseMarkers();let lastChapter='';
+  const addresses=torahAddresses(portion),markers=activeVerseMarkers();let lastChapter='';
   const passage=addresses.map(address=>{
     const [book,chapter,verse]=address.split('/'),key=edition+'/'+address,body=edition?verseText(key):'';
     const chapterKey=book+'/'+chapter,head=chapterKey===lastChapter?'':'<h3>'+titles[book]+' '+chapter+'장</h3>';lastChapter=chapterKey;
@@ -945,7 +945,7 @@ function torahScreen(){
 function torahNotesScreen(){return journalsScreen();}
 function torahSelectionTools(){
   if(!chosen.size)return '';
-  const markers=indexVerseMarkers(),selected=[...chosen].map(key=>verseMark(markers.get(verseAddress(key))?.mark));
+  const markers=activeVerseMarkers(),selected=[...chosen].map(key=>verseMark(markers.get(verseAddress(key))?.mark));
   const colors=state.quickMarkers||['#e6bc43','#7cb668','#dc7d9c'];
   const dots=colors.map((color,idx)=>'<button type="button" class="marker-dot-btn '+(selected.length&&selected.every(mark=>mark&&mark.color?.toLowerCase()===color.toLowerCase())?'active':'')+'" data-action="apply-dot-marker" data-preset="'+idx+'" style="background:'+color+'" aria-label="'+(idx+1)+'번 형광펜 바로 칠하기"></button>').join('');
   return '<aside class="selection verse-actions torah-selection" aria-label="선택한 토라포션 구절 도구"><div class="verse-actions-top"><span class="compact">'+chosen.size+'절 선택</span><button type="button" class="icon-action" data-action="clear" aria-label="선택 해제">'+icon('close')+'</button></div><div class="torah-selection-main"><div class="quick-marker-palette" role="group" aria-label="퀵 형광펜">'+dots+'<button type="button" class="marker-dot-more" data-action="highlight" aria-haspopup="dialog" aria-label="형광펜 상세 설정">'+icon('down')+'</button></div><button type="button" class="btn" data-action="note">'+icon('edit')+' 메모</button><button type="button" class="btn" data-action="copy-verses">'+icon('copy')+' 복사</button></div><div class="torah-selection-study"><button type="button" class="btn" data-study-preview="commentary">'+icon('studyComment')+' 주석 보기</button><button type="button" class="btn" data-study-preview="original">'+icon('studyAnalysis')+' 원전분해 보기</button></div></aside>';
@@ -2340,6 +2340,19 @@ function markKinds(mark) {
   return kinds;
 }
 function compareRecordTime(a,b){return (a.day||'').localeCompare(b.day||'') || (a.recordAt||'').localeCompare(b.recordAt||'');}
+function markerRecordDay(){return view==='torah'?(selectedTorahDay||dateKey()):dateKey();}
+function activeVerseMarkers(){
+ if(view!=='torah')return indexVerseMarkers();
+ const day=markerRecordDay(),result=new Map();
+ for(const entry of Object.values(state.highlightHistory||migrateMarkerHistory(state.marks))){
+  if(entry.day!==day||!validMarkerHistory(entry))continue;
+  const appearance=entry.appearance,address=verseAddress(entry.ref);
+  const mark={markDay:day,...(appearance.style==='fill'?{highlight:appearance.color}:{underline:appearance})};
+  const keys=Object.keys(state.marks).filter(ref=>verseAddress(ref)===address&&state.marks[ref].markDay===day);
+  result.set(address,{mark,keys});
+ }
+ return result;
+}
 function markerHistoryId(day,ref){return (day||'undated')+'|'+verseAddress(ref);}
 function migrateMarkerHistory(marks){const result={};for(const [ref,mark] of Object.entries(marks||{})){if(!validRef(ref)||!verseMark(mark))continue;const id=markerHistoryId(mark.markDay,ref);result[id]={ref,day:mark.markDay||'',appearance:verseMark(mark),group:mark.group||id,at:mark.markAt||''};}return result;}
 function validMarkerHistory(item){return isObject(item)&&validRef(item.ref)&&(item.day===''||validDay(item.day))&&isObject(item.appearance)&&validColor(item.appearance.color)&&(item.appearance.style==='fill'||Object.hasOwn(markStyles,item.appearance.style))&&typeof item.group==='string'&&typeof item.at==='string';}
@@ -3609,10 +3622,10 @@ const actions = {
     const preset = Number(button.dataset.preset);
     const color = (state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'])[preset] || '#e6bc43';
     const keys = [...chosen];
-    const markers = indexVerseMarkers();
+    const markers = activeVerseMarkers();
     const allHaveColor = keys.length && keys.every(key => {
       const m = verseMark(markers.get(verseAddress(key))?.mark);
-      return m && markers.get(verseAddress(key))?.mark.markDay===dateKey() && m.color?.toLowerCase() === color.toLowerCase();
+      return m && markers.get(verseAddress(key))?.mark.markDay===markerRecordDay() && m.color?.toLowerCase() === color.toLowerCase();
     });
     if (allHaveColor) {
       applyVerseMarks(keys, undefined, '형광펜을 지웠어요.');
@@ -4907,7 +4920,7 @@ function setVerseMark(key,appearance) {
 async function applyVerseMarks(keys,appearance,message,confirmed=false) {
   if (!keys.length) return;
   if(!appearance&&!confirmed&&!await requestRemoval('말씀 표시를 삭제할까요?','선택한 구절의 형광펜 또는 밑줄만 지워집니다. 구절 메모와 묵상은 그대로 남아요.'))return;
-  const markers = indexVerseMarkers();
+  const markers = activeVerseMarkers();
   const selection = new Map(keys.map(key=>[verseAddress(key),key]));
   const affected = new Set();
   for (const [address,key] of selection) {
@@ -4916,13 +4929,13 @@ async function applyVerseMarks(keys,appearance,message,confirmed=false) {
   }
   lastMarkerEdit = [...affected].map(key=>[key,state.marks[key]?{...state.marks[key]}:undefined]);
   lastMarkerHistory=structuredClone(state.highlightHistory||migrateMarkerHistory(state.marks));state.highlightHistory??=structuredClone(lastMarkerHistory);
-  const group = newId(), markDay = dateKey();
+  const group = newId(), markDay = markerRecordDay();
   for (const [address,key] of selection) {
     const existing = markers.get(address);
     for (const duplicate of existing?.keys ?? []) setVerseMark(duplicate,undefined);
     if (appearance) {
-      setVerseMark(key,appearance);
-      const at=new Date().toISOString();Object.assign(state.marks[key],{group,markDay,markAt:at});
+      const at=new Date().toISOString();
+      if(view!=='torah'||!(state.marks[key]?.markDay>markDay)){setVerseMark(key,appearance);Object.assign(state.marks[key],{group,markDay,markAt:at});}
       state.highlightHistory[markerHistoryId(markDay,key)]={ref:key,day:markDay,appearance:{...appearance},group,at};
     }else delete state.highlightHistory[markerHistoryId(markDay,key)];
   }
@@ -4933,8 +4946,8 @@ async function applyVerseMarks(keys,appearance,message,confirmed=false) {
 }
 function quickMarker() {
   const keys = [...chosen];
-  const markers = indexVerseMarkers();
-  if (keys.every(key=>markers.get(verseAddress(key))?.mark.markDay===dateKey())) applyVerseMarks(keys,undefined,'말씀 표시를 지웠어요.');
+  const markers = activeVerseMarkers();
+  if (keys.every(key=>markers.get(verseAddress(key))?.mark.markDay===markerRecordDay())) applyVerseMarks(keys,undefined,'말씀 표시를 지웠어요.');
   else applyVerseMarks(keys,{style:state.markerStyle,color:state.markerColor},'말씀 표시를 적용했어요.');
 }
 function setComparison(ids) {
@@ -4946,7 +4959,7 @@ function setComparison(ids) {
 }
 function showMarkDialog() {
   const first = chosen.values().next().value;
-  const appearance = first && verseMark(indexVerseMarkers().get(verseAddress(first))?.mark);
+  const appearance = first && verseMark(activeVerseMarkers().get(verseAddress(first))?.mark);
   const initial = appearance?.color ?? state.markerColor;
   const quickColors = state.quickMarkers || ['#e6bc43','#7cb668','#dc7d9c'];
   dialog('말씀 표시','<p class="marker-intro">선택한 '+chosen.size+'절의 표시를 꾸며보세요.</p>'+
@@ -5514,7 +5527,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v346',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v347',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
