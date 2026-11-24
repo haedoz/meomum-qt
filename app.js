@@ -572,7 +572,7 @@ function ensurePageHistoryKey(){
  return history.state.pageKey;
 }
 function rememberPagePosition(){
- if(!displayedHistoryKey)return;
+ if(!displayedHistoryKey||readerSearchLock)return;
  pageReturnPositions.set(displayedHistoryKey,{x:window.scrollX,y:window.scrollY,details:[...main.querySelectorAll('details')].map(el=>el.open)});
 }
 function restorePagePosition(position){
@@ -1437,18 +1437,40 @@ function isPageSearchable(currentView) {
   return ['records', 'journals', 'torah-notes','calendar', 'prayers', 'thoughts', 'newyear'].includes(currentView);
 }
 let readerSearchOrigin,readerSearchPositionToken=0;
-function holdReaderSearchPosition(position,token){if(position&&activeRoute===position.route&&token===readerSearchPositionToken)window.scrollTo({left:position.x,top:position.y,behavior:'instant'});}
+function holdReaderSearchPosition(position,token){if(!readerSearchLock&&position&&activeRoute===position.route&&token===readerSearchPositionToken)window.scrollTo({left:position.x,top:position.y,behavior:'instant'});}
+let readerSearchLock;
+function lockReaderSearchPage(){
+  if(readerSearchLock)return;
+  const position={x:scrollX,y:scrollY,route:activeRoute};
+  const pinned=[topBar.closest('.top'),main.querySelector(':scope > .reading-toolbar')].filter(Boolean).map(element=>({element,rect:element.getBoundingClientRect(),style:element.getAttribute('style')}));
+  readerSearchLock={position,style:document.body.getAttribute('style'),pinned};
+  for(const item of pinned){
+    const spacer=document.createElement('div');spacer.style.height=item.rect.height+'px';spacer.setAttribute('aria-hidden','true');item.element.before(spacer);item.spacer=spacer;
+    Object.assign(item.element.style,{position:'fixed',left:item.rect.left+'px',width:item.rect.width+'px',margin:'0',top:item.rect.top+'px'});
+  }
+  Object.assign(document.body.style,{position:'fixed',left:-position.x+'px',top:-position.y+'px',width:'100%',overflow:'hidden'});
+  layoutReaderSearchViewport();
+}
+function unlockReaderSearchPage(){
+  const lock=readerSearchLock;if(!lock)return;readerSearchLock=undefined;
+  if(lock.style===null)document.body.removeAttribute('style');else document.body.setAttribute('style',lock.style);
+  for(const item of lock.pinned){if(item.style===null)item.element.removeAttribute('style');else item.element.setAttribute('style',item.style);item.spacer.remove();}
+  window.scrollTo({left:lock.position.x,top:lock.position.y,behavior:'instant'});
+  layoutReaderSearchViewport();
+}
 function layoutReaderSearchViewport(){
   const header=topBar.closest('.top'),active=!readerSearchInput.hidden;
   const viewport=window.visualViewport;
   header.style.setProperty('--search-viewport-top',active?(viewport?.offsetTop||0)+'px':'0px');
+  if(readerSearchLock){const offset=viewport?.offsetTop||0;document.body.style.top=(offset-readerSearchLock.position.y)+'px';for(const item of readerSearchLock.pinned)item.element.style.top=(item.rect.top+offset)+'px';}
   const height=viewport?.height||innerHeight;
   const headerHeight=header.getBoundingClientRect().height;
   readerSearchPanel.style.maxHeight=active?Math.max(0,Math.min(660,height-headerHeight-12))+'px':'';
 }
 window.visualViewport?.addEventListener('resize',()=>{if(!readerSearchInput.hidden)requestAnimationFrame(()=>{holdReaderSearchPosition(readerSearchOrigin,readerSearchPositionToken);layoutReaderSearchViewport();});});
 window.visualViewport?.addEventListener('scroll',()=>{if(!readerSearchInput.hidden)layoutReaderSearchViewport();});
-readerSearchInput.addEventListener('focus',()=>{layoutReaderSearchViewport();[60,220,480].forEach(delay=>setTimeout(()=>{if(!readerSearchInput.hidden)layoutReaderSearchViewport();},delay));});
+readerSearchInput.addEventListener('blur',unlockReaderSearchPage);
+readerSearchInput.addEventListener('focus',()=>{lockReaderSearchPage();layoutReaderSearchViewport();[60,220,480].forEach(delay=>setTimeout(()=>{if(!readerSearchInput.hidden)layoutReaderSearchViewport();},delay));});
 function showReaderSearch() {
   readerSearchOrigin={x:scrollX,y:scrollY,route:activeRoute};const position=readerSearchOrigin,token=++readerSearchPositionToken;
   topBar.classList.add('search-open');
@@ -1470,6 +1492,7 @@ function showReaderSearch() {
 function closeReaderSearch(restoreFocus = false,preservePosition=true) {
   const position=readerSearchOrigin,token=++readerSearchPositionToken;readerSearchOrigin=undefined;
   if(document.activeElement===readerSearchInput)readerSearchInput.blur();
+  unlockReaderSearchPage();
   if(preservePosition&&position){requestAnimationFrame(()=>holdReaderSearchPosition(position,token));setTimeout(()=>holdReaderSearchPosition(position,token),120);setTimeout(()=>holdReaderSearchPosition(position,token),320);}
   bibleSearchScope = 'all';
   personalSearchFilters.type = personalSearchFilters.year = 'all';
@@ -2815,7 +2838,7 @@ function flushReadingBookmark() {
   const pending = readingBookmarkTimer!==undefined;
   if (pending) clearTimeout(readingBookmarkTimer);
   readingBookmarkTimer = undefined;
-  if (view!=='bible' || jumpTo || !renderedBible || renderedBible!==readerAddress()) return;
+  if (readerSearchLock || view!=='bible' || jumpTo || !renderedBible || renderedBible!==readerAddress()) return;
   const scrollTop = document.scrollingElement.scrollTop;
   if (!pending && scrollTop===lastBibleScrollTop) return;
   lastBibleScrollTop = scrollTop;
@@ -4331,6 +4354,7 @@ window.addEventListener('resize',()=>{
   updateReaderSearch(Math.floor(firstVisible/bibleSearchPageSize));
 });
 window.addEventListener('scroll',()=>{
+  if(readerSearchLock)return;
   const isReading = view==='bible' || view==='commentary' || view==='original';
   if (!isReading) return;
   if (view==='bible' && renderedBible) {
@@ -5490,7 +5514,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v344',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v345',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
