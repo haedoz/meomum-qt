@@ -1190,7 +1190,7 @@ function todayRecords(day){
  if(!types.some(([type])=>type===todayRecordsFilter)){todayRecordsFilter=types[0]?.[0]||'묵상';todayRecordsPage=0;}
  const rows=allRows.filter(item=>item.category===todayRecordsFilter);
  const pages=Math.max(1,Math.ceil(rows.length/5));todayRecordsPage=Math.min(todayRecordsPage,pages-1);
- return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<article class="today-record-entry"><button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-symbol">'+icon(item.symbol)+'</span><span class="today-record-copy"><span class="today-record-label">'+item.type+'</span><strong>'+esc(item.title)+'</strong>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button><footer class="today-record-actions">'+calendarItemActions(item.editAttributes,item.deleteAttributes)+'</footer></article>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
+ return '<section class="today-records today-records-refined"><header class="row"><h2>오늘의 기록</h2><span>'+total+'건</span></header>'+(total?'<div class="today-records-panel"><nav class="today-record-tabs" aria-label="오늘의 기록 종류">'+types.map(([type,symbol])=>'<button type="button" data-today-record-filter="'+type+'" aria-pressed="'+(todayRecordsFilter===type)+'">'+icon(symbol)+'<span>'+type+'</span></button>').join('')+'</nav><div class="today-record-list">'+rows.slice(todayRecordsPage*5,todayRecordsPage*5+5).map(item=>'<article class="today-record-entry"><button type="button" class="today-record-item" '+item.attributes+'><span class="today-record-copy"><span class="today-record-heading"><strong>'+icon(item.symbol)+'<span>'+esc(item.title)+'</span></strong><span class="today-record-label" data-record-category="'+item.category+'">'+item.type+'</span></span>'+(item.body?'<span class="today-record-excerpt">'+esc(item.body.replace(/\s+/g,' ').trim())+'</span>':'')+'</span>'+icon('right')+'</button><footer class="today-record-actions">'+calendarItemActions(item.editAttributes,item.deleteAttributes)+'</footer></article>').join('')+'</div>'+(pages>1?'<footer class="today-record-pages"><button type="button" data-today-record-page="'+(todayRecordsPage-1)+'" aria-label="이전 기록" '+(!todayRecordsPage?'disabled':'')+'>'+icon('left')+'</button><span>'+(todayRecordsPage+1)+' / '+pages+'</span><button type="button" data-today-record-page="'+(todayRecordsPage+1)+'" aria-label="다음 기록" '+(todayRecordsPage===pages-1?'disabled':'')+'>'+icon('right')+'</button></footer>':'')+'</div>':'<p class="today-records-empty">오늘 남긴 기록이 없어요.</p>')+'</section>';
 }
 function todayScreen() {
   const today = dateKey(), reader = state.reader;
@@ -1222,6 +1222,12 @@ function readerPickerField(label,value,action,description) {
 function bookPickerField(book,label = '성경') {
   return readerPickerField(label,titles[book],'pick-book','성경책 선택');
 }
+const expandedVerseNotes=new Set();
+function inlineVerseMemo(key,verse,num){
+ const mark=state.marks[key];if(!mark?.note)return verse;
+ const open=expandedVerseNotes.has(key),id='verse-memo-'+encodeURIComponent(key);
+ return '<div class="verse-with-note inline-memo-wrap">'+verse+'<button type="button" class="verse-note-icon" data-toggle-verse-memo="'+key+'" aria-label="'+num+'절 메모 '+(open?'접기':'펼치기')+'" aria-expanded="'+open+'" aria-controls="'+id+'">'+icon('note')+'</button><section id="'+id+'" class="inline-verse-note" '+(!open?'hidden':'')+'><header>'+icon('comment')+'<span>구절 메모</span></header><p>'+esc(mark.note)+'</p><footer>'+calendarItemActions('data-edit-verse-note="'+key+'"','data-delete-note="'+key+'"')+'</footer></section></div>';
+}
 function verseButton(edition,book,chapter,num,content,marker,secondary = false) {
   if (!content) return '<span class="missing-verse">'+(secondary?esc(editionLabel(edition)):num+'절')+' · 이 역본에 본문 없음</span>';
   const key = [edition,book,chapter,num].join('/');
@@ -1229,8 +1235,7 @@ function verseButton(edition,book,chapter,num,content,marker,secondary = false) 
   const verse = '<button id="'+(secondary?'compare-v-'+edition+'-':'v-')+num+'" class="verse'+(secondary?' verse-support':'')+'" data-verse="'+key+'"'+
     (!secondary && !state.comparison.length?' data-reading-verse="'+num+'"':'')+' lang="'+(localLanguages[edition] ?? 'ko')+'" aria-pressed="'+chosen.has(key)+'">'+
     '<span class="number" '+(secondary?'aria-hidden="true" style="visibility:hidden"':'')+'>'+num+'</span><span class="verse-content">'+(secondary?'<span class="comparison-edition">'+esc(editionLabel(edition))+'</span><span class="comparison-text">'+markedText(content,marker)+'</span>':markedText(content,marker))+'</span></button>';
-  return mark?.note?'<div class="verse-with-note">'+verse+
-    '<button type="button" class="verse-note-icon" data-edit-verse-note="'+key+'" aria-label="'+num+'절 메모 보기">'+icon('note')+'</button></div>':verse;
+  return inlineVerseMemo(key,verse,num);
 }
 function readerScreen() {
   const {edition,book,chapter} = state.reader;
@@ -3941,6 +3946,11 @@ document.addEventListener('click',async event => {
   if (target.openChapter) return openChapter(target.openChapter);
   if (target.checkChapter) return toggleChapter(target.checkChapter);
   if (target.displayStep) return stepDisplay(button);
+  if(target.toggleVerseMemo){
+    const key=target.toggleVerseMemo,open=!expandedVerseNotes.has(key),panel=document.getElementById(button.getAttribute('aria-controls'));
+    if(open)expandedVerseNotes.add(key);else expandedVerseNotes.delete(key);
+    button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',readRef(key).verse+'절 메모 '+(open?'접기':'펼치기'));if(panel)panel.hidden=!open;return;
+  }
   if (target.editVerseNote) return showVerseNote(target.editVerseNote);
   if (target.deleteNote) return confirmItemRemoval('note',target.deleteNote);
   if (target.prayerFilter) { prayerFilter = target.prayerFilter; return render(); }
@@ -4046,7 +4056,7 @@ main.addEventListener('pointerdown',event => {
   if (event.pointerType==='touch') {
     readerSwipe = undefined;
     if (view==='bible' && event.isPrimary && event.clientX>22 && event.clientX<window.innerWidth-22 &&
-        event.target.closest('.bible-passage') && !event.target.closest('.passage-heading, .verse-note-icon')) {
+        event.target.closest('.bible-passage') && !event.target.closest('.passage-heading, .verse-note-icon, .inline-verse-note')) {
       readerSwipe = {id:event.pointerId,x:event.clientX,y:event.clientY};
     }
   }
@@ -5403,7 +5413,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v337',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v338',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;

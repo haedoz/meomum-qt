@@ -4145,3 +4145,31 @@ html.writing-focused #modal form[name=calendar-date-search]::after{content:none!
 #modal form[name=verse-note-editor] .verse-note-actions{position:sticky;bottom:0;padding:11px 18px 15px!important;border-top:0!important;background:var(--card)!important;margin:0;gap:8px}
 #modal form[name=verse-note-editor] .verse-note-actions .muted{font-size:11px;color:var(--muted)}
 #modal form[name=verse-note-editor] .verse-note-actions .btn{min-height:34px!important;padding:6px 13px!important;font-size:12px!important;border-radius:10px!important}
+/* Verse memo disclosure: only the small tab and its own content expand. */
+.bible-passage .inline-memo-wrap>.verse-note-icon{top:2px;right:2px;width:25px;height:25px;border:1px solid color-mix(in srgb,var(--green) 12%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--green) 6%,var(--card));color:var(--green);box-shadow:inset 0 1px 0 #ffffff30}
+.bible-passage .inline-memo-wrap>.verse-note-icon[aria-expanded=true]{background:var(--light)}
+.bible-passage .inline-memo-wrap>.verse{padding-inline-end:32px}
+.inline-verse-note{margin:7px 2px 10px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 2%,var(--card));color:var(--ink)}
+.inline-verse-note[hidden]{display:none!important}
+.inline-verse-note>header{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:8px}
+.inline-verse-note>header svg{width:14px;height:14px}
+.inline-verse-note>p{font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px);white-space:pre-wrap;overflow-wrap:anywhere;font-weight:400}
+.inline-verse-note>footer{display:flex;justify-content:flex-end;margin-top:9px}
+.inline-verse-note .item-actions{margin:0;gap:6px}
+/* Today's record cards follow the record room's passage/annotation hierarchy. */
+.today-records-refined .today-records-panel{background:transparent;border:0;border-radius:0;overflow:visible}
+.today-records-refined .today-record-tabs{background:var(--card);border:1px solid var(--line);border-radius:13px;margin-bottom:10px}
+.today-records-refined .today-record-list{padding:0;display:grid;gap:9px}
+.today-records-refined .today-record-entry{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.today-records-refined .today-record-entry>.today-record-item{padding:0;gap:0;align-items:start}
+.today-record-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;margin-bottom:7px}
+.today-record-heading>strong{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px!important;font-weight:550}
+.today-record-heading>strong>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.today-record-heading>strong svg{width:14px;height:14px;flex:0 0 14px;color:var(--muted)}
+.today-record-heading .today-record-label{flex-shrink:0;padding:3px 6px;border-radius:6px;background:var(--light);font-size:10px;line-height:1.3}
+.today-record-label[data-record-category=묵상]{color:#9071a6;background:color-mix(in srgb,#ab86c1 10%,var(--card))}
+.today-record-label[data-record-category=토라포션]{color:#64988e;background:color-mix(in srgb,#79aaa0 10%,var(--card))}
+.today-records-refined .today-record-excerpt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;white-space:normal;padding:10px 11px;border-radius:10px;background:color-mix(in srgb,var(--ink) 3%,var(--card));font-family:var(--font-ko);font-size:var(--reading-size,15px);line-height:var(--reading-leading,1.25);letter-spacing:var(--reading-tracking,0px);font-weight:400;color:var(--ink)}
+.today-records-refined .today-record-item>svg{display:none}
+.today-records-refined .today-record-actions{margin-top:9px}
+.today-records-refined .today-record-pages{border:0;padding-top:11px}
