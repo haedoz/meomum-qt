@@ -2315,7 +2315,7 @@ function calendarDaySummary(day,items,records) {
     for(const row of rows){const {book,chapter}=readRef(row.key);const key=book+'/'+chapter;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);}
     return [...groups].map(([key,rows])=>'<details class="calendar-mark-group"><summary><strong>'+esc(chapterLabel(key))+'</strong><span>'+rows.length+'건 '+icon('down')+'</span></summary><div>'+recordDetails(rows,isNote)+'</div></details>').join('');
   };
-  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+icon('edit')+'<span>'+esc(entry.title||'묵상 노트')+'</span></strong><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span></button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-nav="'+journalRoute(day,id)+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
+  const journalCards=journals.map(([,entry,id])=>'<article class="calendar-journal-summary"><button type="button" class="calendar-journal-open" data-nav="'+journalRoute(day,id)+'"><span><strong>'+icon('edit')+'<span>'+esc(entry.title||'묵상 노트')+'</span></strong><p>'+esc(entry.reflection||'담아둔 말씀과 묵상을 확인하세요.')+'</p></span></button>'+devotionCommentSummary(entry.comments)+calendarItemActions('data-edit-journal="'+day+'" data-journal-note="'+id+'"','data-delete-journal="'+day+'" data-journal-note="'+id+'"')+'</article>').join('');
   const empty=!note&&!journals.length&&!prayers.length&&!thoughts.length&&!chapters.length&&!notes.length&&!highlights.length&&!torahNoteExists(day);
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
     '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
@@ -4119,8 +4119,11 @@ document.addEventListener('click',async event => {
     return;
   }
   if (target.editJournal) {
-    if (!validDay(target.editJournal) || !state.journal[target.editJournal]) return;
-    editingCompletedJournals.add(journalEditKey(target.editJournal,target.journalNote??''));navigate(journalRoute(target.editJournal,target.journalNote ?? ''));
+    const day = target.editJournal, id = target.journalNote ?? '';
+    if (!validDay(day) || !state.journal[day]) return;
+    const editKey = journalEditKey(day,id);
+    editingCompletedJournals.add(editKey);
+    navigate(journalRoute(day,id),view==='calendar'?{calendarJournalEditKey:editKey}:undefined);
     main.querySelector('[data-journal-field="reflection"]')?.focus({preventScroll:true});
     return;
   }
@@ -4172,7 +4175,24 @@ document.addEventListener('click',async event => {
   if (target.step) return stepChapter(Number(target.step));
   if (target.done) {
     const entry = journalEntry(target.done);
-    entry.done = true;editingCompletedJournals.delete(journalEditKey(target.done));
+    const editKey = journalEditKey(target.done);
+    if (history.state?.calendarJournalEditKey === editKey) {
+      const pageKey = history.state.pageKey;
+      const previousDone = entry.done;
+      button.disabled = true;
+      entry.done = true;
+      const saved = await save();
+      if (!saved) {
+        entry.done = previousDone;
+        button.disabled = false;
+        return;
+      }
+      editingCompletedJournals.delete(editKey);
+      if (history.state?.pageKey === pageKey) goBack();
+      return;
+    }
+    entry.done = true;
+    editingCompletedJournals.delete(editKey);
     save().then(saved => { if (saved && entry.done) notify('달력에 QT 완료를 표시했어요.'); });
   }
   if (target.remove) return confirmJournalVerseRemoval(target.remove,target.date);
@@ -5555,7 +5575,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v352',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v353',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
