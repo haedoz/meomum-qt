@@ -1207,7 +1207,7 @@ function todayRecords(day){
  const groups=new Map();const add=(type,symbol,title,body,attributes,editAttributes,deleteAttributes,appearance,passages)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes,editAttributes,deleteAttributes,appearance,passages});};
  for(const row of recordRows().filter(row=>row.day===day)){
   const {key,mark,journalDay,noteKey}=row;
-  if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"');
+  if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-today-torah="'+day+'"','data-delete-torah="'+day+'"');
   else if(mark.journal){const [date,id]=journalDay.split('/'),journalAttrs='="'+date+'" data-journal-note="'+(id||'')+'"';add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"','data-edit-journal'+journalAttrs,'data-delete-journal'+journalAttrs);}
   else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"','data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"');
   else if(verseMark(mark)){const token=historyActionKey(row),appearance=verseMark(mark);add(appearance.style==='fill'?'형광펜':'밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"','data-edit-record-color="'+token+'"','data-delete-highlight="'+token+'"',appearance,recordPassage(key,row.verses));}
@@ -4071,6 +4071,13 @@ document.addEventListener('click',async event => {
   if(target.attachJournal)return addSelectionToJournal(target.attachJournal);
   if(target.editCompletedJournal){editingCompletedJournals.add(journalEditKey(target.editCompletedJournal));render();return;}
   if(target.editCompletedTorah){editingCompletedTorah.add(target.editCompletedTorah);render();return;}
+  if(target.editTodayTorah){
+    const day=target.editTodayTorah;if(!validDay(day)||!state.torahNotes[day])return;
+    editingCompletedTorah.add(day);
+    navigate('torah/'+day,{todayTorahEditDay:day});
+    requestAnimationFrame(()=>main.querySelector('[data-torah-note]')?.scrollIntoView({block:'center',behavior:'instant'}));
+    return;
+  }
   if(target.editTorahNote)return showTorahNoteEditor(target.editTorahNote);
   if(target.saveTorahEdit)return saveTorahNoteEdit(target.saveTorahEdit,button);
   if (target.editDailyNote) return showDailyNote(target.editDailyNote);
@@ -4116,7 +4123,16 @@ document.addEventListener('click',async event => {
   }
   if(target.deleteTorah)return confirmItemRemoval('torah',target.deleteTorah);
   if(target.torahEdition)return chooseEdition(target.torahEdition);
-  if(target.torahDone){const day=target.torahDone;editingCompletedTorah.delete(day);state.torahNotes[day]={...state.torahNotes[day],body:state.torahNotes[day]?.body||'',done:true,updated:new Date().toISOString()};save();render();return;}
+  if(target.torahDone){const day=target.torahDone;
+    if(history.state?.todayTorahEditDay===day){
+      const button=event.target.closest('button'),field=main.querySelector('[data-torah-note]'),previous=state.torahNotes[day];
+      if(button?.disabled)return;if(button)button.disabled=true;
+      state.torahNotes[day]={...previous,body:field?.value??previous?.body??'',done:true,updated:new Date().toISOString()};
+      if(!await save()){state.torahNotes[day]=previous;if(button)button.disabled=false;return;}
+      editingCompletedTorah.delete(day);goBack();return;
+    }
+    editingCompletedTorah.delete(day);state.torahNotes[day]={...state.torahNotes[day],body:state.torahNotes[day]?.body||'',done:true,updated:new Date().toISOString()};save();render();return;
+  }
   if (target.deleteJournal){const id=target.journalNote || (view==='journal'?activeJournalId:'');return id?confirmItemRemoval('journal-note',id,target.deleteJournal):confirmItemRemoval('journal',target.deleteJournal);}
   if (target.deleteComment) return confirmItemRemoval('comment',target.deleteComment,target.date);
   if (target.commentDay) return showCommentEditor(target.commentDay,target.commentId);
@@ -5536,7 +5552,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v349',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v350',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
