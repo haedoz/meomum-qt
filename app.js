@@ -1207,7 +1207,7 @@ function todayRecords(day){
  const groups=new Map();const add=(type,symbol,title,body,attributes,editAttributes,deleteAttributes,appearance,passages)=>{if(!groups.has(type))groups.set(type,{symbol,items:[]});groups.get(type).items.push({title,body,attributes,editAttributes,deleteAttributes,appearance,passages});};
  for(const row of recordRows().filter(row=>row.day===day)){
   const {key,mark,journalDay,noteKey}=row;
-  if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-today-torah="'+day+'"','data-delete-torah="'+day+'"');
+  if(mark.torah)add('토라포션','book',torahDays[day]?.name||'토라포션',mark.journalReflection||'','data-nav="torah/'+day+'"','data-edit-torah-page="'+day+'"','data-delete-torah="'+day+'"');
   else if(mark.journal){const [date,id]=journalDay.split('/'),journalAttrs='="'+date+'" data-journal-note="'+(id||'')+'"';add('묵상 노트','comment',mark.journalTitle||'나의 묵상',mark.journalReflection||'','data-nav="'+journalRoute(date,id||'')+'"','data-edit-journal'+journalAttrs,'data-delete-journal'+journalAttrs);}
   else if(mark.note)add('구절 메모','edit',selectionReference(key,row.verses),mark.note,'data-edit-verse-note="'+noteKey+'"','data-edit-verse-note="'+noteKey+'"','data-delete-note="'+noteKey+'"');
   else if(verseMark(mark)){const token=historyActionKey(row),appearance=verseMark(mark);add(appearance.style==='fill'?'형광펜':'밑줄','marker',selectionReference(key,row.verses),recordPassage(key,row.verses).map(([,body])=>body).join(' '),'data-visit="'+key+'"','data-edit-record-color="'+token+'"','data-delete-highlight="'+token+'"',appearance,recordPassage(key,row.verses));}
@@ -2319,7 +2319,7 @@ function calendarDaySummary(day,items,records) {
   const empty=!note&&!journals.length&&!prayers.length&&!thoughts.length&&!chapters.length&&!notes.length&&!highlights.length&&!torahNoteExists(day);
   return '<section class="calendar-summaries day-summary" data-date="'+day+'" aria-labelledby="day-summary-heading">'+
     '<header class="day-summary-title"><span class="day-detail-icon">'+icon('calendar')+'</span><div><p class="eyebrow">선택한 날짜</p><h2 id="day-summary-heading"><time datetime="'+day+'">'+longDate(day)+'</time></h2></div></header>'+
-    torahCalendarCard(day)+(state.torahNotes[day]?.body?'<details open class="calendar-torah-reflection"><summary>'+icon('edit')+'<strong>오늘의 토라 묵상</strong>'+icon('down')+'</summary><p>'+esc(state.torahNotes[day].body)+'</p>'+calendarItemActions('data-edit-torah-note="'+day+'"','data-delete-torah="'+day+'"')+'</details>':'')+
+    torahCalendarCard(day)+(state.torahNotes[day]?.body?'<details open class="calendar-torah-reflection"><summary>'+icon('edit')+'<strong>오늘의 토라 묵상</strong>'+icon('down')+'</summary><p>'+esc(state.torahNotes[day].body)+'</p>'+calendarItemActions('data-edit-torah-page="'+day+'"','data-delete-torah="'+day+'"')+'</details>':'')+
     (note?calendarDetail('comment','말씀 묵상','1건','<div class="tappable-card">'+cardHit('말씀 묵상 열기','data-edit-daily-note="'+day+'"')+calendarText(note.body)+calendarItemActions('data-edit-daily-note="'+day+'"','data-delete-daily-note="'+day+'"')+'</div>'):'')+
     (journals.length?calendarDetail('note','묵상 노트',journals.length+'편',journalCards):'')+
     (prayers.length?calendarDetail('prayer','기도 노트',prayers.length+'건',prayers.map(calendarPrayer).join('')):'')+
@@ -4071,11 +4071,14 @@ document.addEventListener('click',async event => {
   if(target.attachJournal)return addSelectionToJournal(target.attachJournal);
   if(target.editCompletedJournal){editingCompletedJournals.add(journalEditKey(target.editCompletedJournal));render();return;}
   if(target.editCompletedTorah){editingCompletedTorah.add(target.editCompletedTorah);render();return;}
-  if(target.editTodayTorah){
-    const day=target.editTodayTorah;if(!validDay(day)||!state.torahNotes[day])return;
+  if(target.editTorahPage){
+    const day=target.editTorahPage;if(!validDay(day)||!state.torahNotes[day])return;
     editingCompletedTorah.add(day);
-    navigate('torah/'+day,{todayTorahEditDay:day});
-    requestAnimationFrame(()=>main.querySelector('[data-torah-note]')?.scrollIntoView({block:'center',behavior:'instant'}));
+    navigate('torah/'+day,{torahEditReturnDay:day});
+    requestAnimationFrame(() => {
+      if (activeRoute !== 'torah/'+day) return;
+      main.querySelector('[data-torah-note]')?.scrollIntoView({block:'center',behavior:'instant'});
+    });
     return;
   }
   if(target.editTorahNote)return showTorahNoteEditor(target.editTorahNote);
@@ -4124,7 +4127,7 @@ document.addEventListener('click',async event => {
   if(target.deleteTorah)return confirmItemRemoval('torah',target.deleteTorah);
   if(target.torahEdition)return chooseEdition(target.torahEdition);
   if(target.torahDone){const day=target.torahDone;
-    if(history.state?.todayTorahEditDay===day){
+    if(history.state?.torahEditReturnDay===day){
       const button=event.target.closest('button'),field=main.querySelector('[data-torah-note]'),previous=state.torahNotes[day];
       if(button?.disabled)return;if(button)button.disabled=true;
       state.torahNotes[day]={...previous,body:field?.value??previous?.body??'',done:true,updated:new Date().toISOString()};
@@ -5552,7 +5555,7 @@ try {
 }
 resetRestoredAndroidSettings();
 render();
-startAppUpdates({version:'meomum-pages-v350',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
+startAppUpdates({version:'meomum-pages-v351',beforeReload:async()=>{if(pickingBibleFiles||importingEditions)return false;flushReadingBookmark();for(const form of document.querySelectorAll('form'))updateDraft(form);if(sessionDrafts.size)return false;return await save();}});
 queueMicrotask(()=>checkGhAutoSync(true));
 
 let lastGhCheckTime = 0;
