@@ -4275,3 +4275,55 @@ html.writing-focused .journal-verse-tools{display:none!important}
     padding-inline: 9px !important;
   }
 }
+
+/* Let attached verses use more of the meditation editor's width. */
+.journal-editor .journal-verses-card {
+  padding: 9px 5px !important;
+}
+
+.journal-editor .journal-verses-header {
+  padding: 0 2px 7px !important;
+  margin-bottom: 5px !important;
+}
+
+.journal-editor .journal-verses-list {
+  gap: 0;
+}
+
+.journal-editor .journal-verses-list > .devotion-passage {
+  min-width: 0;
+  padding-block: 3px !important;
+}
+
+.journal-editor .journal-verses-list > .devotion-passage + .devotion-passage {
+  margin-top: 5px !important;
+  padding-top: 7px !important;
+}
+
+.journal-editor .devotion-passage > header {
+  margin-bottom: 3px;
+  padding-inline: 2px;
+}
+
+.journal-editor .journal-verses-list .devotion-passage > header .note-link {
+  margin-bottom: 0;
+  max-width: 100%;
+  text-align: start;
+}
+
+.journal-editor .journal-verses-list .journal-interactive-verse {
+  gap: 3px;
+  padding-block: 1px !important;
+}
+
+.journal-editor .journal-verse-select {
+  gap: 5px;
+  padding: 3px 2px;
+}
+
+.journal-editor .journal-verse-select .devotion-verse-number {
+  flex: 0 0 auto;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
